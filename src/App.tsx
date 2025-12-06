@@ -4,6 +4,7 @@ import { LoginScreen } from './components/LoginScreen'
 import { DashboardLayout } from './components/DashboardLayout'
 import { Dashboard } from './components/Dashboard'
 import { ClassesPage } from './components/ClassesPage'
+import { ClassDetailsPage } from './components/ClassDetailsPage'
 import { StudentsPage } from './components/StudentsPage'
 import { GradesPage } from './components/GradesPage'
 import { ReportsPage } from './components/ReportsPage'
@@ -14,6 +15,7 @@ function App() {
     const [user, setUser] = useState<User | null>(null)
     const [loading, setLoading] = useState(true)
     const [currentPage, setCurrentPage] = useState('dashboard')
+    const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
 
     useEffect(() => {
         // Check active sessions and sets the user
@@ -47,12 +49,27 @@ function App() {
         return <LoginScreen />
     }
 
+    const handleNavigate = (page: string, params?: { turmaId?: string }) => {
+        setCurrentPage(page)
+        if (params) {
+            setNavigationParams(params)
+        } else {
+            setNavigationParams({})
+        }
+    }
+
     const renderPage = () => {
         switch (currentPage) {
             case 'dashboard':
-                return <Dashboard onNavigate={setCurrentPage} />
+                return <Dashboard onNavigate={handleNavigate} />
             case 'classes':
-                return <ClassesPage />
+                return <ClassesPage onNavigate={handleNavigate} />
+            case 'class-details':
+                return navigationParams.turmaId ? (
+                    <ClassDetailsPage turmaId={navigationParams.turmaId} onNavigate={handleNavigate} />
+                ) : (
+                    <ClassesPage onNavigate={handleNavigate} />
+                )
             case 'students':
                 return <StudentsPage />
             case 'grades':
@@ -62,7 +79,7 @@ function App() {
             case 'settings':
                 return <SettingsPage />
             default:
-                return <Dashboard onNavigate={setCurrentPage} />
+                return <Dashboard onNavigate={handleNavigate} />
         }
     }
 
@@ -72,7 +89,7 @@ function App() {
     }
 
     return (
-        <DashboardLayout currentPage={currentPage} onNavigate={setCurrentPage} onSearch={handleSearch}>
+        <DashboardLayout currentPage={currentPage} onNavigate={handleNavigate} onSearch={handleSearch}>
             {renderPage()}
         </DashboardLayout>
     )

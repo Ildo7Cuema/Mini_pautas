@@ -47,8 +47,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [formData, setFormData] = useState({
         nome: '',
-        ano_lectivo: new Date().getFullYear().toString(),
-        trimestre_atual: 1,
+        ano_lectivo: new Date().getFullYear(),
+        trimestre: 1,
+        nivel_ensino: 'Ensino Secundário',
     })
 
     useEffect(() => {
@@ -141,22 +142,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Usuário não autenticado')
 
-            // Get professor profile
+            // Get professor profile with escola_id
             const { data: professor, error: profError } = await supabase
                 .from('professores')
-                .select('id')
+                .select('id, escola_id')
                 .eq('user_id', user.id)
                 .single()
 
             if (profError) throw profError
             if (!professor) throw new Error('Perfil de professor não encontrado')
 
+            // Auto-generate codigo_turma (e.g., "10A-2025-T1")
+            const nomeSimplificado = formData.nome.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)
+            const codigo_turma = `${nomeSimplificado}-${formData.ano_lectivo}-T${formData.trimestre}`
+
             // Create turma
             const { error: insertError } = await supabase
                 .from('turmas')
                 .insert({
-                    ...formData,
+                    nome: formData.nome,
+                    ano_lectivo: formData.ano_lectivo,
+                    trimestre: formData.trimestre,
+                    nivel_ensino: formData.nivel_ensino,
+                    codigo_turma: codigo_turma,
                     professor_id: professor.id,
+                    escola_id: professor.escola_id,
+                    capacidade_maxima: 40,
                 })
 
             if (insertError) throw insertError
@@ -164,8 +175,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             setShowCreateModal(false)
             setFormData({
                 nome: '',
-                ano_lectivo: new Date().getFullYear().toString(),
-                trimestre_atual: 1,
+                ano_lectivo: new Date().getFullYear(),
+                trimestre: 1,
+                nivel_ensino: 'Ensino Secundário',
             })
             loadDashboardData()
         } catch (err) {
@@ -455,20 +467,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                                     required
                                 />
 
+                                <div>
+                                    <label className="form-label">Nível de Ensino</label>
+                                    <select
+                                        value={formData.nivel_ensino}
+                                        onChange={(e) => setFormData({ ...formData, nivel_ensino: e.target.value })}
+                                        className="form-input min-h-touch"
+                                        required
+                                    >
+                                        <option value="Ensino Primário">Ensino Primário</option>
+                                        <option value="Ensino Secundário">Ensino Secundário</option>
+                                        <option value="Ensino Médio">Ensino Médio</option>
+                                        <option value="Ensino Técnico">Ensino Técnico</option>
+                                    </select>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-4">
                                     <Input
                                         label="Ano Lectivo"
                                         type="number"
                                         value={formData.ano_lectivo}
-                                        onChange={(e) => setFormData({ ...formData, ano_lectivo: e.target.value })}
+                                        onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
                                         required
                                     />
 
                                     <div>
                                         <label className="form-label">Trimestre</label>
                                         <select
-                                            value={formData.trimestre_atual}
-                                            onChange={(e) => setFormData({ ...formData, trimestre_atual: parseInt(e.target.value) })}
+                                            value={formData.trimestre}
+                                            onChange={(e) => setFormData({ ...formData, trimestre: parseInt(e.target.value) })}
                                             className="form-input"
                                         >
                                             <option value={1}>1º Trimestre</option>

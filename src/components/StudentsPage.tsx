@@ -14,11 +14,12 @@ import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
+import { ConfirmModal } from './ui/ConfirmModal'
 
 interface Aluno {
     id: string
-    nome: string
-    numero: string
+    nome_completo: string
+    numero_processo: string
     turma_id: string
     turma?: {
         nome: string
@@ -35,10 +36,15 @@ export const StudentsPage: React.FC = () => {
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [showConfirmDelete, setShowConfirmDelete] = useState(false)
     const [selectedTurma, setSelectedTurma] = useState<string>('all')
+    const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null)
+    const [alunoToDelete, setAlunoToDelete] = useState<string | null>(null)
+    const [searchQuery, setSearchQuery] = useState('')
     const [formData, setFormData] = useState({
-        nome: '',
-        numero: '',
+        nome_completo: '',
+        numero_processo: '',
         turma_id: '',
     })
     const [error, setError] = useState<string | null>(null)
@@ -71,12 +77,12 @@ export const StudentsPage: React.FC = () => {
                 .from('alunos')
                 .select(`
           id,
-          nome,
-          numero,
+          nome_completo,
+          numero_processo,
           turma_id,
           turmas(nome)
         `)
-                .order('nome')
+                .order('nome_completo')
 
             if (selectedTurma !== 'all') {
                 query = query.eq('turma_id', selectedTurma)
@@ -108,7 +114,7 @@ export const StudentsPage: React.FC = () => {
 
             setSuccess('Aluno adicionado com sucesso!')
             setShowModal(false)
-            setFormData({ nome: '', numero: '', turma_id: '' })
+            setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
             loadAlunos()
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar aluno'
@@ -116,24 +122,86 @@ export const StudentsPage: React.FC = () => {
         }
     }
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Tem certeza que deseja excluir este aluno?')) return
+    const handleDeleteClick = (id: string) => {
+        setAlunoToDelete(id)
+        setShowConfirmDelete(true)
+    }
+
+    const handleConfirmDelete = async () => {
+        if (!alunoToDelete) return
 
         try {
             const { error } = await supabase
                 .from('alunos')
                 .delete()
-                .eq('id', id)
+                .eq('id', alunoToDelete)
 
             if (error) throw error
 
             setSuccess('Aluno excluído com sucesso!')
+            setShowConfirmDelete(false)
+            setAlunoToDelete(null)
             loadAlunos()
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao excluir aluno'
             setError(translateError(errorMessage))
+            setShowConfirmDelete(false)
+            setAlunoToDelete(null)
         }
     }
+
+    const handleEditClick = (aluno: Aluno) => {
+        setSelectedAluno(aluno)
+        setFormData({
+            nome_completo: aluno.nome_completo,
+            numero_processo: aluno.numero_processo,
+            turma_id: aluno.turma_id
+        })
+        setShowEditModal(true)
+    }
+
+    const handleUpdateStudent = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedAluno) return
+
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const { error: updateError } = await supabase
+                .from('alunos')
+                .update({
+                    nome_completo: formData.nome_completo,
+                    numero_processo: formData.numero_processo,
+                    turma_id: formData.turma_id
+                })
+                .eq('id', selectedAluno.id)
+
+            if (updateError) throw updateError
+
+            setSuccess('Aluno atualizado com sucesso!')
+            setShowEditModal(false)
+            setSelectedAluno(null)
+            setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
+            loadAlunos()
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar aluno'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const getStudentInitials = (name: string) => {
+        const names = name.trim().split(' ')
+        if (names.length === 1) return names[0].substring(0, 2).toUpperCase()
+        return (names[0][0] + names[names.length - 1][0]).toUpperCase()
+    }
+
+    // Filter students based on search query
+    const filteredAlunos = alunos.filter(aluno =>
+        aluno.nome_completo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        aluno.numero_processo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        aluno.turma?.nome?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
 
     if (loading) {
         return (
@@ -201,7 +269,7 @@ export const StudentsPage: React.FC = () => {
                 </CardBody>
             </Card>
 
-            {/* Alunos Table/Card View */}
+            {/* Alunos List - Premium Card View */}
             {alunos.length === 0 ? (
                 <Card>
                     <CardBody className="text-center py-8 md:py-12">
@@ -217,74 +285,112 @@ export const StudentsPage: React.FC = () => {
                 </Card>
             ) : (
                 <Card>
-                    <CardBody className="p-0">
-                        {/* Mobile Card View */}
-                        <div className="md:hidden divide-y divide-slate-100">
-                            {alunos.map((aluno) => (
-                                <div key={aluno.id} className="p-4 flex items-center justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2">
-                                            <span className="text-xs font-mono bg-slate-100 px-2 py-0.5 rounded">{aluno.numero}</span>
-                                            <span className="text-xs text-slate-500">{aluno.turma?.nome}</span>
-                                        </div>
-                                        <p className="font-medium text-slate-900 truncate mt-1">{aluno.nome}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                        <button className="text-slate-400 p-2 min-h-touch min-w-touch flex items-center justify-center">
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                                            </svg>
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(aluno.id)}
-                                            className="text-red-500 p-2 min-h-touch min-w-touch flex items-center justify-center"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                    <CardHeader>
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <h3 className="text-lg font-semibold text-slate-900">Lista de Alunos</h3>
+                            {alunos.length > 0 && (
+                                <div className="relative flex-1 sm:max-w-xs">
+                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                    <input
+                                        type="text"
+                                        placeholder="Pesquisar aluno..."
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                    />
                                 </div>
-                            ))}
+                            )}
                         </div>
-
-                        {/* Desktop Table View */}
-                        <div className="hidden md:block overflow-x-auto">
-                            <table className="table">
-                                <thead>
-                                    <tr>
-                                        <th>Número</th>
-                                        <th>Nome</th>
-                                        <th>Turma</th>
-                                        <th>Ações</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {alunos.map((aluno) => (
-                                        <tr key={aluno.id}>
-                                            <td className="font-medium text-slate-900">{aluno.numero}</td>
-                                            <td className="text-slate-900">{aluno.nome}</td>
-                                            <td className="text-slate-600">{aluno.turma?.nome || '-'}</td>
-                                            <td>
-                                                <div className="flex gap-2">
-                                                    <Button variant="ghost" size="sm" className="min-h-touch">
-                                                        Editar
-                                                    </Button>
-                                                    <Button
-                                                        variant="danger"
-                                                        size="sm"
-                                                        onClick={() => handleDelete(aluno.id)}
-                                                        className="min-h-touch"
-                                                    >
-                                                        Excluir
-                                                    </Button>
+                    </CardHeader>
+                    <CardBody>
+                        {filteredAlunos.length === 0 ? (
+                            <div className="text-center py-8">
+                                <svg className="w-12 h-12 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <p className="text-slate-600">Nenhum aluno encontrado</p>
+                                <p className="text-sm text-slate-500 mt-1">Tente pesquisar com outros termos</p>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Premium Card View for All Screens */}
+                                <div className="space-y-3">
+                                    {filteredAlunos.map((aluno) => (
+                                        <div
+                                            key={aluno.id}
+                                            className="group relative bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-4 transition-all duration-200 hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5"
+                                        >
+                                            <div className="flex items-center gap-4">
+                                                {/* Avatar with Initials */}
+                                                <div className="flex-shrink-0">
+                                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:shadow-lg transition-shadow">
+                                                        {getStudentInitials(aluno.nome_completo)}
+                                                    </div>
                                                 </div>
-                                            </td>
-                                        </tr>
+
+                                                {/* Student Info */}
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-semibold text-slate-900 text-base truncate">
+                                                        {aluno.nome_completo}
+                                                    </h4>
+                                                    <div className="flex items-center gap-2 mt-0.5">
+                                                        <p className="text-sm text-slate-500">
+                                                            Nº {aluno.numero_processo}
+                                                        </p>
+                                                        {aluno.turma?.nome && (
+                                                            <>
+                                                                <span className="text-slate-300">•</span>
+                                                                <p className="text-sm text-slate-500 truncate">
+                                                                    {aluno.turma.nome}
+                                                                </p>
+                                                            </>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* Action Buttons */}
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => handleEditClick(aluno)}
+                                                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title="Editar aluno"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteClick(aluno.id)}
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title="Remover aluno"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                </div>
+
+                                <div className="mt-4 pt-4 border-t border-slate-200">
+                                    <p className="text-sm text-slate-600">
+                                        {searchQuery ? (
+                                            <>
+                                                Mostrando {filteredAlunos.length} de {alunos.length} {alunos.length === 1 ? 'aluno' : 'alunos'}
+                                            </>
+                                        ) : (
+                                            <>
+                                                Total: {alunos.length} {alunos.length === 1 ? 'aluno' : 'alunos'}
+                                            </>
+                                        )}
+                                    </p>
+                                </div>
+                            </>
+                        )}
                     </CardBody>
                 </Card>
             )}
@@ -311,18 +417,18 @@ export const StudentsPage: React.FC = () => {
                                 <Input
                                     label="Nome Completo"
                                     type="text"
-                                    value={formData.nome}
-                                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                                    value={formData.nome_completo}
+                                    onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
                                     placeholder="João Silva"
                                     required
                                     icon={<Icons.User />}
                                 />
 
                                 <Input
-                                    label="Número do Aluno"
+                                    label="Número de Processo"
                                     type="text"
-                                    value={formData.numero}
-                                    onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                                    value={formData.numero_processo}
+                                    onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
                                     placeholder="001"
                                     required
                                 />
@@ -362,6 +468,103 @@ export const StudentsPage: React.FC = () => {
                     </Card>
                 </div>
             )}
+
+            {/* Edit Student Modal */}
+            {showEditModal && selectedAluno && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-lg font-semibold text-slate-900">Editar Aluno</h3>
+                                <button
+                                    onClick={() => {
+                                        setShowEditModal(false)
+                                        setSelectedAluno(null)
+                                        setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
+                                    }}
+                                    className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </CardHeader>
+                        <CardBody>
+                            <form onSubmit={handleUpdateStudent} className="space-y-4">
+                                <Input
+                                    label="Nome Completo"
+                                    type="text"
+                                    value={formData.nome_completo}
+                                    onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
+                                    placeholder="João Silva"
+                                    required
+                                    icon={<Icons.User />}
+                                />
+
+                                <Input
+                                    label="Número de Processo"
+                                    type="text"
+                                    value={formData.numero_processo}
+                                    onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
+                                    placeholder="001"
+                                    required
+                                />
+
+                                <div>
+                                    <label className="form-label">Turma</label>
+                                    <select
+                                        value={formData.turma_id}
+                                        onChange={(e) => setFormData({ ...formData, turma_id: e.target.value })}
+                                        className="form-input min-h-touch"
+                                        required
+                                    >
+                                        <option value="">Selecione uma turma</option>
+                                        {turmas.map((turma) => (
+                                            <option key={turma.id} value={turma.id}>
+                                                {turma.nome}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setShowEditModal(false)
+                                            setSelectedAluno(null)
+                                            setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
+                                        }}
+                                        className="flex-1"
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" variant="primary" className="flex-1">
+                                        Salvar Alterações
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
+
+            {/* Confirm Delete Modal */}
+            <ConfirmModal
+                isOpen={showConfirmDelete}
+                onClose={() => {
+                    setShowConfirmDelete(false)
+                    setAlunoToDelete(null)
+                }}
+                onConfirm={handleConfirmDelete}
+                title="Excluir Aluno?"
+                message="Tem certeza que deseja excluir este aluno? Esta ação não pode ser desfeita."
+                confirmText="Sim, Excluir"
+                cancelText="Cancelar"
+                variant="danger"
+            />
         </div>
     )
 }

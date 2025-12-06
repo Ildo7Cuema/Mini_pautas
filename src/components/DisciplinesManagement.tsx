@@ -1,0 +1,1237 @@
+/*
+component-meta:
+  name: DisciplinesManagement
+  description: Component for managing disciplines (subjects) within a class
+  tokens: [--color-primary, --fs-md, min-h-touch]
+  responsive: true
+  tested-on: [360x800, 768x1024, 1440x900]
+*/
+
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabaseClient'
+import { Card, CardBody, CardHeader } from './ui/Card'
+import { Button } from './ui/Button'
+import { Input } from './ui/Input'
+import { Icons } from './ui/Icons'
+import { translateError } from '../utils/translations'
+
+interface DisciplinesManagementProps {
+    turmaId: string
+    turmaNome: string
+    onClose?: () => void
+}
+
+interface Disciplina {
+    id: string
+    professor_id: string
+    turma_id: string
+    nome: string
+    codigo_disciplina: string
+    carga_horaria: number | null
+    descricao: string | null
+}
+
+interface ComponenteAvaliacao {
+    id: string
+    disciplina_id: string
+    turma_id: string
+    nome: string
+    codigo_componente: string
+    peso_percentual: number
+    escala_minima: number
+    escala_maxima: number
+    obrigatorio: boolean
+    ordem: number
+    descricao: string | null
+}
+
+export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ turmaId, turmaNome, onClose }) => {
+    const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [success, setSuccess] = useState<string | null>(null)
+
+    // Discipline modal states
+    const [showAddModal, setShowAddModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [selectedDisciplina, setSelectedDisciplina] = useState<Disciplina | null>(null)
+
+    // Component states
+    const [expandedDisciplina, setExpandedDisciplina] = useState<string | null>(null)
+    const [componentes, setComponentes] = useState<Record<string, ComponenteAvaliacao[]>>({})
+    const [loadingComponentes, setLoadingComponentes] = useState<Record<string, boolean>>({})
+    const [showAddComponenteModal, setShowAddComponenteModal] = useState(false)
+    const [showEditComponenteModal, setShowEditComponenteModal] = useState(false)
+    const [showDeleteComponenteModal, setShowDeleteComponenteModal] = useState(false)
+    const [selectedComponente, setSelectedComponente] = useState<ComponenteAvaliacao | null>(null)
+
+    // Discipline form state
+    const [formData, setFormData] = useState({
+        nome: '',
+        codigo_disciplina: '',
+        carga_horaria: '',
+        descricao: ''
+    })
+
+    // Component form state
+    const [componenteFormData, setComponenteFormData] = useState({
+        nome: '',
+        codigo_componente: '',
+        peso_percentual: '',
+        escala_minima: '0',
+        escala_maxima: '20',
+        obrigatorio: true,
+        ordem: '1',
+        descricao: ''
+    })
+
+    useEffect(() => {
+        loadDisciplinas()
+    }, [turmaId])
+
+    const loadDisciplinas = async () => {
+        try {
+            setLoading(true)
+            const { data, error } = await supabase
+                .from('disciplinas')
+                .select('*')
+                .eq('turma_id', turmaId)
+                .order('nome')
+
+            if (error) throw error
+            setDisciplinas(data || [])
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar disciplinas'
+            setError(translateError(errorMessage))
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    const handleAddDisciplina = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (!user) throw new Error('Usuário não autenticado')
+
+            const { data: professor } = await supabase
+                .from('professores')
+                .select('id')
+                .eq('user_id', user.id)
+                .single()
+
+            if (!professor) throw new Error('Professor não encontrado')
+
+            const { error: insertError } = await supabase
+                .from('disciplinas')
+                .insert({
+                    professor_id: professor.id,
+                    turma_id: turmaId,
+                    nome: formData.nome,
+                    codigo_disciplina: formData.codigo_disciplina,
+                    carga_horaria: formData.carga_horaria ? parseInt(formData.carga_horaria) : null,
+                    descricao: formData.descricao || null
+                })
+
+            if (insertError) throw insertError
+
+            setSuccess('Disciplina adicionada com sucesso!')
+            setShowAddModal(false)
+            setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
+            loadDisciplinas()
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar disciplina'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const handleEditDisciplina = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedDisciplina) return
+
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const { error: updateError } = await supabase
+                .from('disciplinas')
+                .update({
+                    nome: formData.nome,
+                    codigo_disciplina: formData.codigo_disciplina,
+                    carga_horaria: formData.carga_horaria ? parseInt(formData.carga_horaria) : null,
+                    descricao: formData.descricao || null
+                })
+                .eq('id', selectedDisciplina.id)
+
+            if (updateError) throw updateError
+
+            setSuccess('Disciplina atualizada com sucesso!')
+            setShowEditModal(false)
+            setSelectedDisciplina(null)
+            setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
+            loadDisciplinas()
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar disciplina'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const handleDeleteDisciplina = async () => {
+        if (!selectedDisciplina) return
+
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const { error: deleteError } = await supabase
+                .from('disciplinas')
+                .delete()
+                .eq('id', selectedDisciplina.id)
+
+            if (deleteError) throw deleteError
+
+            setSuccess('Disciplina removida com sucesso!')
+            setShowDeleteModal(false)
+            setSelectedDisciplina(null)
+            loadDisciplinas()
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao remover disciplina'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const openEditModal = (disciplina: Disciplina) => {
+        setSelectedDisciplina(disciplina)
+        setFormData({
+            nome: disciplina.nome,
+            codigo_disciplina: disciplina.codigo_disciplina,
+            carga_horaria: disciplina.carga_horaria?.toString() || '',
+            descricao: disciplina.descricao || ''
+        })
+        setShowEditModal(true)
+    }
+
+    const openDeleteModal = (disciplina: Disciplina) => {
+        setSelectedDisciplina(disciplina)
+        setShowDeleteModal(true)
+    }
+
+    const closeModals = () => {
+        setShowAddModal(false)
+        setShowEditModal(false)
+        setShowDeleteModal(false)
+        setSelectedDisciplina(null)
+        setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
+    }
+
+    // ============================================
+    // COMPONENT MANAGEMENT FUNCTIONS
+    // ============================================
+
+    const loadComponentes = async (disciplinaId: string) => {
+        try {
+            setLoadingComponentes({ ...loadingComponentes, [disciplinaId]: true })
+            const { data, error } = await supabase
+                .from('componentes_avaliacao')
+                .select('*')
+                .eq('disciplina_id', disciplinaId)
+                .order('ordem')
+
+            if (error) throw error
+            setComponentes({ ...componentes, [disciplinaId]: data || [] })
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar componentes'
+            setError(translateError(errorMessage))
+        } finally {
+            setLoadingComponentes({ ...loadingComponentes, [disciplinaId]: false })
+        }
+    }
+
+    const toggleDisciplina = (disciplinaId: string) => {
+        if (expandedDisciplina === disciplinaId) {
+            setExpandedDisciplina(null)
+        } else {
+            setExpandedDisciplina(disciplinaId)
+            if (!componentes[disciplinaId]) {
+                loadComponentes(disciplinaId)
+            }
+        }
+    }
+
+    const calculateTotalWeight = (disciplinaId: string, excludeId?: string): number => {
+        const disciplinaComponentes = componentes[disciplinaId] || []
+        return disciplinaComponentes
+            .filter(c => c.id !== excludeId)
+            .reduce((sum, c) => sum + c.peso_percentual, 0)
+    }
+
+    const handleAddComponente = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedDisciplina) return
+
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const pesoPercentual = parseFloat(componenteFormData.peso_percentual)
+            const totalWeight = calculateTotalWeight(selectedDisciplina.id)
+
+            if (totalWeight + pesoPercentual > 100) {
+                setError(`A soma dos pesos não pode ultrapassar 100%. Peso atual: ${totalWeight}%, tentando adicionar: ${pesoPercentual}%`)
+                return
+            }
+
+            const { error: insertError } = await supabase
+                .from('componentes_avaliacao')
+                .insert({
+                    disciplina_id: selectedDisciplina.id,
+                    turma_id: turmaId,
+                    nome: componenteFormData.nome,
+                    codigo_componente: componenteFormData.codigo_componente,
+                    peso_percentual: pesoPercentual,
+                    escala_minima: parseFloat(componenteFormData.escala_minima),
+                    escala_maxima: parseFloat(componenteFormData.escala_maxima),
+                    obrigatorio: componenteFormData.obrigatorio,
+                    ordem: parseInt(componenteFormData.ordem),
+                    descricao: componenteFormData.descricao || null
+                })
+
+            if (insertError) throw insertError
+
+            setSuccess('Componente adicionado com sucesso!')
+            setShowAddComponenteModal(false)
+            resetComponenteForm()
+            loadComponentes(selectedDisciplina.id)
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar componente'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const handleEditComponente = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!selectedComponente || !selectedDisciplina) return
+
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const pesoPercentual = parseFloat(componenteFormData.peso_percentual)
+            const totalWeight = calculateTotalWeight(selectedDisciplina.id, selectedComponente.id)
+
+            if (totalWeight + pesoPercentual > 100) {
+                setError(`A soma dos pesos não pode ultrapassar 100%. Peso atual: ${totalWeight}%, tentando adicionar: ${pesoPercentual}%`)
+                return
+            }
+
+            const { error: updateError } = await supabase
+                .from('componentes_avaliacao')
+                .update({
+                    nome: componenteFormData.nome,
+                    codigo_componente: componenteFormData.codigo_componente,
+                    peso_percentual: pesoPercentual,
+                    escala_minima: parseFloat(componenteFormData.escala_minima),
+                    escala_maxima: parseFloat(componenteFormData.escala_maxima),
+                    obrigatorio: componenteFormData.obrigatorio,
+                    ordem: parseInt(componenteFormData.ordem),
+                    descricao: componenteFormData.descricao || null
+                })
+                .eq('id', selectedComponente.id)
+
+            if (updateError) throw updateError
+
+            setSuccess('Componente atualizado com sucesso!')
+            setShowEditComponenteModal(false)
+            setSelectedComponente(null)
+            resetComponenteForm()
+            loadComponentes(selectedDisciplina.id)
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar componente'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const handleDeleteComponente = async () => {
+        if (!selectedComponente || !selectedDisciplina) return
+
+        setError(null)
+        setSuccess(null)
+
+        try {
+            const { error: deleteError } = await supabase
+                .from('componentes_avaliacao')
+                .delete()
+                .eq('id', selectedComponente.id)
+
+            if (deleteError) throw deleteError
+
+            setSuccess('Componente removido com sucesso!')
+            setShowDeleteComponenteModal(false)
+            setSelectedComponente(null)
+            loadComponentes(selectedDisciplina.id)
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao remover componente'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const openAddComponenteModal = (disciplina: Disciplina) => {
+        setSelectedDisciplina(disciplina)
+        resetComponenteForm()
+        setShowAddComponenteModal(true)
+    }
+
+    const openEditComponenteModal = (componente: ComponenteAvaliacao, disciplina: Disciplina) => {
+        setSelectedDisciplina(disciplina)
+        setSelectedComponente(componente)
+        setComponenteFormData({
+            nome: componente.nome,
+            codigo_componente: componente.codigo_componente,
+            peso_percentual: componente.peso_percentual.toString(),
+            escala_minima: componente.escala_minima.toString(),
+            escala_maxima: componente.escala_maxima.toString(),
+            obrigatorio: componente.obrigatorio,
+            ordem: componente.ordem.toString(),
+            descricao: componente.descricao || ''
+        })
+        setShowEditComponenteModal(true)
+    }
+
+    const openDeleteComponenteModal = (componente: ComponenteAvaliacao, disciplina: Disciplina) => {
+        setSelectedDisciplina(disciplina)
+        setSelectedComponente(componente)
+        setShowDeleteComponenteModal(true)
+    }
+
+    const resetComponenteForm = () => {
+        setComponenteFormData({
+            nome: '',
+            codigo_componente: '',
+            peso_percentual: '',
+            escala_minima: '0',
+            escala_maxima: '20',
+            obrigatorio: true,
+            ordem: '1',
+            descricao: ''
+        })
+    }
+
+    const closeComponenteModals = () => {
+        setShowAddComponenteModal(false)
+        setShowEditComponenteModal(false)
+        setShowDeleteComponenteModal(false)
+        setSelectedComponente(null)
+        resetComponenteForm()
+    }
+
+
+    return (
+        <div className="space-y-4 md:space-y-6">
+            {/* Header */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h3 className="text-lg md:text-xl font-bold text-slate-900">Disciplinas</h3>
+                    <p className="text-sm md:text-base text-slate-600 mt-1">{turmaNome}</p>
+                </div>
+                {onClose && (
+                    <Button variant="ghost" size="sm" onClick={onClose} className="min-h-touch min-w-touch">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </Button>
+                )}
+            </div>
+
+            {/* Messages */}
+            {error && (
+                <div className="alert alert-error animate-slide-down">
+                    <span className="text-sm">{error}</span>
+                    <button onClick={() => setError(null)} className="ml-auto">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+            )}
+            {success && (
+                <div className="alert alert-success animate-slide-down">
+                    <Icons.Check />
+                    <span className="ml-2 text-sm">{success}</span>
+                </div>
+            )}
+
+            {/* Add Button */}
+            <Button variant="primary" onClick={() => setShowAddModal(true)} className="w-full sm:w-auto">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Adicionar Disciplina
+            </Button>
+
+            {/* Disciplines List */}
+            <Card>
+                <CardBody className="p-0">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="text-center">
+                                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                                <p className="mt-4 text-slate-600">Carregando disciplinas...</p>
+                            </div>
+                        </div>
+                    ) : disciplinas.length === 0 ? (
+                        <div className="text-center py-12 px-4">
+                            <svg className="w-16 h-16 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                            <h4 className="text-lg font-semibold text-slate-900 mb-2">Nenhuma disciplina cadastrada</h4>
+                            <p className="text-slate-600 mb-4">Adicione disciplinas para começar a lançar notas</p>
+                            <Button variant="primary" onClick={() => setShowAddModal(true)}>
+                                Adicionar Primeira Disciplina
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="divide-y divide-slate-200">
+                            {disciplinas.map((disciplina) => {
+                                const isExpanded = expandedDisciplina === disciplina.id
+                                const disciplinaComponentes = componentes[disciplina.id] || []
+                                const totalWeight = calculateTotalWeight(disciplina.id)
+                                const isLoadingComps = loadingComponentes[disciplina.id]
+
+                                return (
+                                    <div
+                                        key={disciplina.id}
+                                        className="transition-colors duration-200"
+                                    >
+                                        <div className="p-4 hover:bg-slate-50">
+                                            <div className="flex items-start justify-between gap-4">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold shadow-md">
+                                                            {disciplina.nome.substring(0, 2).toUpperCase()}
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h4 className="font-semibold text-slate-900 text-base truncate">
+                                                                {disciplina.nome}
+                                                            </h4>
+                                                            <p className="text-sm text-slate-500">
+                                                                Código: {disciplina.codigo_disciplina}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                    {(disciplina.carga_horaria || disciplina.descricao) && (
+                                                        <div className="ml-13 space-y-1">
+                                                            {disciplina.carga_horaria && (
+                                                                <p className="text-sm text-slate-600">
+                                                                    <span className="font-medium">Carga Horária:</span> {disciplina.carga_horaria}h
+                                                                </p>
+                                                            )}
+                                                            {disciplina.descricao && (
+                                                                <p className="text-sm text-slate-600 line-clamp-2">
+                                                                    {disciplina.descricao}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-shrink-0 flex items-center gap-2">
+                                                    <button
+                                                        onClick={() => toggleDisciplina(disciplina.id)}
+                                                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title={isExpanded ? "Ocultar componentes" : "Ver componentes"}
+                                                    >
+                                                        <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEditModal(disciplina)}
+                                                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title="Editar disciplina"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openDeleteModal(disciplina)}
+                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title="Remover disciplina"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Expandable Components Section */}
+                                            {isExpanded && (
+                                                <div className="mt-4 ml-13 pl-4 border-l-2 border-primary-200">
+                                                    <div className="flex items-center justify-between mb-3">
+                                                        <h5 className="text-sm font-semibold text-slate-700">Componentes de Avaliação</h5>
+                                                        <Button
+                                                            variant="secondary"
+                                                            size="sm"
+                                                            onClick={() => openAddComponenteModal(disciplina)}
+                                                            className="text-xs"
+                                                        >
+                                                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                                            </svg>
+                                                            Adicionar Componente
+                                                        </Button>
+                                                    </div>
+
+                                                    {isLoadingComps ? (
+                                                        <div className="text-center py-4">
+                                                            <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                                                            <p className="mt-2 text-sm text-slate-600">Carregando componentes...</p>
+                                                        </div>
+                                                    ) : disciplinaComponentes.length === 0 ? (
+                                                        <div className="text-center py-6 bg-slate-50 rounded-lg border border-slate-200">
+                                                            <svg className="w-12 h-12 text-slate-300 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                                            </svg>
+                                                            <p className="text-sm text-slate-600 mb-3">Nenhum componente configurado</p>
+                                                            <Button
+                                                                variant="primary"
+                                                                size="sm"
+                                                                onClick={() => openAddComponenteModal(disciplina)}
+                                                            >
+                                                                Adicionar Primeiro Componente
+                                                            </Button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <div className="space-y-2 mb-3">
+                                                                {disciplinaComponentes.map((comp) => (
+                                                                    <div
+                                                                        key={comp.id}
+                                                                        className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg hover:border-primary-300 transition-colors"
+                                                                    >
+                                                                        <div className="flex-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="font-medium text-slate-900">{comp.nome}</span>
+                                                                                <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
+                                                                                    {comp.codigo_componente}
+                                                                                </span>
+                                                                                {comp.obrigatorio && (
+                                                                                    <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded">
+                                                                                        Obrigatório
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="flex items-center gap-4 mt-1 text-xs text-slate-600">
+                                                                                <span>Peso: <strong>{comp.peso_percentual}%</strong></span>
+                                                                                <span>Escala: {comp.escala_minima}-{comp.escala_maxima}</span>
+                                                                                <span>Ordem: {comp.ordem}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-1">
+                                                                            <button
+                                                                                onClick={() => openEditComponenteModal(comp, disciplina)}
+                                                                                className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-all"
+                                                                                title="Editar componente"
+                                                                            >
+                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                                                </svg>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => openDeleteComponenteModal(comp, disciplina)}
+                                                                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded transition-all"
+                                                                                title="Remover componente"
+                                                                            >
+                                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                                                </svg>
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className={`p-2 rounded-lg text-sm ${totalWeight === 100 ? 'bg-green-50 text-green-800' : totalWeight > 100 ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-800'}`}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <span className="font-medium">Peso Total:</span>
+                                                                    <span className="font-bold">{totalWeight}%</span>
+                                                                </div>
+                                                                {totalWeight !== 100 && (
+                                                                    <p className="text-xs mt-1">
+                                                                        {totalWeight > 100 ? '⚠️ A soma dos pesos ultrapassou 100%' : `Faltam ${100 - totalWeight}% para completar`}
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </CardBody>
+            </Card>
+
+            {/* Add Modal */}
+            {
+                showAddModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                        <Card className="w-full md:max-w-lg md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-slate-900">Adicionar Disciplina</h3>
+                                    <button
+                                        onClick={closeModals}
+                                        className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </CardHeader>
+                            <CardBody>
+                                <form onSubmit={handleAddDisciplina} className="space-y-4">
+                                    <Input
+                                        label="Nome da Disciplina"
+                                        type="text"
+                                        value={formData.nome}
+                                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                                        placeholder="Ex: Matemática"
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Código da Disciplina"
+                                        type="text"
+                                        value={formData.codigo_disciplina}
+                                        onChange={(e) => setFormData({ ...formData, codigo_disciplina: e.target.value })}
+                                        placeholder="Ex: MAT001"
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Carga Horária (opcional)"
+                                        type="number"
+                                        value={formData.carga_horaria}
+                                        onChange={(e) => setFormData({ ...formData, carga_horaria: e.target.value })}
+                                        placeholder="Ex: 120"
+                                        min="0"
+                                    />
+
+                                    <div>
+                                        <label className="form-label">Descrição (opcional)</label>
+                                        <textarea
+                                            value={formData.descricao}
+                                            onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                                            placeholder="Breve descrição da disciplina..."
+                                            className="form-input min-h-[80px] resize-none"
+                                            rows={3}
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3 pt-4">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={closeModals}
+                                            className="flex-1"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button type="submit" variant="primary" className="flex-1">
+                                            Adicionar
+                                        </Button>
+                                    </div>
+                                </form>
+                            </CardBody>
+                        </Card>
+                    </div>
+                )
+            }
+
+            {/* Edit Modal */}
+            {
+                showEditModal && selectedDisciplina && (
+                    <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                        <Card className="w-full md:max-w-lg md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                            <CardHeader>
+                                <div className="flex items-center justify-between">
+                                    <h3 className="text-lg font-semibold text-slate-900">Editar Disciplina</h3>
+                                    <button
+                                        onClick={closeModals}
+                                        className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
+                                    >
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </CardHeader>
+                            <CardBody>
+                                <form onSubmit={handleEditDisciplina} className="space-y-4">
+                                    <Input
+                                        label="Nome da Disciplina"
+                                        type="text"
+                                        value={formData.nome}
+                                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                                        placeholder="Ex: Matemática"
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Código da Disciplina"
+                                        type="text"
+                                        value={formData.codigo_disciplina}
+                                        onChange={(e) => setFormData({ ...formData, codigo_disciplina: e.target.value })}
+                                        placeholder="Ex: MAT001"
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Carga Horária (opcional)"
+                                        type="number"
+                                        value={formData.carga_horaria}
+                                        onChange={(e) => setFormData({ ...formData, carga_horaria: e.target.value })}
+                                        placeholder="Ex: 120"
+                                        min="0"
+                                    />
+
+                                    <div>
+                                        <label className="form-label">Descrição (opcional)</label>
+                                        <textarea
+                                            value={formData.descricao}
+                                            onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                                            placeholder="Breve descrição da disciplina..."
+                                            className="form-input min-h-[80px] resize-none"
+                                            rows={3}
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-3 pt-4">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={closeModals}
+                                            className="flex-1"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button type="submit" variant="primary" className="flex-1">
+                                            Salvar Alterações
+                                        </Button>
+                                    </div>
+                                </form>
+                            </CardBody>
+                        </Card>
+                    </div>
+                )
+            }
+
+            {/* Delete Confirmation Modal */}
+            {
+                showDeleteModal && selectedDisciplina && (
+                    <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                        <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                            <CardHeader>
+                                <div className="flex items-center gap-3">
+                                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                                        <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-semibold text-slate-900">Remover Disciplina</h3>
+                                        <p className="text-sm text-slate-600 mt-0.5">Esta ação não pode ser desfeita</p>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardBody>
+                                <div className="space-y-4">
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                        <p className="text-sm text-slate-600 mb-2">Você está prestes a remover:</p>
+                                        <p className="font-semibold text-slate-900">{selectedDisciplina.nome}</p>
+                                        <p className="text-sm text-slate-600 mt-1">Código: {selectedDisciplina.codigo_disciplina}</p>
+                                    </div>
+
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                        <div className="flex gap-2">
+                                            <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <p className="text-sm text-amber-800">
+                                                Todos os componentes de avaliação, notas e dados relacionados a esta disciplina serão permanentemente removidos.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3 pt-2">
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            onClick={closeModals}
+                                            className="flex-1"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="danger"
+                                            onClick={handleDeleteDisciplina}
+                                            className="flex-1"
+                                        >
+                                            Remover Disciplina
+                                        </Button>
+                                    </div>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    </div>
+                )
+            }
+
+            {/* Add Component Modal */}
+            {showAddComponenteModal && selectedDisciplina && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                    <Card className="w-full md:max-w-lg md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900">Adicionar Componente</h3>
+                                    <p className="text-sm text-slate-600 mt-0.5">{selectedDisciplina.nome}</p>
+                                </div>
+                                <button
+                                    onClick={closeComponenteModals}
+                                    className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </CardHeader>
+                        <CardBody>
+                            <form onSubmit={handleAddComponente} className="space-y-4">
+                                <Input
+                                    label="Nome do Componente"
+                                    type="text"
+                                    value={componenteFormData.nome}
+                                    onChange={(e) => setComponenteFormData({ ...componenteFormData, nome: e.target.value })}
+                                    placeholder="Ex: MAC - Média das Avaliações Contínuas"
+                                    required
+                                />
+
+                                <Input
+                                    label="Código do Componente"
+                                    type="text"
+                                    value={componenteFormData.codigo_componente}
+                                    onChange={(e) => setComponenteFormData({ ...componenteFormData, codigo_componente: e.target.value })}
+                                    placeholder="Ex: MAC"
+                                    required
+                                />
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input
+                                        label="Peso Percentual (%)"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        value={componenteFormData.peso_percentual}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, peso_percentual: e.target.value })}
+                                        placeholder="Ex: 30"
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Ordem"
+                                        type="number"
+                                        min="1"
+                                        value={componenteFormData.ordem}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, ordem: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input
+                                        label="Escala Mínima"
+                                        type="number"
+                                        step="0.01"
+                                        value={componenteFormData.escala_minima}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, escala_minima: e.target.value })}
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Escala Máxima"
+                                        type="number"
+                                        step="0.01"
+                                        value={componenteFormData.escala_maxima}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, escala_maxima: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="obrigatorio"
+                                        checked={componenteFormData.obrigatorio}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, obrigatorio: e.target.checked })}
+                                        className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor="obrigatorio" className="text-sm text-slate-700">
+                                        Componente obrigatório
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label className="form-label">Descrição (opcional)</label>
+                                    <textarea
+                                        value={componenteFormData.descricao}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, descricao: e.target.value })}
+                                        placeholder="Breve descrição do componente..."
+                                        className="form-input min-h-[60px] resize-none"
+                                        rows={2}
+                                    />
+                                </div>
+
+                                <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
+                                    <p><strong>Peso atual da disciplina:</strong> {calculateTotalWeight(selectedDisciplina.id)}%</p>
+                                    {componenteFormData.peso_percentual && (
+                                        <p className="mt-1">
+                                            <strong>Peso após adicionar:</strong> {calculateTotalWeight(selectedDisciplina.id) + parseFloat(componenteFormData.peso_percentual || '0')}%
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={closeComponenteModals}
+                                        className="flex-1"
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" variant="primary" className="flex-1">
+                                        Adicionar Componente
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
+
+            {/* Edit Component Modal */}
+            {showEditComponenteModal && selectedComponente && selectedDisciplina && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                    <Card className="w-full md:max-w-lg md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-900">Editar Componente</h3>
+                                    <p className="text-sm text-slate-600 mt-0.5">{selectedDisciplina.nome}</p>
+                                </div>
+                                <button
+                                    onClick={closeComponenteModals}
+                                    className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
+                                >
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </CardHeader>
+                        <CardBody>
+                            <form onSubmit={handleEditComponente} className="space-y-4">
+                                <Input
+                                    label="Nome do Componente"
+                                    type="text"
+                                    value={componenteFormData.nome}
+                                    onChange={(e) => setComponenteFormData({ ...componenteFormData, nome: e.target.value })}
+                                    placeholder="Ex: MAC - Média das Avaliações Contínuas"
+                                    required
+                                />
+
+                                <Input
+                                    label="Código do Componente"
+                                    type="text"
+                                    value={componenteFormData.codigo_componente}
+                                    onChange={(e) => setComponenteFormData({ ...componenteFormData, codigo_componente: e.target.value })}
+                                    placeholder="Ex: MAC"
+                                    required
+                                />
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input
+                                        label="Peso Percentual (%)"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        max="100"
+                                        value={componenteFormData.peso_percentual}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, peso_percentual: e.target.value })}
+                                        placeholder="Ex: 30"
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Ordem"
+                                        type="number"
+                                        min="1"
+                                        value={componenteFormData.ordem}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, ordem: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <Input
+                                        label="Escala Mínima"
+                                        type="number"
+                                        step="0.01"
+                                        value={componenteFormData.escala_minima}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, escala_minima: e.target.value })}
+                                        required
+                                    />
+
+                                    <Input
+                                        label="Escala Máxima"
+                                        type="number"
+                                        step="0.01"
+                                        value={componenteFormData.escala_maxima}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, escala_maxima: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="obrigatorio-edit"
+                                        checked={componenteFormData.obrigatorio}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, obrigatorio: e.target.checked })}
+                                        className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor="obrigatorio-edit" className="text-sm text-slate-700">
+                                        Componente obrigatório
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label className="form-label">Descrição (opcional)</label>
+                                    <textarea
+                                        value={componenteFormData.descricao}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, descricao: e.target.value })}
+                                        placeholder="Breve descrição do componente..."
+                                        className="form-input min-h-[60px] resize-none"
+                                        rows={2}
+                                    />
+                                </div>
+
+                                <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
+                                    <p><strong>Peso atual da disciplina:</strong> {calculateTotalWeight(selectedDisciplina.id, selectedComponente.id)}%</p>
+                                    {componenteFormData.peso_percentual && (
+                                        <p className="mt-1">
+                                            <strong>Peso após editar:</strong> {calculateTotalWeight(selectedDisciplina.id, selectedComponente.id) + parseFloat(componenteFormData.peso_percentual || '0')}%
+                                        </p>
+                                    )}
+                                </div>
+
+                                <div className="flex gap-3 pt-4">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={closeComponenteModals}
+                                        className="flex-1"
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" variant="primary" className="flex-1">
+                                        Salvar Alterações
+                                    </Button>
+                                </div>
+                            </form>
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
+
+            {/* Delete Component Confirmation Modal */}
+            {showDeleteComponenteModal && selectedComponente && selectedDisciplina && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <CardHeader>
+                            <div className="flex items-center gap-3">
+                                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
+                                    <svg className="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-semibold text-slate-900">Remover Componente</h3>
+                                    <p className="text-sm text-slate-600 mt-0.5">Esta ação não pode ser desfeita</p>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardBody>
+                            <div className="space-y-4">
+                                <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <p className="text-sm text-slate-600 mb-2">Você está prestes a remover:</p>
+                                    <p className="font-semibold text-slate-900">{selectedComponente.nome}</p>
+                                    <p className="text-sm text-slate-600 mt-1">Código: {selectedComponente.codigo_componente}</p>
+                                    <p className="text-sm text-slate-600">Peso: {selectedComponente.peso_percentual}%</p>
+                                </div>
+
+                                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                                    <div className="flex gap-2">
+                                        <svg className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                        </svg>
+                                        <p className="text-sm text-amber-800">
+                                            Todas as notas associadas a este componente serão permanentemente removidas.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex gap-3 pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        onClick={closeComponenteModals}
+                                        className="flex-1"
+                                    >
+                                        Cancelar
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant="danger"
+                                        onClick={handleDeleteComponente}
+                                        className="flex-1"
+                                    >
+                                        Remover Componente
+                                    </Button>
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
+        </div >
+    )
+}
