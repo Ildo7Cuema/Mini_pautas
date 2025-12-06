@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardBody, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
-import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 
@@ -22,14 +21,6 @@ interface Componente {
     id: string
     nome: string
     peso: number
-}
-
-interface Nota {
-    id?: string
-    aluno_id: string
-    componente_id: string
-    valor: number
-    trimestre: number
 }
 
 export const GradesPage: React.FC = () => {

@@ -7,7 +7,6 @@ export const ClassManagement: React.FC = () => {
     const [selectedTurma, setSelectedTurma] = useState<Turma | null>(null)
     const [alunos, setAlunos] = useState<Aluno[]>([])
     const [loading, setLoading] = useState(false)
-    const [showCreateModal, setShowCreateModal] = useState(false)
     const [professor, setProfessor] = useState<Professor | null>(null)
 
     useEffect(() => {
@@ -103,12 +102,6 @@ export const ClassManagement: React.FC = () => {
                         <div className="bg-white rounded-lg shadow-md p-6">
                             <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-xl font-semibold text-gray-800">Minhas Turmas</h2>
-                                <button
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition"
-                                >
-                                    + Nova Turma
-                                </button>
                             </div>
 
                             {loading && turmas.length === 0 ? (
@@ -126,8 +119,8 @@ export const ClassManagement: React.FC = () => {
                                             key={turma.id}
                                             onClick={() => setSelectedTurma(turma)}
                                             className={`w-full text-left p-4 rounded-lg border-2 transition ${selectedTurma?.id === turma.id
-                                                    ? 'border-blue-500 bg-blue-50'
-                                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                                ? 'border-blue-500 bg-blue-50'
+                                                : 'border-gray-200 hover:border-gray-300 bg-white'
                                                 }`}
                                         >
                                             <div className="font-semibold text-gray-900">{turma.nome}</div>

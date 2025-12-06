@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { ComponenteAvaliacao, Formula } from '../types'
+import { ComponenteAvaliacao } from '../types'
 import { validateFormula, getExampleFormulas } from '../utils/formulaParser'
 
 interface FormulaBuilderProps {
@@ -45,7 +45,7 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
 
     const loadExistingFormula = async () => {
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('formulas')
                 .select('*')
                 .eq('turma_id', turmaId)
@@ -200,8 +200,8 @@ export const FormulaBuilder: React.FC<FormulaBuilderProps> = ({
             {validacao && (
                 <div
                     className={`mb-6 p-4 rounded-lg border ${validacao.valida
-                            ? 'bg-green-50 border-green-200'
-                            : 'bg-red-50 border-red-200'
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
                         }`}
                 >
                     <div className="flex items-start">

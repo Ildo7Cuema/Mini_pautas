@@ -5,13 +5,10 @@ import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
-import type { User } from '@supabase/supabase-js'
 
 export const SettingsPage: React.FC = () => {
-    const [user, setUser] = useState<User | null>(null)
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
-    const [currentPassword, setCurrentPassword] = useState('')
     const [newPassword, setNewPassword] = useState('')
     const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
@@ -25,7 +22,6 @@ export const SettingsPage: React.FC = () => {
     const loadUserData = async () => {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-            setUser(user)
             setFullName(user.user_metadata?.full_name || '')
             setEmail(user.email || '')
         }
@@ -76,7 +72,6 @@ export const SettingsPage: React.FC = () => {
             if (updateError) throw updateError
 
             setSuccess('Senha alterada com sucesso!')
-            setCurrentPassword('')
             setNewPassword('')
             setConfirmPassword('')
         } catch (err) {
