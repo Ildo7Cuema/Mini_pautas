@@ -1,3 +1,11 @@
+/*
+component-meta:
+  name: DashboardLayout
+  description: Layout principal com bottom nav mobile e sidebar desktop
+  tokens: [--color-primary, --spacing-4, min-h-touch]
+  responsive: true
+  tested-on: [360x800, 768x1024, 1440x900]
+*/
 
 import { ReactNode, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
@@ -15,15 +23,16 @@ interface NavItem {
     icon: ReactNode
     path: string
     badge?: number
+    showInMobile?: boolean
 }
 
 export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage, onNavigate, onSearch }) => {
     const [sidebarOpen, setSidebarOpen] = useState(true)
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
     const [user, setUser] = useState<User | null>(null)
 
     useEffect(() => {
-        // Get current user
         supabase.auth.getUser().then(({ data: { user } }) => {
             setUser(user)
         })
@@ -38,6 +47,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'dashboard',
+            showInMobile: true,
         },
         {
             name: 'Turmas',
@@ -47,6 +57,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'classes',
+            showInMobile: true,
         },
         {
             name: 'Alunos',
@@ -56,6 +67,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'students',
+            showInMobile: true,
         },
         {
             name: 'Notas',
@@ -65,6 +77,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'grades',
+            showInMobile: true,
         },
         {
             name: 'Relatórios',
@@ -74,6 +87,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'reports',
+            showInMobile: false,
         },
         {
             name: 'Configurações',
@@ -84,8 +98,18 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'settings',
+            showInMobile: false,
         },
     ]
+
+    // Items for mobile bottom nav (max 5)
+    const mobileNavItems = navItems.filter(item => item.showInMobile)
+    // Add "More" button for mobile
+    const moreIcon = (
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+    )
 
     const getPageTitle = () => {
         const item = navItems.find(i => i.path === currentPage)
@@ -99,12 +123,21 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         }
     }
 
+    const handleMobileNav = (path: string) => {
+        if (path === 'more') {
+            setMobileMenuOpen(true)
+        } else {
+            onNavigate(path)
+            setMobileMenuOpen(false)
+        }
+    }
+
     return (
-        <div className="flex h-screen bg-slate-50">
-            {/* Sidebar */}
+        <div className="flex flex-col md:flex-row h-screen bg-slate-50">
+            {/* Desktop Sidebar - Hidden on mobile */}
             <aside
-                className={`${sidebarOpen ? 'w-64' : 'w-20'
-                    } bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex flex-col`}
+                className={`hidden md:flex ${sidebarOpen ? 'w-64' : 'w-20'
+                    } bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex-col relative`}
             >
                 {/* Logo */}
                 <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200">
@@ -132,7 +165,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                         <button
                             key={item.path}
                             onClick={() => onNavigate(item.path)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 ${currentPage === item.path
+                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-touch ${currentPage === item.path
                                 ? 'bg-primary-50 text-primary-600'
                                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                 }`}
@@ -154,7 +187,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
 
                 {/* User Profile */}
                 <div className="p-3 border-t border-slate-200">
-                    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer ${!sidebarOpen && 'justify-center'}`}>
+                    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer min-h-touch ${!sidebarOpen && 'justify-center'}`}>
                         <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
                             {user?.user_metadata?.full_name
                                 ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
@@ -188,16 +221,22 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden">
-                {/* Header */}
-                <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-xl font-bold text-slate-900">{getPageTitle()}</h1>
+            <main className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
+                {/* Header - Responsive */}
+                <header className="h-14 md:h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6">
+                    <div className="flex items-center gap-3">
+                        {/* Mobile Logo */}
+                        <div className="md:hidden w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <h1 className="text-lg md:text-xl font-bold text-slate-900">{getPageTitle()}</h1>
                     </div>
 
-                    <div className="flex items-center gap-4">
-                        {/* Search */}
-                        <form onSubmit={handleSearch} className="relative">
+                    <div className="flex items-center gap-2 md:gap-4">
+                        {/* Search - Hidden on mobile, shown on desktop */}
+                        <form onSubmit={handleSearch} className="relative hidden md:block">
                             <input
                                 type="search"
                                 placeholder="Buscar turmas, alunos..."
@@ -211,20 +250,20 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                         </form>
 
                         {/* Notifications */}
-                        <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                        <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-h-touch min-w-touch flex items-center justify-center">
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                             </svg>
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
                         </button>
 
-                        {/* Logout */}
+                        {/* Logout - Hidden on mobile */}
                         <button
                             onClick={async () => {
                                 const { supabase } = await import('../lib/supabaseClient')
                                 await supabase.auth.signOut()
                             }}
-                            className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                            className="hidden md:flex p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-h-touch min-w-touch items-center justify-center"
                         >
                             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
@@ -234,10 +273,99 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </header>
 
                 {/* Content Area */}
-                <div className="flex-1 overflow-y-auto p-6">
+                <div className="flex-1 overflow-y-auto p-4 md:p-6">
                     {children}
                 </div>
             </main>
+
+            {/* Mobile Bottom Navigation */}
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-1 safe-area-inset-bottom z-50">
+                <div className="flex items-center justify-around">
+                    {mobileNavItems.map((item) => (
+                        <button
+                            key={item.path}
+                            onClick={() => handleMobileNav(item.path)}
+                            className={`flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-colors ${currentPage === item.path
+                                    ? 'text-primary-600'
+                                    : 'text-slate-500'
+                                }`}
+                        >
+                            {item.icon}
+                            <span className="text-xs mt-1 font-medium">{item.name}</span>
+                        </button>
+                    ))}
+                    {/* More Button */}
+                    <button
+                        onClick={() => handleMobileNav('more')}
+                        className="flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-colors text-slate-500"
+                    >
+                        {moreIcon}
+                        <span className="text-xs mt-1 font-medium">Mais</span>
+                    </button>
+                </div>
+            </nav>
+
+            {/* Mobile More Menu Overlay */}
+            {mobileMenuOpen && (
+                <div className="md:hidden fixed inset-0 z-50 animate-fade-in">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/50"
+                        onClick={() => setMobileMenuOpen(false)}
+                    />
+
+                    {/* Menu Panel */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 pb-8 animate-slide-up safe-area-inset-bottom">
+                        <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-4" />
+
+                        <div className="space-y-2">
+                            {navItems.filter(item => !item.showInMobile).map((item) => (
+                                <button
+                                    key={item.path}
+                                    onClick={() => handleMobileNav(item.path)}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors min-h-touch ${currentPage === item.path
+                                            ? 'bg-primary-50 text-primary-600'
+                                            : 'text-slate-700 hover:bg-slate-100'
+                                        }`}
+                                >
+                                    {item.icon}
+                                    <span className="font-medium">{item.name}</span>
+                                </button>
+                            ))}
+
+                            {/* Logout */}
+                            <button
+                                onClick={async () => {
+                                    await supabase.auth.signOut()
+                                }}
+                                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors min-h-touch"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                                <span className="font-medium">Terminar Sessão</span>
+                            </button>
+                        </div>
+
+                        {/* User Info */}
+                        <div className="mt-4 pt-4 border-t border-slate-200">
+                            <div className="flex items-center gap-3 px-4">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+                                    {user?.user_metadata?.full_name
+                                        ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+                                        : user?.email?.substring(0, 2).toUpperCase() || 'U'}
+                                </div>
+                                <div>
+                                    <p className="font-medium text-slate-900">
+                                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário'}
+                                    </p>
+                                    <p className="text-sm text-slate-500">Professor</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

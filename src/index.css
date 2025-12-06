@@ -86,6 +86,8 @@
   /* Buttons */
   .btn {
     @apply inline-flex items-center justify-center px-3 py-1.5 rounded-md font-medium transition-all duration-200;
+    @apply min-h-touch min-w-touch;
+    /* 44px minimum touch target */
     @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
     @apply disabled:opacity-50 disabled:cursor-not-allowed;
   }
@@ -321,11 +323,11 @@
   }
 
   .grid-tablet {
-    @apply grid tablet:grid-cols-tablet gap-6;
+    @apply grid md:grid-cols-tablet gap-6;
   }
 
   .grid-desktop {
-    @apply grid desktop:grid-cols-desktop gap-6;
+    @apply grid lg:grid-cols-desktop gap-6;
   }
 }
 

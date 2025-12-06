@@ -99,12 +99,25 @@ export default {
                 'ease-in-out': 'cubic-bezier(0.4, 0, 0.2, 1)',
             },
             screens: {
-                'mobile': '640px',
-                'tablet': '1024px',
-                'desktop': '1440px',
+                'xs': '320px',
+                'sm': '375px',
+                'md': '768px',
+                'lg': '1024px',
+                'xl': '1280px',
             },
             maxWidth: {
-                'container': '1440px',
+                'container': '1280px',
+                'md': '720px',
+                'lg': '1024px',
+                'xl': '1280px',
+            },
+            minWidth: {
+                'touch': '2.75rem', /* 44px */
+                'touch-lg': '3rem', /* 48px */
+            },
+            minHeight: {
+                'touch': '2.75rem', /* 44px */
+                'touch-lg': '3rem', /* 48px */
             },
             gridTemplateColumns: {
                 'mobile': 'repeat(4, minmax(0, 1fr))',

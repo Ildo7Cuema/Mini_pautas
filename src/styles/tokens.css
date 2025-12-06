@@ -62,7 +62,7 @@
     --font-secondary: 'Inter', sans-serif;
     --font-mono: 'Fira Code', 'Courier New', monospace;
 
-    /* Font Sizes - Escala Modular (1.250 - Major Third) */
+    /* Font Sizes - Static (for reference) */
     --font-size-xs: 0.75rem;
     /* 12px */
     --font-size-sm: 0.875rem;
@@ -82,6 +82,16 @@
     --font-size-5xl: 3rem;
     /* 48px */
 
+    /* Fluid Font Sizes - Mobile-first with clamp() */
+    --fs-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
+    --fs-sm: clamp(0.875rem, 0.8rem + 0.375vw, 1rem);
+    --fs-md: clamp(1rem, 0.9rem + 0.5vw, 1.125rem);
+    --fs-lg: clamp(1.125rem, 1rem + 0.625vw, 1.5rem);
+    --fs-xl: clamp(1.25rem, 1.1rem + 0.75vw, 1.75rem);
+    --fs-2xl: clamp(1.5rem, 1.3rem + 1vw, 2rem);
+    --fs-3xl: clamp(1.875rem, 1.5rem + 1.5vw, 2.5rem);
+    --fs-4xl: clamp(2.25rem, 1.8rem + 2vw, 3rem);
+
     /* Font Weights */
     --font-weight-normal: 400;
     --font-weight-medium: 500;
@@ -91,6 +101,7 @@
 
     /* Line Heights */
     --line-height-tight: 1.25;
+    --line-height-base: 1.35;
     --line-height-normal: 1.5;
     --line-height-relaxed: 1.75;
 
@@ -182,12 +193,14 @@
     --transition-timing-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
 
     /* ============================================
-     BREAKPOINTS - Responsividade
+     BREAKPOINTS - Responsividade (Mobile-first)
      ============================================ */
 
-    --breakpoint-mobile: 640px;
-    --breakpoint-tablet: 1024px;
-    --breakpoint-desktop: 1440px;
+    --breakpoint-xs: 320px;
+    --breakpoint-sm: 375px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 1024px;
+    --breakpoint-xl: 1280px;
 
     /* ============================================
      LAYOUT - Grid e Container

@@ -1,3 +1,12 @@
+/*
+component-meta:
+  name: SettingsPage
+  description: User settings and preferences page
+  tokens: [--color-primary, --fs-md, min-h-touch]
+  responsive: true
+  tested-on: [360x800, 768x1024, 1440x900]
+*/
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardBody, CardHeader } from './ui/Card'
@@ -87,11 +96,11 @@ export const SettingsPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6 max-w-4xl">
+        <div className="space-y-4 md:space-y-6 max-w-4xl">
             {/* Header */}
             <div>
-                <h2 className="text-2xl font-bold text-slate-900">Configurações</h2>
-                <p className="text-slate-600 mt-1">Gerencie seu perfil e preferências</p>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Configurações</h2>
+                <p className="text-sm md:text-base text-slate-600 mt-1">Gerencie seu perfil e preferências</p>
             </div>
 
             {/* Messages */}
@@ -110,7 +119,7 @@ export const SettingsPage: React.FC = () => {
             {/* Profile Settings */}
             <Card>
                 <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Informações do Perfil</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-slate-900">Informações do Perfil</h3>
                 </CardHeader>
                 <CardBody>
                     <form onSubmit={handleUpdateProfile} className="space-y-4">
@@ -138,6 +147,7 @@ export const SettingsPage: React.FC = () => {
                                 type="submit"
                                 variant="primary"
                                 loading={loading}
+                                className="w-full sm:w-auto"
                             >
                                 Salvar Alterações
                             </Button>
@@ -149,7 +159,7 @@ export const SettingsPage: React.FC = () => {
             {/* Password Change */}
             <Card>
                 <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Alterar Senha</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-slate-900">Alterar Senha</h3>
                 </CardHeader>
                 <CardBody>
                     <form onSubmit={handleChangePassword} className="space-y-4">
@@ -179,6 +189,7 @@ export const SettingsPage: React.FC = () => {
                                 type="submit"
                                 variant="primary"
                                 loading={loading}
+                                className="w-full sm:w-auto"
                             >
                                 Alterar Senha
                             </Button>
@@ -190,32 +201,32 @@ export const SettingsPage: React.FC = () => {
             {/* System Preferences */}
             <Card>
                 <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Preferências do Sistema</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-slate-900">Preferências do Sistema</h3>
                 </CardHeader>
                 <CardBody>
-                    <div className="space-y-4">
-                        <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                            <div>
-                                <p className="font-medium text-slate-900">Escala de Notas</p>
-                                <p className="text-sm text-slate-600">Sistema angolano (0-20)</p>
+                    <div className="space-y-0">
+                        <div className="flex items-center justify-between py-3 border-b border-slate-200 gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm md:text-base font-medium text-slate-900">Escala de Notas</p>
+                                <p className="text-xs md:text-sm text-slate-600">Sistema angolano (0-20)</p>
                             </div>
-                            <span className="badge badge-primary">Padrão</span>
+                            <span className="badge badge-primary text-xs flex-shrink-0">Padrão</span>
                         </div>
 
-                        <div className="flex items-center justify-between py-3 border-b border-slate-200">
-                            <div>
-                                <p className="font-medium text-slate-900">Ano Lectivo Atual</p>
-                                <p className="text-sm text-slate-600">2025</p>
+                        <div className="flex items-center justify-between py-3 border-b border-slate-200 gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm md:text-base font-medium text-slate-900">Ano Lectivo Atual</p>
+                                <p className="text-xs md:text-sm text-slate-600">2025</p>
                             </div>
-                            <Button variant="ghost" size="sm">Editar</Button>
+                            <Button variant="ghost" size="sm" className="min-h-touch flex-shrink-0">Editar</Button>
                         </div>
 
-                        <div className="flex items-center justify-between py-3">
-                            <div>
-                                <p className="font-medium text-slate-900">Trimestre Atual</p>
-                                <p className="text-sm text-slate-600">1º Trimestre</p>
+                        <div className="flex items-center justify-between py-3 gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="text-sm md:text-base font-medium text-slate-900">Trimestre Atual</p>
+                                <p className="text-xs md:text-sm text-slate-600">1º Trimestre</p>
                             </div>
-                            <Button variant="ghost" size="sm">Editar</Button>
+                            <Button variant="ghost" size="sm" className="min-h-touch flex-shrink-0">Editar</Button>
                         </div>
                     </div>
                 </CardBody>
@@ -224,13 +235,14 @@ export const SettingsPage: React.FC = () => {
             {/* Account Actions */}
             <Card>
                 <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Ações da Conta</h3>
+                    <h3 className="text-base md:text-lg font-semibold text-slate-900">Ações da Conta</h3>
                 </CardHeader>
                 <CardBody>
                     <div className="space-y-3">
                         <Button
                             variant="danger"
                             onClick={handleLogout}
+                            className="w-full sm:w-auto"
                             icon={
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

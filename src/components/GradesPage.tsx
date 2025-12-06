@@ -1,3 +1,12 @@
+/*
+component-meta:
+  name: GradesPage
+  description: Grade entry page for students
+  tokens: [--color-primary, --fs-md, min-h-touch]
+  responsive: true
+  tested-on: [360x800, 768x1024, 1440x900]
+*/
+
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardBody, CardHeader } from './ui/Card'
@@ -160,11 +169,11 @@ export const GradesPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
             {/* Header */}
             <div>
-                <h2 className="text-2xl font-bold text-slate-900">Lançamento de Notas</h2>
-                <p className="text-slate-600 mt-1">Registre as notas dos alunos por componente</p>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Lançamento de Notas</h2>
+                <p className="text-sm md:text-base text-slate-600 mt-1">Registre as notas dos alunos por componente</p>
             </div>
 
             {/* Messages */}
@@ -182,14 +191,14 @@ export const GradesPage: React.FC = () => {
 
             {/* Filters */}
             <Card>
-                <CardBody className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <CardBody className="p-3 md:p-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                         <div>
                             <label className="form-label">Turma</label>
                             <select
                                 value={selectedTurma}
                                 onChange={(e) => setSelectedTurma(e.target.value)}
-                                className="form-input"
+                                className="form-input min-h-touch"
                             >
                                 <option value="">Selecione uma turma</option>
                                 {turmas.map((turma) => (
@@ -205,7 +214,7 @@ export const GradesPage: React.FC = () => {
                             <select
                                 value={trimestre}
                                 onChange={(e) => setTrimestre(parseInt(e.target.value))}
-                                className="form-input"
+                                className="form-input min-h-touch"
                             >
                                 <option value={1}>1º Trimestre</option>
                                 <option value={2}>2º Trimestre</option>
@@ -213,7 +222,7 @@ export const GradesPage: React.FC = () => {
                             </select>
                         </div>
 
-                        <div className="flex items-end">
+                        <div className="flex items-end sm:col-span-2 md:col-span-1">
                             <Button
                                 variant="primary"
                                 onClick={handleSaveNotas}
@@ -232,7 +241,7 @@ export const GradesPage: React.FC = () => {
             {selectedTurma && (
                 <Card>
                     <CardHeader>
-                        <h3 className="text-lg font-semibold text-slate-900">
+                        <h3 className="text-base md:text-lg font-semibold text-slate-900">
                             Notas - {turmas.find(t => t.id === selectedTurma)?.nome} - {trimestre}º Trimestre
                         </h3>
                     </CardHeader>
@@ -286,7 +295,7 @@ export const GradesPage: React.FC = () => {
                                                                 step="0.5"
                                                                 value={notas[key] || ''}
                                                                 onChange={(e) => handleNotaChange(aluno.id, comp.id, e.target.value)}
-                                                                className="w-20 px-2 py-1 border border-slate-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500"
+                                                                className="w-16 md:w-20 px-2 py-2 border border-slate-300 rounded text-center focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-touch text-sm"
                                                                 placeholder="0-20"
                                                             />
                                                         </td>
