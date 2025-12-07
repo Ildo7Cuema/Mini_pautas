@@ -80,7 +80,7 @@ export const GradesPage: React.FC = () => {
         if (selectedDisciplina) {
             loadComponentes()
         }
-    }, [selectedDisciplina])
+    }, [selectedDisciplina, trimestre]) // Reload when trimestre changes
 
     useEffect(() => {
         if (selectedComponente && selectedTurma) {
@@ -113,6 +113,13 @@ export const GradesPage: React.FC = () => {
 
     const loadTurmas = async () => {
         try {
+            // Check if user is authenticated
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                console.warn('No active session when loading turmas')
+                return
+            }
+
             const { data, error } = await supabase
                 .from('turmas')
                 .select('id, nome, codigo_turma, trimestre')
@@ -128,9 +135,16 @@ export const GradesPage: React.FC = () => {
 
     const loadDisciplinas = async () => {
         try {
+            // Check if user is authenticated
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                console.warn('No active session when loading disciplinas')
+                return
+            }
+
             const { data, error } = await supabase
                 .from('disciplinas')
-                .select('id, nome, codigo_disciplina')
+                .select('id, nome, codigo_disciplina, professor_id, turma_id, carga_horaria, descricao, created_at, updated_at')
                 .eq('turma_id', selectedTurma)
                 .order('nome')
 
@@ -147,10 +161,18 @@ export const GradesPage: React.FC = () => {
 
     const loadComponentes = async () => {
         try {
+            // Check if user is authenticated
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                console.warn('No active session when loading componentes')
+                return
+            }
+
             const { data, error } = await supabase
                 .from('componentes_avaliacao')
                 .select('*')
                 .eq('disciplina_id', selectedDisciplina)
+                .eq('trimestre', trimestre) // Filter by selected trimestre
                 .order('ordem')
 
             if (error) throw error
@@ -165,9 +187,16 @@ export const GradesPage: React.FC = () => {
     const loadAlunos = async () => {
         try {
             setLoading(true)
+            // Check if user is authenticated
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                console.warn('No active session when loading alunos')
+                return
+            }
+
             const { data, error } = await supabase
                 .from('alunos')
-                .select('id, nome_completo, numero_processo, ativo')
+                .select('id, turma_id, nome_completo, numero_processo, ativo, created_at, updated_at')
                 .eq('turma_id', selectedTurma)
                 .eq('ativo', true)
                 .order('numero_processo')
@@ -185,11 +214,19 @@ export const GradesPage: React.FC = () => {
     const loadNotas = async () => {
         try {
             setLoading(true)
+            // Check if user is authenticated
+            const { data: { session } } = await supabase.auth.getSession()
+            if (!session) {
+                console.warn('No active session when loading notas')
+                return
+            }
+
             const { data, error } = await supabase
                 .from('notas')
                 .select('aluno_id, valor')
                 .eq('componente_id', selectedComponente)
                 .eq('turma_id', selectedTurma)
+                .eq('trimestre', trimestre)
 
             if (error) throw error
 
@@ -267,6 +304,7 @@ export const GradesPage: React.FC = () => {
                 aluno_id: alunoId,
                 componente_id: selectedComponente,
                 turma_id: selectedTurma,
+                trimestre,
                 valor,
                 lancado_por: professor.id,
                 data_lancamento: new Date().toISOString()
@@ -275,7 +313,7 @@ export const GradesPage: React.FC = () => {
             const { error: upsertError } = await supabase
                 .from('notas')
                 .upsert(notasToSave, {
-                    onConflict: 'aluno_id,componente_id'
+                    onConflict: 'aluno_id,componente_id,trimestre'
                 })
 
             if (upsertError) throw upsertError
@@ -579,12 +617,12 @@ export const GradesPage: React.FC = () => {
                         ) : (
                             <>
                                 <div className="overflow-x-auto">
-                                    <table className="table">
+                                    <table className="table-excel">
                                         <thead>
                                             <tr>
-                                                <th className="sticky left-0 bg-white z-10 w-16">Nº</th>
-                                                <th className="sticky left-16 bg-white z-10 min-w-[200px]">Aluno</th>
-                                                <th className="min-w-[120px]">Nº Processo</th>
+                                                <th className="sticky left-0 bg-slate-50 z-10 w-16 text-center">Nº</th>
+                                                <th className="sticky left-16 bg-slate-50 z-10 min-w-[200px] text-left">Aluno</th>
+                                                <th className="min-w-[120px] text-left">Nº Processo</th>
                                                 <th className="text-center min-w-[120px]">Nota</th>
                                                 <th className="text-center min-w-[100px]">Status</th>
                                             </tr>
@@ -597,9 +635,9 @@ export const GradesPage: React.FC = () => {
 
                                                 return (
                                                     <tr key={aluno.id} className={hasNota ? getGradeBgColor(nota) : ''}>
-                                                        <td className="sticky left-0 bg-inherit font-medium">{index + 1}</td>
-                                                        <td className="sticky left-16 bg-inherit">{aluno.nome_completo}</td>
-                                                        <td className="text-slate-600">{aluno.numero_processo}</td>
+                                                        <td className="sticky left-0 bg-inherit font-medium text-center">{index + 1}</td>
+                                                        <td className="sticky left-16 bg-inherit text-left">{aluno.nome_completo}</td>
+                                                        <td className="text-slate-600 text-left">{aluno.numero_processo}</td>
                                                         <td className="text-center">
                                                             <div className="flex flex-col items-center gap-1">
                                                                 <input
@@ -609,7 +647,7 @@ export const GradesPage: React.FC = () => {
                                                                     max={selectedComponenteData?.escala_maxima}
                                                                     value={nota ?? ''}
                                                                     onChange={(e) => handleNotaChange(aluno.id, e.target.value)}
-                                                                    className={`w-20 px-2 py-2 border rounded-lg text-center focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-touch text-sm font-semibold ${hasError ? 'border-red-500 bg-red-50' : 'border-slate-300'
+                                                                    className={`table-excel-input ${hasError ? 'border-red-500 bg-red-50' : ''
                                                                         } ${hasNota ? getGradeColor(nota) : ''}`}
                                                                     placeholder="0.0"
                                                                 />

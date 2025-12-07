@@ -92,6 +92,10 @@ export interface ComponenteAvaliacao {
     obrigatorio: boolean;
     ordem: number;
     descricao?: string;
+    is_calculated?: boolean;
+    formula_expression?: string | null;
+    depends_on_components?: string[] | null;
+    tipo_calculo?: 'trimestral' | 'anual';
     created_at: string;
     updated_at: string;
 }
@@ -113,6 +117,7 @@ export interface Nota {
     aluno_id: string;
     componente_id: string;
     turma_id: string;
+    trimestre: 1 | 2 | 3;
     valor: number;
     observacao?: string;
     lancado_por: string;

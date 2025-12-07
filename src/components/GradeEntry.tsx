@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Turma, Disciplina, ComponenteAvaliacao, Aluno, Nota } from '../types'
 import { validateGrade } from '../utils/formulaParser'
+import { evaluateFormula, parseFormula } from '../utils/formulaUtils'
 
 interface GradeEntryProps {
     turma: Turma
@@ -17,6 +18,7 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
     const [errors, setErrors] = useState<Record<string, string>>({})
     const [saving, setSaving] = useState(false)
     const [loading, setLoading] = useState(false)
+    const [trimestre, setTrimestre] = useState<1 | 2 | 3>(turma.trimestre)
 
     useEffect(() => {
         loadComponentes()
@@ -27,7 +29,14 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
         if (selectedComponente) {
             loadExistingNotas()
         }
-    }, [selectedComponente])
+    }, [selectedComponente, trimestre])
+
+    // Auto-calculate grades for calculated components
+    useEffect(() => {
+        if (selectedComponente?.is_calculated) {
+            calculateGradesForCalculatedComponent()
+        }
+    }, [selectedComponente, componentes, trimestre])
 
     const loadComponentes = async () => {
         try {
@@ -73,6 +82,7 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                 .select('*')
                 .eq('componente_id', selectedComponente.id)
                 .eq('turma_id', turma.id)
+                .eq('trimestre', trimestre)
 
             if (error) throw error
 
@@ -90,6 +100,73 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
             console.error('Error loading grades:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    // Calculate grades for calculated components
+    const calculateGradesForCalculatedComponent = async () => {
+        if (!selectedComponente?.is_calculated || !selectedComponente.formula_expression) return
+        if (!selectedComponente.depends_on_components || selectedComponente.depends_on_components.length === 0) return
+
+        try {
+            // Load grades for all dependent components
+            const { data: dependentGrades, error } = await supabase
+                .from('notas')
+                .select('aluno_id, componente_id, valor')
+                .in('componente_id', selectedComponente.depends_on_components)
+                .eq('turma_id', turma.id)
+                .eq('trimestre', trimestre)
+
+            if (error) throw error
+
+            // Group grades by student
+            const gradesByStudent: Record<string, Record<string, number>> = {}
+            dependentGrades?.forEach((grade) => {
+                if (!gradesByStudent[grade.aluno_id]) {
+                    gradesByStudent[grade.aluno_id] = {}
+                }
+                gradesByStudent[grade.aluno_id][grade.componente_id] = grade.valor
+            })
+
+            // Get component codes for formula
+            const componentCodesMap: Record<string, string> = {}
+            componentes.forEach(comp => {
+                componentCodesMap[comp.id] = comp.codigo_componente
+            })
+
+            // Calculate for each student
+            const calculatedGrades: Record<string, number> = {}
+            alunos.forEach((aluno) => {
+                const studentGrades = gradesByStudent[aluno.id]
+                if (!studentGrades) return
+
+                // Check if all dependent components have grades
+                const hasAllGrades = selectedComponente.depends_on_components!.every(
+                    compId => studentGrades[compId] !== undefined
+                )
+
+                if (hasAllGrades) {
+                    // Map component IDs to codes with their values
+                    const formulaValues: Record<string, number> = {}
+                    selectedComponente.depends_on_components!.forEach(compId => {
+                        const code = componentCodesMap[compId]
+                        if (code) {
+                            formulaValues[code] = studentGrades[compId]
+                        }
+                    })
+
+                    try {
+                        const result = evaluateFormula(selectedComponente.formula_expression, formulaValues)
+                        calculatedGrades[aluno.id] = Math.round(result * 100) / 100 // Round to 2 decimals
+                    } catch (err) {
+                        console.error(`Error calculating grade for student ${aluno.nome_completo}:`, err)
+                    }
+                }
+            })
+
+            setNotas(calculatedGrades)
+        } catch (error) {
+            console.error('Error calculating grades:', error)
         }
     }
 
@@ -151,6 +228,7 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                 aluno_id: alunoId,
                 componente_id: selectedComponente.id,
                 turma_id: turma.id,
+                trimestre,
                 valor,
                 lancado_por: professor.id,
                 data_lancamento: new Date().toISOString(),
@@ -159,7 +237,7 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
             const { error } = await supabase
                 .from('notas')
                 .upsert(notasToSave, {
-                    onConflict: 'aluno_id,componente_id',
+                    onConflict: 'aluno_id,componente_id,trimestre',
                 })
 
             if (error) throw error
@@ -220,6 +298,20 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                 <p className="text-gray-600">
                     {turma.nome} - {disciplina.nome}
                 </p>
+                <div className="mt-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Trimestre
+                    </label>
+                    <select
+                        value={trimestre}
+                        onChange={(e) => setTrimestre(parseInt(e.target.value) as 1 | 2 | 3)}
+                        className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                        <option value={1}>1º Trimestre</option>
+                        <option value={2}>2º Trimestre</option>
+                        <option value={3}>3º Trimestre</option>
+                    </select>
+                </div>
             </div>
 
             {/* Component Selector */}
@@ -233,14 +325,26 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                             key={comp.id}
                             onClick={() => setSelectedComponente(comp)}
                             className={`p-3 rounded-lg border-2 transition ${selectedComponente?.id === comp.id
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-200 hover:border-gray-300 bg-white'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-300 bg-white'
                                 }`}
                         >
-                            <div className="font-semibold text-gray-900">{comp.nome}</div>
+                            <div className="font-semibold text-gray-900 flex items-center gap-2">
+                                {comp.nome}
+                                {comp.is_calculated && (
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800">
+                                        📊 Calculado
+                                    </span>
+                                )}
+                            </div>
                             <div className="text-xs text-gray-600 mt-1">
                                 {comp.peso_percentual}% • {comp.escala_minima}-{comp.escala_maxima}
                             </div>
+                            {comp.is_calculated && comp.formula_expression && (
+                                <div className="text-xs text-purple-600 mt-1 font-mono">
+                                    {comp.formula_expression}
+                                </div>
+                            )}
                         </button>
                     ))}
                 </div>
@@ -307,22 +411,30 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                                             </td>
                                             <td className="py-3 px-4 text-gray-600">{aluno.numero_processo}</td>
                                             <td className="py-3 px-4">
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="number"
-                                                        step="0.01"
-                                                        min={selectedComponente?.escala_minima}
-                                                        max={selectedComponente?.escala_maxima}
-                                                        value={notas[aluno.id] ?? ''}
-                                                        onChange={(e) => handleGradeChange(aluno.id, e.target.value)}
-                                                        className={`w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${hasError ? 'border-red-500' : 'border-gray-300'
-                                                            }`}
-                                                        placeholder="0.00"
-                                                    />
-                                                    {hasError && (
-                                                        <span className="text-xs text-red-600">{hasError}</span>
-                                                    )}
-                                                </div>
+                                                {selectedComponente?.is_calculated ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="px-3 py-2 bg-purple-50 border border-purple-200 rounded-lg text-purple-900 font-mono w-24 text-center">
+                                                            {notas[aluno.id]?.toFixed(2) ?? '—'}
+                                                        </div>
+                                                        <span className="text-xs text-purple-600">Auto</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2">
+                                                        <input
+                                                            type="number"
+                                                            step="0.01"
+                                                            min={selectedComponente?.escala_minima}
+                                                            max={selectedComponente?.escala_maxima}
+                                                            value={notas[aluno.id] ?? ''}
+                                                            onChange={(e) => handleGradeChange(aluno.id, e.target.value)}
+                                                            className={`w-24 px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${hasError ? 'border-red-500' : 'border-gray-300'}`}
+                                                            placeholder="0.00"
+                                                        />
+                                                        {hasError && (
+                                                            <span className="text-xs text-red-600">{hasError}</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="py-3 px-4">
                                                 {hasExisting ? (

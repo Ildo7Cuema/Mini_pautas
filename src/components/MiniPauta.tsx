@@ -239,34 +239,34 @@ export const MiniPauta: React.FC<MiniPautaProps> = ({ turma, disciplina }) => {
             {/* Grades Table */}
             <div className="p-6">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="table-excel">
                         <thead>
-                            <tr className="border-b-2 border-gray-300">
-                                <th className="text-left py-3 px-4 font-semibold text-gray-700">Nº</th>
-                                <th className="text-left py-3 px-4 font-semibold text-gray-700">Nº Processo</th>
-                                <th className="text-left py-3 px-4 font-semibold text-gray-700">Nome do Aluno</th>
-                                <th className="text-center py-3 px-4 font-semibold text-gray-700">Nota Final</th>
-                                <th className="text-center py-3 px-4 font-semibold text-gray-700">Classificação</th>
-                                <th className="text-center py-3 px-4 font-semibold text-gray-700">Detalhes</th>
+                            <tr>
+                                <th className="text-center">Nº</th>
+                                <th className="text-left">Nº Processo</th>
+                                <th className="text-left">Nome do Aluno</th>
+                                <th className="text-center">Nota Final</th>
+                                <th className="text-center">Classificação</th>
+                                <th className="text-center">Detalhes</th>
                             </tr>
                         </thead>
                         <tbody>
                             {dados.map((item, index) => (
-                                <tr key={item.aluno_id} className="border-b border-gray-100 hover:bg-gray-50">
-                                    <td className="py-3 px-4 text-gray-600">{index + 1}</td>
-                                    <td className="py-3 px-4 text-gray-600">{item.numero_processo}</td>
-                                    <td className="py-3 px-4 font-medium text-gray-900">{item.aluno_nome}</td>
-                                    <td className="py-3 px-4 text-center">
-                                        <span className="text-lg font-bold text-gray-900">
+                                <tr key={item.aluno_id}>
+                                    <td className="text-center text-slate-600">{index + 1}</td>
+                                    <td className="text-left text-slate-600">{item.numero_processo}</td>
+                                    <td className="text-left font-medium text-slate-900">{item.aluno_nome}</td>
+                                    <td className="text-center">
+                                        <span className="text-lg font-bold text-slate-900">
                                             {item.nota_final.toFixed(2)}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-4 text-center">
+                                    <td className="text-center">
                                         <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getClassificacaoColor(item.classificacao)}`}>
                                             {item.classificacao}
                                         </span>
                                     </td>
-                                    <td className="py-3 px-4 text-center">
+                                    <td className="text-center">
                                         <button className="text-blue-600 hover:text-blue-700 text-sm font-medium">
                                             Ver Cálculo
                                         </button>

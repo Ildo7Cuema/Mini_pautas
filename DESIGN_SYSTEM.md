@@ -190,6 +190,117 @@ A classe `.btn` já inclui touch targets por defeito.
 }
 ```
 
+---
+
+## Tabelas Estilo Excel
+
+### Regra Global
+
+**TODAS** as listas, quadros de dados e tabelas do projeto devem seguir um estilo visual semelhante às tabelas do Excel: limpas, bem estruturadas, equilibradas e de elevada legibilidade.
+
+### Características Obrigatórias
+
+- ✅ Bordas subtis mas visíveis e uniformes em todas as células
+- ✅ Cabeçalho com fundo destacado e texto legível
+- ✅ Linhas com altura equilibrada (mínimo 44px para touch targets)
+- ✅ Efeito hover nas linhas para melhorar usabilidade
+- ✅ Largura de colunas ajustável ao conteúdo
+- ✅ Alinhamento coerente (cabeçalhos centrados, dados conforme contexto)
+- ✅ Comportamento responsivo para desktop, tablet e mobile
+
+### Classes Disponíveis
+
+#### `.table-excel` (Recomendado)
+
+Estilo Excel completo com bordas uniformes, cabeçalhos destacados e hover.
+
+```html
+<table class="table-excel">
+  <thead>
+    <tr>
+      <th class="text-center">Nº</th>
+      <th class="text-left">Nome</th>
+      <th class="text-center">Nota</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="text-center">1</td>
+      <td class="text-left">João Silva</td>
+      <td class="text-center">15.5</td>
+    </tr>
+  </tbody>
+</table>
+```
+
+#### `.table` (Legacy)
+
+Estilo anterior mantido para compatibilidade. Use `.table-excel` em novos componentes.
+
+### Modificadores de Alinhamento
+
+Use classes Tailwind para controlar alinhamento:
+
+- `text-left` - Alinhamento à esquerda (nomes, texto)
+- `text-center` - Alinhamento centralizado (números, ações)
+- `text-right` - Alinhamento à direita (valores monetários)
+
+### Sticky Columns
+
+Para colunas fixas em scroll horizontal:
+
+```html
+<th class="sticky left-0 bg-slate-50 z-10">Coluna Fixa</th>
+<td class="sticky left-0 bg-inherit">Valor</td>
+```
+
+### Responsividade
+
+A classe `.table-excel` é automaticamente responsiva:
+
+- **Desktop (>768px)**: Padding `16px`, fonte `14px`
+- **Mobile (≤768px)**: Padding `12px`, fonte `12px`
+- Scroll horizontal automático com `overflow-x-auto`
+
+### Exemplo Completo
+
+```tsx
+<div className="overflow-x-auto">
+  <table className="table-excel">
+    <thead>
+      <tr>
+        <th className="text-center">Nº</th>
+        <th className="text-left">Aluno</th>
+        <th className="text-center">Nota</th>
+        <th className="text-center">Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {alunos.map((aluno, index) => (
+        <tr key={aluno.id}>
+          <td className="text-center">{index + 1}</td>
+          <td className="text-left">{aluno.nome}</td>
+          <td className="text-center">{aluno.nota}</td>
+          <td className="text-center">
+            <span className="badge badge-success">Aprovado</span>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>
+```
+
+### Persistência
+
+Esta regra é **permanente** e aplica-se a:
+- ✅ Todas as tabelas existentes
+- ✅ Todas as novas tabelas criadas no futuro
+- ✅ Listas de alunos, notas, turmas, disciplinas
+- ✅ Qualquer outro quadro de dados
+
+Não é necessário solicitar este estilo novamente - é o padrão do projeto.
+
 ### Header de Componente
 
 Adicionar no topo de cada ficheiro de componente:
@@ -217,6 +328,7 @@ component-meta:
 - [ ] Responsividade: não quebra layout em retrato/paisagem
 - [ ] Imagens: `aspect-ratio`, `srcset`, `loading="lazy"`
 - [ ] Acessibilidade: `role`/`aria`, foco acessível, alt text
+- [ ] Tabelas: usa `.table-excel` se contém dados tabulares
 - [ ] Documentação: meta header adicionado
 
 ### QA Rápido (PR Review)

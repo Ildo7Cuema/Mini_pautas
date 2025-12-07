@@ -14,6 +14,7 @@ import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
+import { validateFormula, parseFormula, formatFormulaForDisplay } from '../utils/formulaUtils'
 
 interface DisciplinesManagementProps {
     turmaId: string
@@ -43,6 +44,11 @@ interface ComponenteAvaliacao {
     obrigatorio: boolean
     ordem: number
     descricao: string | null
+    trimestre: number // 1, 2, or 3
+    is_calculated?: boolean
+    formula_expression?: string | null
+    depends_on_components?: string[] | null
+    tipo_calculo?: 'trimestral' | 'anual'
 }
 
 export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ turmaId, turmaNome, onClose }) => {
@@ -83,7 +89,12 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
         escala_maxima: '20',
         obrigatorio: true,
         ordem: '1',
-        descricao: ''
+        descricao: '',
+        trimestre: '1', // Default to 1st trimester
+        is_calculated: false,
+        formula_expression: '',
+        depends_on_components: [] as string[],
+        tipo_calculo: 'trimestral' as 'trimestral' | 'anual'
     })
 
     useEffect(() => {
@@ -101,8 +112,8 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
 
             if (error) throw error
             setDisciplinas(data || [])
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar disciplinas'
+        } catch (err: any) {
+            const errorMessage = err?.message || err?.error_description || 'Erro ao carregar disciplinas'
             setError(translateError(errorMessage))
         } finally {
             setLoading(false)
@@ -144,8 +155,8 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
             loadDisciplinas()
             setTimeout(() => setSuccess(null), 3000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar disciplina'
+        } catch (err: any) {
+            const errorMessage = err?.message || err?.error_description || 'Erro ao adicionar disciplina'
             setError(translateError(errorMessage))
         }
     }
@@ -176,8 +187,8 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
             loadDisciplinas()
             setTimeout(() => setSuccess(null), 3000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar disciplina'
+        } catch (err: any) {
+            const errorMessage = err?.message || err?.error_description || 'Erro ao atualizar disciplina'
             setError(translateError(errorMessage))
         }
     }
@@ -201,8 +212,8 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             setSelectedDisciplina(null)
             loadDisciplinas()
             setTimeout(() => setSuccess(null), 3000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao remover disciplina'
+        } catch (err: any) {
+            const errorMessage = err?.message || err?.error_description || 'Erro ao remover disciplina'
             setError(translateError(errorMessage))
         }
     }
@@ -246,8 +257,8 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
 
             if (error) throw error
             setComponentes({ ...componentes, [disciplinaId]: data || [] })
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar componentes'
+        } catch (err: any) {
+            const errorMessage = err?.message || err?.error_description || 'Erro ao carregar componentes'
             setError(translateError(errorMessage))
         } finally {
             setLoadingComponentes({ ...loadingComponentes, [disciplinaId]: false })
@@ -283,6 +294,16 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             const pesoPercentual = parseFloat(componenteFormData.peso_percentual)
             const totalWeight = calculateTotalWeight(selectedDisciplina.id)
 
+            if (pesoPercentual <= 0) {
+                setError('O peso deve ser maior que 0%.')
+                return
+            }
+
+            if (pesoPercentual > 100) {
+                setError('O peso não pode ser maior que 100%.')
+                return
+            }
+
             if (totalWeight + pesoPercentual > 100) {
                 setError(`A soma dos pesos não pode ultrapassar 100%. Peso atual: ${totalWeight}%, tentando adicionar: ${pesoPercentual}%`)
                 return
@@ -300,7 +321,12 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                     escala_maxima: parseFloat(componenteFormData.escala_maxima),
                     obrigatorio: componenteFormData.obrigatorio,
                     ordem: parseInt(componenteFormData.ordem),
-                    descricao: componenteFormData.descricao || null
+                    descricao: componenteFormData.descricao || null,
+                    trimestre: parseInt(componenteFormData.trimestre),
+                    is_calculated: componenteFormData.is_calculated || false,
+                    formula_expression: componenteFormData.is_calculated ? componenteFormData.formula_expression : null,
+                    depends_on_components: componenteFormData.is_calculated ? componenteFormData.depends_on_components : [],
+                    tipo_calculo: componenteFormData.is_calculated ? componenteFormData.tipo_calculo : 'trimestral'
                 })
 
             if (insertError) throw insertError
@@ -310,8 +336,9 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             resetComponenteForm()
             loadComponentes(selectedDisciplina.id)
             setTimeout(() => setSuccess(null), 3000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar componente'
+        } catch (err: any) {
+            console.error('Erro ao adicionar componente:', err)
+            const errorMessage = err?.message || err?.error_description || 'Erro ao adicionar componente'
             setError(translateError(errorMessage))
         }
     }
@@ -326,6 +353,16 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
         try {
             const pesoPercentual = parseFloat(componenteFormData.peso_percentual)
             const totalWeight = calculateTotalWeight(selectedDisciplina.id, selectedComponente.id)
+
+            if (pesoPercentual <= 0) {
+                setError('O peso deve ser maior que 0%.')
+                return
+            }
+
+            if (pesoPercentual > 100) {
+                setError('O peso não pode ser maior que 100%.')
+                return
+            }
 
             if (totalWeight + pesoPercentual > 100) {
                 setError(`A soma dos pesos não pode ultrapassar 100%. Peso atual: ${totalWeight}%, tentando adicionar: ${pesoPercentual}%`)
@@ -342,7 +379,12 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                     escala_maxima: parseFloat(componenteFormData.escala_maxima),
                     obrigatorio: componenteFormData.obrigatorio,
                     ordem: parseInt(componenteFormData.ordem),
-                    descricao: componenteFormData.descricao || null
+                    descricao: componenteFormData.descricao || null,
+                    trimestre: parseInt(componenteFormData.trimestre),
+                    is_calculated: componenteFormData.is_calculated || false,
+                    formula_expression: componenteFormData.is_calculated ? componenteFormData.formula_expression : null,
+                    depends_on_components: componenteFormData.is_calculated ? componenteFormData.depends_on_components : [],
+                    tipo_calculo: componenteFormData.is_calculated ? componenteFormData.tipo_calculo : 'trimestral'
                 })
                 .eq('id', selectedComponente.id)
 
@@ -354,8 +396,9 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             resetComponenteForm()
             loadComponentes(selectedDisciplina.id)
             setTimeout(() => setSuccess(null), 3000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar componente'
+        } catch (err: any) {
+            console.error('Erro ao atualizar componente:', err)
+            const errorMessage = err?.message || err?.error_description || 'Erro ao atualizar componente'
             setError(translateError(errorMessage))
         }
     }
@@ -379,8 +422,9 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             setSelectedComponente(null)
             loadComponentes(selectedDisciplina.id)
             setTimeout(() => setSuccess(null), 3000)
-        } catch (err) {
-            const errorMessage = err instanceof Error ? err.message : 'Erro ao remover componente'
+        } catch (err: any) {
+            console.error('Erro ao remover componente:', err)
+            const errorMessage = err?.message || err?.error_description || 'Erro ao remover componente'
             setError(translateError(errorMessage))
         }
     }
@@ -402,7 +446,12 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             escala_maxima: componente.escala_maxima.toString(),
             obrigatorio: componente.obrigatorio,
             ordem: componente.ordem.toString(),
-            descricao: componente.descricao || ''
+            descricao: componente.descricao || '',
+            trimestre: componente.trimestre.toString(),
+            is_calculated: componente.is_calculated || false,
+            formula_expression: componente.formula_expression || '',
+            depends_on_components: componente.depends_on_components || [],
+            tipo_calculo: componente.tipo_calculo || 'trimestral'
         })
         setShowEditComponenteModal(true)
     }
@@ -411,6 +460,88 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
         setSelectedDisciplina(disciplina)
         setSelectedComponente(componente)
         setShowDeleteComponenteModal(true)
+    }
+
+    const handleMoveComponenteUp = async (componente: ComponenteAvaliacao, disciplina: Disciplina) => {
+        try {
+            // Get all components for this discipline and trimestre from database
+            const { data: allComps, error: fetchError } = await supabase
+                .from('componentes_avaliacao')
+                .select('*')
+                .eq('disciplina_id', disciplina.id)
+                .eq('trimestre', componente.trimestre)
+                .order('ordem')
+
+            if (fetchError) throw fetchError
+            if (!allComps) return
+
+            const currentIndex = allComps.findIndex(c => c.id === componente.id)
+
+            if (currentIndex <= 0) return // Already at top
+
+            const previousComponente = allComps[currentIndex - 1]
+
+            // Swap ordem values
+            const { error: error1 } = await supabase
+                .from('componentes_avaliacao')
+                .update({ ordem: componente.ordem })
+                .eq('id', previousComponente.id)
+
+            const { error: error2 } = await supabase
+                .from('componentes_avaliacao')
+                .update({ ordem: previousComponente.ordem })
+                .eq('id', componente.id)
+
+            if (error1 || error2) throw error1 || error2
+
+            setSuccess('Ordem atualizada com sucesso!')
+            loadComponentes(disciplina.id)
+            setTimeout(() => setSuccess(null), 2000)
+        } catch (err: any) {
+            console.error('Erro ao reordenar componente:', err)
+            setError(translateError(err?.message || 'Erro ao reordenar componente'))
+        }
+    }
+
+    const handleMoveComponenteDown = async (componente: ComponenteAvaliacao, disciplina: Disciplina) => {
+        try {
+            // Get all components for this discipline and trimestre from database
+            const { data: allComps, error: fetchError } = await supabase
+                .from('componentes_avaliacao')
+                .select('*')
+                .eq('disciplina_id', disciplina.id)
+                .eq('trimestre', componente.trimestre)
+                .order('ordem')
+
+            if (fetchError) throw fetchError
+            if (!allComps) return
+
+            const currentIndex = allComps.findIndex(c => c.id === componente.id)
+
+            if (currentIndex >= allComps.length - 1) return // Already at bottom
+
+            const nextComponente = allComps[currentIndex + 1]
+
+            // Swap ordem values
+            const { error: error1 } = await supabase
+                .from('componentes_avaliacao')
+                .update({ ordem: componente.ordem })
+                .eq('id', nextComponente.id)
+
+            const { error: error2 } = await supabase
+                .from('componentes_avaliacao')
+                .update({ ordem: nextComponente.ordem })
+                .eq('id', componente.id)
+
+            if (error1 || error2) throw error1 || error2
+
+            setSuccess('Ordem atualizada com sucesso!')
+            loadComponentes(disciplina.id)
+            setTimeout(() => setSuccess(null), 2000)
+        } catch (err: any) {
+            console.error('Erro ao reordenar componente:', err)
+            setError(translateError(err?.message || 'Erro ao reordenar componente'))
+        }
     }
 
     const resetComponenteForm = () => {
@@ -422,7 +553,12 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             escala_maxima: '20',
             obrigatorio: true,
             ordem: '1',
-            descricao: ''
+            descricao: '',
+            trimestre: '1',
+            is_calculated: false,
+            formula_expression: '',
+            depends_on_components: [],
+            tipo_calculo: 'trimestral' as 'trimestral' | 'anual'
         })
     }
 
@@ -549,7 +685,7 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                         className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
                                                         title={isExpanded ? "Ocultar componentes" : "Ver componentes"}
                                                     >
-                                                        <svg className={`w-5 h-5 transition-transform ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <svg className={`w - 5 h - 5 transition - transform ${isExpanded ? 'rotate-180' : ''} `} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                                         </svg>
                                                     </button>
@@ -625,6 +761,9 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                                                 <span className="text-xs px-2 py-0.5 bg-slate-100 text-slate-600 rounded">
                                                                                     {comp.codigo_componente}
                                                                                 </span>
+                                                                                <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                                                                    {comp.trimestre}º Trim
+                                                                                </span>
                                                                                 {comp.obrigatorio && (
                                                                                     <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded">
                                                                                         Obrigatório
@@ -638,6 +777,47 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-1">
+                                                                            {/* Reorder buttons */}
+                                                                            {(() => {
+                                                                                const componentesTrimestre = disciplinaComponentes
+                                                                                    .filter(c => c.trimestre === comp.trimestre)
+                                                                                    .sort((a, b) => a.ordem - b.ordem)
+                                                                                const currentIndex = componentesTrimestre.findIndex(c => c.id === comp.id)
+                                                                                const isFirst = currentIndex === 0
+                                                                                const isLast = currentIndex === componentesTrimestre.length - 1
+
+                                                                                return (
+                                                                                    <>
+                                                                                        <button
+                                                                                            onClick={() => handleMoveComponenteUp(comp, disciplina)}
+                                                                                            disabled={isFirst}
+                                                                                            className={`p-1.5 rounded transition-all ${isFirst
+                                                                                                ? 'text-slate-300 cursor-not-allowed'
+                                                                                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                                                                                                }`}
+                                                                                            title="Mover para cima"
+                                                                                        >
+                                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                                                                            </svg>
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => handleMoveComponenteDown(comp, disciplina)}
+                                                                                            disabled={isLast}
+                                                                                            className={`p-1.5 rounded transition-all ${isLast
+                                                                                                ? 'text-slate-300 cursor-not-allowed'
+                                                                                                : 'text-slate-400 hover:text-blue-600 hover:bg-blue-50'
+                                                                                                }`}
+                                                                                            title="Mover para baixo"
+                                                                                        >
+                                                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                                                            </svg>
+                                                                                        </button>
+                                                                                    </>
+                                                                                )
+                                                                            })()}
+
                                                                             <button
                                                                                 onClick={() => openEditComponenteModal(comp, disciplina)}
                                                                                 className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded transition-all"
@@ -660,7 +840,7 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                                     </div>
                                                                 ))}
                                                             </div>
-                                                            <div className={`p-2 rounded-lg text-sm ${totalWeight === 100 ? 'bg-green-50 text-green-800' : totalWeight > 100 ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-800'}`}>
+                                                            <div className={`p - 2 rounded - lg text - sm ${totalWeight === 100 ? 'bg-green-50 text-green-800' : totalWeight > 100 ? 'bg-red-50 text-red-800' : 'bg-amber-50 text-amber-800'} `}>
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="font-medium">Peso Total:</span>
                                                                     <span className="font-bold">{totalWeight}%</span>
@@ -942,6 +1122,22 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                     required
                                 />
 
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                        Trimestre <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={componenteFormData.trimestre}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, trimestre: e.target.value })}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        required
+                                    >
+                                        <option value="1">1º Trimestre</option>
+                                        <option value="2">2º Trimestre</option>
+                                        <option value="3">3º Trimestre</option>
+                                    </select>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <Input
                                         label="Peso Percentual (%)"
@@ -997,6 +1193,117 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                         Componente obrigatório
                                     </label>
                                 </div>
+
+                                {/* Calculated Field Toggle */}
+                                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <input
+                                        type="checkbox"
+                                        id="is_calculated"
+                                        checked={componenteFormData.is_calculated}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, is_calculated: e.target.checked, formula_expression: '', depends_on_components: [] })}
+                                        className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor="is_calculated" className="text-sm text-slate-700 flex-1">
+                                        <strong>Campo Calculável</strong>
+                                        <span className="block text-xs text-slate-600 mt-0.5">
+                                            Este componente será calculado automaticamente usando uma fórmula
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Formula Builder - Only show when calculated is enabled */}
+                                {componenteFormData.is_calculated && (
+                                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                        {/* Calculation Type */}
+                                        <div className="space-y-2">
+                                            <label className="form-label text-sm">Tipo de Cálculo</label>
+                                            <div className="flex gap-4">
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="radio"
+                                                        value="trimestral"
+                                                        checked={componenteFormData.tipo_calculo === 'trimestral'}
+                                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, tipo_calculo: e.target.value as 'trimestral' | 'anual' })}
+                                                        className="w-4 h-4 text-primary-600"
+                                                    />
+                                                    <span className="text-sm text-slate-700">Trimestral (MT)</span>
+                                                </label>
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="radio"
+                                                        value="anual"
+                                                        checked={componenteFormData.tipo_calculo === 'anual'}
+                                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, tipo_calculo: e.target.value as 'trimestral' | 'anual' })}
+                                                        className="w-4 h-4 text-primary-600"
+                                                    />
+                                                    <span className="text-sm text-slate-700">Anual (MF)</span>
+                                                </label>
+                                            </div>
+                                            <p className="text-xs text-slate-600">
+                                                {componenteFormData.tipo_calculo === 'trimestral'
+                                                    ? 'Calcula usando componentes do mesmo trimestre (ex: MAC * 0.4 + EXAME * 0.6)'
+                                                    : 'Calcula usando médias dos 3 trimestres (ex: (T1 + T2 + T3) / 3)'}
+                                            </p>
+                                        </div>
+
+                                        {/* Available Components - Only for trimestral */}
+                                        {componenteFormData.tipo_calculo === 'trimestral' && (
+                                            <div>
+                                                <label className="form-label text-sm">
+                                                    Componentes para usar na fórmula
+                                                </label>
+                                                {selectedDisciplina && componentes[selectedDisciplina.id] && componentes[selectedDisciplina.id].filter(c => !c.is_calculated).length > 0 ? (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {componentes[selectedDisciplina.id]
+                                                            .filter(c => !c.is_calculated)
+                                                            .map((comp) => (
+                                                                <label
+                                                                    key={comp.id}
+                                                                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
+                                                                        ? 'border-primary-500 bg-primary-50'
+                                                                        : 'border-slate-200 bg-white hover:border-primary-300'
+                                                                        }`}
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={componenteFormData.depends_on_components.includes(comp.id)}
+                                                                        onChange={(e) => {
+                                                                            const newDeps = e.target.checked
+                                                                                ? [...componenteFormData.depends_on_components, comp.id]
+                                                                                : componenteFormData.depends_on_components.filter(id => id !== comp.id)
+                                                                            setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
+                                                                        }}
+                                                                        className="w-3 h-3 text-primary-600 border-slate-300 rounded"
+                                                                    />
+                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                </label>
+                                                            ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200">
+                                                        Nenhum componente manual disponível. Crie componentes manuais primeiro.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Formula Input */}
+                                        <div>
+                                            <label className="form-label text-sm">Fórmula de Cálculo</label>
+                                            <input
+                                                type="text"
+                                                value={componenteFormData.formula_expression}
+                                                onChange={(e) => setComponenteFormData({ ...componenteFormData, formula_expression: e.target.value })}
+                                                placeholder="Ex: MAC * 0.4 + EXAME * 0.6"
+                                                className="form-input text-sm font-mono"
+                                                disabled={componenteFormData.depends_on_components.length === 0}
+                                            />
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Use os códigos dos componentes selecionados e operadores: + - * / ( )
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="form-label">Descrição (opcional)</label>
@@ -1077,6 +1384,22 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                     required
                                 />
 
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                                        Trimestre <span className="text-red-500">*</span>
+                                    </label>
+                                    <select
+                                        value={componenteFormData.trimestre}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, trimestre: e.target.value })}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                        required
+                                    >
+                                        <option value="1">1º Trimestre</option>
+                                        <option value="2">2º Trimestre</option>
+                                        <option value="3">3º Trimestre</option>
+                                    </select>
+                                </div>
+
                                 <div className="grid grid-cols-2 gap-3">
                                     <Input
                                         label="Peso Percentual (%)"
@@ -1132,6 +1455,117 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                         Componente obrigatório
                                     </label>
                                 </div>
+
+                                {/* Calculated Field Toggle */}
+                                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <input
+                                        type="checkbox"
+                                        id="is_calculated_edit"
+                                        checked={componenteFormData.is_calculated}
+                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, is_calculated: e.target.checked, formula_expression: '', depends_on_components: [] })}
+                                        className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor="is_calculated_edit" className="text-sm text-slate-700 flex-1">
+                                        <strong>Campo Calculável</strong>
+                                        <span className="block text-xs text-slate-600 mt-0.5">
+                                            Este componente será calculado automaticamente usando uma fórmula
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Formula Builder - Only show when calculated is enabled */}
+                                {componenteFormData.is_calculated && (
+                                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                        {/* Calculation Type */}
+                                        <div className="space-y-2">
+                                            <label className="form-label text-sm">Tipo de Cálculo</label>
+                                            <div className="flex gap-4">
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="radio"
+                                                        value="trimestral"
+                                                        checked={componenteFormData.tipo_calculo === 'trimestral'}
+                                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, tipo_calculo: e.target.value as 'trimestral' | 'anual' })}
+                                                        className="w-4 h-4 text-primary-600"
+                                                    />
+                                                    <span className="text-sm text-slate-700">Trimestral (MT)</span>
+                                                </label>
+                                                <label className="flex items-center gap-2">
+                                                    <input
+                                                        type="radio"
+                                                        value="anual"
+                                                        checked={componenteFormData.tipo_calculo === 'anual'}
+                                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, tipo_calculo: e.target.value as 'trimestral' | 'anual' })}
+                                                        className="w-4 h-4 text-primary-600"
+                                                    />
+                                                    <span className="text-sm text-slate-700">Anual (MF)</span>
+                                                </label>
+                                            </div>
+                                            <p className="text-xs text-slate-600">
+                                                {componenteFormData.tipo_calculo === 'trimestral'
+                                                    ? 'Calcula usando componentes do mesmo trimestre (ex: MAC * 0.4 + EXAME * 0.6)'
+                                                    : 'Calcula usando médias dos 3 trimestres (ex: (T1 + T2 + T3) / 3)'}
+                                            </p>
+                                        </div>
+
+                                        {/* Available Components - Only for trimestral */}
+                                        {componenteFormData.tipo_calculo === 'trimestral' && (
+                                            <div>
+                                                <label className="form-label text-sm">
+                                                    Componentes para usar na fórmula
+                                                </label>
+                                                {selectedDisciplina && componentes[selectedDisciplina.id] && componentes[selectedDisciplina.id].filter(c => !c.is_calculated && c.id !== selectedComponente?.id).length > 0 ? (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {componentes[selectedDisciplina.id]
+                                                            .filter(c => !c.is_calculated && c.id !== selectedComponente?.id)
+                                                            .map((comp) => (
+                                                                <label
+                                                                    key={comp.id}
+                                                                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
+                                                                        ? 'border-primary-500 bg-primary-50'
+                                                                        : 'border-slate-200 bg-white hover:border-primary-300'
+                                                                        }`}
+                                                                >
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={componenteFormData.depends_on_components.includes(comp.id)}
+                                                                        onChange={(e) => {
+                                                                            const newDeps = e.target.checked
+                                                                                ? [...componenteFormData.depends_on_components, comp.id]
+                                                                                : componenteFormData.depends_on_components.filter(id => id !== comp.id)
+                                                                            setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
+                                                                        }}
+                                                                        className="w-3 h-3 text-primary-600 border-slate-300 rounded"
+                                                                    />
+                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                </label>
+                                                            ))}
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200">
+                                                        Nenhum componente manual disponível.
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Formula Input */}
+                                        <div>
+                                            <label className="form-label text-sm">Fórmula de Cálculo</label>
+                                            <input
+                                                type="text"
+                                                value={componenteFormData.formula_expression}
+                                                onChange={(e) => setComponenteFormData({ ...componenteFormData, formula_expression: e.target.value })}
+                                                placeholder="Ex: MAC * 0.4 + EXAME * 0.6"
+                                                className="form-input text-sm font-mono"
+                                                disabled={componenteFormData.depends_on_components.length === 0}
+                                            />
+                                            <p className="text-xs text-slate-500 mt-1">
+                                                Use os códigos dos componentes selecionados e operadores: + - * / ( )
+                                            </p>
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div>
                                     <label className="form-label">Descrição (opcional)</label>
