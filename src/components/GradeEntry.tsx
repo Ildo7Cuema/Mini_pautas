@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Turma, Disciplina, ComponenteAvaliacao, Aluno, Nota } from '../types'
 import { validateGrade } from '../utils/formulaParser'
-import { evaluateFormula, parseFormula } from '../utils/formulaUtils'
+import { evaluateFormula } from '../utils/formulaUtils'
 
 interface GradeEntryProps {
     turma: Turma
@@ -44,9 +44,13 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                 .from('componentes_avaliacao')
                 .select('*')
                 .eq('disciplina_id', disciplina.id)
+                .eq('is_calculated', false) // Only load non-calculated components for manual entry
                 .order('ordem')
 
             if (error) throw error
+
+            console.log('Loaded components for grade entry:', data)
+
             setComponentes(data || [])
             if (data && data.length > 0) {
                 setSelectedComponente(data[0])
@@ -156,8 +160,10 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                     })
 
                     try {
-                        const result = evaluateFormula(selectedComponente.formula_expression, formulaValues)
-                        calculatedGrades[aluno.id] = Math.round(result * 100) / 100 // Round to 2 decimals
+                        if (selectedComponente.formula_expression) {
+                            const result = evaluateFormula(selectedComponente.formula_expression, formulaValues)
+                            calculatedGrades[aluno.id] = Math.round(result * 100) / 100 // Round to 2 decimals
+                        }
                     } catch (err) {
                         console.error(`Error calculating grade for student ${aluno.nome_completo}:`, err)
                     }
@@ -234,18 +240,40 @@ export const GradeEntry: React.FC<GradeEntryProps> = ({ turma, disciplina }) => 
                 data_lancamento: new Date().toISOString(),
             }))
 
-            const { error } = await supabase
+            // Diagnostic logging
+            console.log('=== GRADE ENTRY SAVE DEBUG ===')
+            console.log('Number of grades to save:', notasToSave.length)
+            console.log('Sample grade data:', notasToSave[0])
+            console.log('Trimestre:', trimestre)
+            console.log('Componente:', selectedComponente.codigo_componente, selectedComponente.id)
+            console.log('Turma:', turma.nome, turma.id)
+
+            const { data: upsertData, error } = await supabase
                 .from('notas')
                 .upsert(notasToSave, {
                     onConflict: 'aluno_id,componente_id,trimestre',
+                    ignoreDuplicates: false
                 })
+                .select()
 
-            if (error) throw error
+            console.log('Upsert response data:', upsertData)
+            console.log('Upsert error:', error)
 
+            if (error) {
+                console.error('UPSERT ERROR DETAILS:', {
+                    message: error.message,
+                    details: error.details,
+                    hint: error.hint,
+                    code: error.code
+                })
+                throw error
+            }
+
+            console.log('✅ Grades saved successfully')
             alert('Notas salvas com sucesso!')
             loadExistingNotas()
         } catch (error) {
-            console.error('Error saving grades:', error)
+            console.error('❌ SAVE GRADES ERROR:', error)
             alert('Erro ao salvar notas')
         } finally {
             setSaving(false)

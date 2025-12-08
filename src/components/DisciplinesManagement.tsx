@@ -1275,7 +1275,15 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                                         }}
                                                                         className="w-3 h-3 text-primary-600 border-slate-300 rounded"
                                                                     />
-                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                    <div className="flex-1 flex items-center justify-between gap-1">
+                                                                        <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
+                                                                            comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
+                                                                                'bg-orange-100 text-orange-700'
+                                                                            }`}>
+                                                                            T{comp.trimestre}
+                                                                        </span>
+                                                                    </div>
                                                                 </label>
                                                             ))}
                                                     </div>
@@ -1537,7 +1545,15 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                                         }}
                                                                         className="w-3 h-3 text-primary-600 border-slate-300 rounded"
                                                                     />
-                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                    <div className="flex-1 flex items-center justify-between gap-1">
+                                                                        <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
+                                                                            comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
+                                                                                'bg-orange-100 text-orange-700'
+                                                                            }`}>
+                                                                            T{comp.trimestre}
+                                                                        </span>
+                                                                    </div>
                                                                 </label>
                                                             ))}
                                                     </div>

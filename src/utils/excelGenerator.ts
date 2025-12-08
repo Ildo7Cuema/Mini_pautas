@@ -2,7 +2,7 @@ import * as XLSX from 'xlsx'
 
 interface TrimestreData {
     notas: Record<string, number>
-    nota_final: number
+    nota_final?: number  // Optional - only if NF component configured
 }
 
 interface MiniPautaData {
@@ -20,7 +20,7 @@ interface MiniPautaData {
         numero_processo: string
         nome_completo: string
         notas: Record<string, number>
-        nota_final: number
+        nota_final?: number  // Optional - only if NF component configured
         classificacao: string
         trimestres?: {
             1?: TrimestreData
@@ -60,28 +60,22 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
         const componentes2T = data.componentes.filter(c => c.trimestre === 2)
         const componentes3T = data.componentes.filter(c => c.trimestre === 3)
 
-        // Headers for all-trimester layout
+        // Headers for all-trimester layout (without Nº Processo)
         headerRow = [
             'Nº',
-            'Nº Processo',
             'Nome do Aluno',
             // 1º Trimestre
             ...componentes1T.map(c => c.codigo_componente),
-            'MT1',
             // 2º Trimestre
             ...componentes2T.map(c => c.codigo_componente),
-            'MT2',
             // 3º Trimestre
-            ...componentes3T.map(c => c.codigo_componente),
-            'MT3',
-            'MF'
+            ...componentes3T.map(c => c.codigo_componente)
         ]
 
-        // Data rows for all-trimester layout
+        // Data rows for all-trimester layout (without Nº Processo)
         dataRows = data.alunos.map((aluno, index) => {
             const row: any[] = [
                 index + 1,
-                aluno.numero_processo,
                 aluno.nome_completo
             ]
 
@@ -109,29 +103,24 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
             })
             row.push(trimestre3?.nota_final ?? '')
 
-            // MF
-            row.push(aluno.nota_final)
-
             return row
         })
     } else {
-        // Headers for single-trimester layout
+        // Headers for single-trimester layout (without Nº Processo)
         headerRow = [
             'Nº',
-            'Nº Processo',
             'Nome do Aluno',
             ...data.componentes.map(c => `${c.codigo_componente} (${c.peso_percentual}%)`),
             'Nota Final',
             'Classificação'
         ]
 
-        // Data rows for single-trimester layout
+        // Data rows for single-trimester layout (without Nº Processo)
         dataRows = data.alunos.map((aluno, index) => [
             index + 1,
-            aluno.numero_processo,
             aluno.nome_completo,
             ...data.componentes.map(c => aluno.notas[c.codigo_componente] ?? ''),
-            aluno.nota_final,
+            aluno.nota_final ?? '',
             aluno.classificacao
         ])
     }
@@ -150,19 +139,19 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
             [] // Empty row
         ]
 
-        // Trimester group header row
+        // Trimester group header row (without Nº Processo)
         const trimestreHeaderRow = [
-            'Nº', 'Nº Processo', 'Nome do Aluno',
+            'Nº', 'Nome do Aluno',
             '1º Trimestre', ...Array(componentsPerTrimestre).fill(''), '', // Spans components + MT1
             '2º Trimestre', ...Array(componentsPerTrimestre).fill(''), '', // Spans components + MT2
             '3º Trimestre', ...Array(componentsPerTrimestre).fill(''), '', // Spans components + MT3
             'MF'
         ]
 
-        // Component header row
+        // Component header row (without Nº Processo)
         const componentHeaderRow = [
-            '', '', '', // Empty for Nº, Nº Processo, Nome
-            ...headerRow.slice(3) // Components and MT columns
+            '', '', // Empty for Nº, Nome
+            ...headerRow.slice(2) // Components and MT columns
         ]
 
         headerRows = [...infoRows, trimestreHeaderRow, componentHeaderRow]
@@ -200,8 +189,8 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
         const componentsPerTrimestre = data.componentes.length
         const headerRowIndex = 4 // 0-indexed row where trimester headers are
 
-        // Calculate column indices (0-indexed)
-        const startCol = 3 // After Nº, Nº Processo, Nome
+        // Calculate column indices (0-indexed, without Nº Processo)
+        const startCol = 2 // After Nº, Nome
 
         // Merge cells for each trimestre header
         const merges = [
@@ -260,28 +249,22 @@ export function generateCSV(data: MiniPautaData): void {
         const componentes2T = data.componentes.filter(c => c.trimestre === 2)
         const componentes3T = data.componentes.filter(c => c.trimestre === 3)
 
-        // Headers for all-trimester layout
+        // Headers for all-trimester layout (without Nº Processo)
         headers = [
             'Nº',
-            'Nº Processo',
             'Nome do Aluno',
             // 1º Trimestre
             ...componentes1T.map(c => c.codigo_componente),
-            'MT1',
             // 2º Trimestre
             ...componentes2T.map(c => c.codigo_componente),
-            'MT2',
             // 3º Trimestre
-            ...componentes3T.map(c => c.codigo_componente),
-            'MT3',
-            'MF'
+            ...componentes3T.map(c => c.codigo_componente)
         ]
 
-        // Data rows for all-trimester layout
+        // Data rows for all-trimester layout (without Nº Processo)
         rows = data.alunos.map((aluno, index) => {
             const row: any[] = [
                 index + 1,
-                aluno.numero_processo,
                 aluno.nome_completo
             ]
 
@@ -309,29 +292,24 @@ export function generateCSV(data: MiniPautaData): void {
             })
             row.push(trimestre3?.nota_final ?? '')
 
-            // MF
-            row.push(aluno.nota_final)
-
             return row
         })
     } else {
-        // Headers for single-trimester layout
+        // Headers for single-trimester layout (without Nº Processo)
         headers = [
             'Nº',
-            'Nº Processo',
             'Nome do Aluno',
             ...data.componentes.map(c => `${c.codigo_componente} (${c.peso_percentual}%)`),
             'Nota Final',
             'Classificação'
         ]
 
-        // Data rows for single-trimester layout
+        // Data rows for single-trimester layout (without Nº Processo)
         rows = data.alunos.map((aluno, index) => [
             index + 1,
-            aluno.numero_processo,
             aluno.nome_completo,
             ...data.componentes.map(c => aluno.notas[c.codigo_componente] ?? ''),
-            aluno.nota_final,
+            aluno.nota_final ?? '',
             aluno.classificacao
         ])
     }

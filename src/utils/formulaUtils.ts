@@ -105,6 +105,7 @@ export function evaluateFormula(
 
         for (const code of codes) {
             const value = values[code];
+            // Allow 0 as a valid value, only reject undefined, null, or NaN
             if (value === undefined || value === null || isNaN(value)) {
                 throw new Error(`Valor inválido para componente ${code}`);
             }

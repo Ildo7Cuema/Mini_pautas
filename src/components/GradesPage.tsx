@@ -173,6 +173,7 @@ export const GradesPage: React.FC = () => {
                 .select('*')
                 .eq('disciplina_id', selectedDisciplina)
                 .eq('trimestre', trimestre) // Filter by selected trimestre
+                .eq('is_calculated', false) // Only load non-calculated components for manual entry
                 .order('ordem')
 
             if (error) throw error
@@ -310,14 +311,36 @@ export const GradesPage: React.FC = () => {
                 data_lancamento: new Date().toISOString()
             }))
 
-            const { error: upsertError } = await supabase
+            // Diagnostic logging
+            console.log('=== SAVING GRADES DEBUG ===')
+            console.log('Number of grades to save:', notasToSave.length)
+            console.log('Sample grade data:', notasToSave[0])
+            console.log('Trimestre:', trimestre)
+            console.log('Componente ID:', selectedComponente)
+            console.log('Turma ID:', selectedTurma)
+
+            const { data: upsertData, error: upsertError } = await supabase
                 .from('notas')
                 .upsert(notasToSave, {
-                    onConflict: 'aluno_id,componente_id,trimestre'
+                    onConflict: 'aluno_id,componente_id,trimestre',
+                    ignoreDuplicates: false
                 })
+                .select()
 
-            if (upsertError) throw upsertError
+            console.log('Upsert response data:', upsertData)
+            console.log('Upsert error:', upsertError)
 
+            if (upsertError) {
+                console.error('UPSERT ERROR DETAILS:', {
+                    message: upsertError.message,
+                    details: upsertError.details,
+                    hint: upsertError.hint,
+                    code: upsertError.code
+                })
+                throw upsertError
+            }
+
+            console.log('✅ Grades saved successfully')
             setOriginalNotas({ ...notas })
             setHasChanges(false)
 
@@ -327,6 +350,7 @@ export const GradesPage: React.FC = () => {
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar notas'
+            console.error('❌ SAVE GRADES ERROR:', err)
             if (!silent) setError(translateError(errorMessage))
         } finally {
             setSaving(false)
