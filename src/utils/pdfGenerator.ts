@@ -870,13 +870,14 @@ interface PautaGeralData {
 /**
  * Generates PDF for Pauta-Geral (General Report by Class)
  * Shows all disciplines with their components in a grouped table format
+ * Uses A3 landscape format to accommodate multiple disciplines
  */
 export async function generatePautaGeralPDF(
     data: PautaGeralData,
     headerConfig: HeaderConfig | null | undefined,
     colorConfig: GradeColorConfig | null
 ): Promise<void> {
-    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a3' })
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 

@@ -58,6 +58,8 @@ interface PautaGeralData {
         numero_processo: string
         nome_completo: string
         notas_por_disciplina: Record<string, Record<string, number>> // disciplinaId -> componenteId -> nota
+        media_geral: number // Average across all disciplines
+        observacao: 'Transita' | 'Não Transita' // Based on média_geral
     }>
     disciplinas: DisciplinaComComponentes[]
     estatisticas?: {
@@ -79,12 +81,15 @@ interface FieldSelection {
     showStatistics: boolean
     showNumeroProcesso: boolean
     showNomeCompleto: boolean
+    showMediaGeral: boolean // Show Média Geral column
+    showObservacao: boolean // Show Transita/Não Transita column
+    componenteParaMediaGeral: string // Component code to use for média geral (e.g., 'MF', 'MT', 'NF')
 }
 
 export const PautaGeralPage: React.FC = () => {
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
-    const [trimestre, setTrimestre] = useState<1 | 2 | 3>(1)
+    const trimestre = 3 // Fixed to 3rd trimester for Pauta-Geral
     const [loadingData, setLoadingData] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
@@ -100,7 +105,10 @@ export const PautaGeralPage: React.FC = () => {
         includeAllComponentes: true,
         showStatistics: true,
         showNumeroProcesso: true,
-        showNomeCompleto: true
+        showNomeCompleto: true,
+        showMediaGeral: true,
+        showObservacao: true,
+        componenteParaMediaGeral: 'MF' // Default to MF (Média Final)
     })
 
     useEffect(() => {
@@ -113,7 +121,7 @@ export const PautaGeralPage: React.FC = () => {
         } else {
             setPautaGeralData(null)
         }
-    }, [selectedTurma, trimestre])
+    }, [selectedTurma]) // trimestre is now fixed at 3
 
     useEffect(() => {
         loadHeaderConfiguration()
@@ -286,16 +294,25 @@ export const PautaGeralPage: React.FC = () => {
                 return {
                     numero_processo: aluno.numero_processo,
                     nome_completo: aluno.nome_completo,
-                    notas_por_disciplina: notasPorDisciplina
+                    notas_por_disciplina: notasPorDisciplina,
+                    media_geral: 0, // Will be calculated below
+                    observacao: 'Não Transita' as 'Transita' | 'Não Transita' // Will be updated below
                 }
             })
+
+            // Determine if Primary or Secondary education
+            const isPrimary = turmaData.nivel_ensino?.toLowerCase().includes('primário') ||
+                turmaData.nivel_ensino?.toLowerCase().includes('primario')
+
+            // Threshold for transition: 4.45 for Primary, 9.45 for Secondary
+            const transitaThreshold = isPrimary ? 4.45 : 9.45
 
             // Calculate statistics per discipline and general statistics
             const estatisticasPorDisciplina: Record<string, any> = {}
             const notasFinaisPorAluno: number[] = [] // Store average final grade per student across all disciplines
 
             // For each student, calculate their average final grade across all disciplines
-            alunosComNotas.forEach(aluno => {
+            alunosComNotas.forEach((aluno, index) => {
                 const notasFinaisDisciplinas: number[] = []
 
                 disciplinasComComponentes.forEach(disc => {
@@ -318,15 +335,36 @@ export const PautaGeralPage: React.FC = () => {
                         })
 
                         // Normalize if weights don't sum to 100%
-                        const notaFinalDisciplina = somaPesos > 0 ? (somaContribuicoes / somaPesos) * 100 : 0
+                        let notaFinalDisciplina = somaPesos > 0 ? (somaContribuicoes / somaPesos) * 100 : 0
+
+                        // CAP at 10: If discipline average > 10, set it to 10
+                        if (notaFinalDisciplina > 10) {
+                            notaFinalDisciplina = 10
+                        }
+
                         notasFinaisDisciplinas.push(notaFinalDisciplina)
                     }
                 })
 
                 // Calculate average across all disciplines for this student
+                let mediaAluno = 0
                 if (notasFinaisDisciplinas.length > 0) {
-                    const mediaAluno = notasFinaisDisciplinas.reduce((sum, n) => sum + n, 0) / notasFinaisDisciplinas.length
+                    mediaAluno = notasFinaisDisciplinas.reduce((sum, n) => sum + n, 0) / notasFinaisDisciplinas.length
+                    // Round to 2 decimal places
+                    mediaAluno = Math.round(mediaAluno * 100) / 100
                     notasFinaisPorAluno.push(mediaAluno)
+                }
+
+                // Determine observação based on média_geral and education level
+                // Transita if: média >= threshold AND média <= 10
+                const observacao: 'Transita' | 'Não Transita' =
+                    (mediaAluno >= transitaThreshold && mediaAluno <= 10) ? 'Transita' : 'Não Transita'
+
+                // Update aluno with média_geral and observação
+                alunosComNotas[index] = {
+                    ...aluno,
+                    media_geral: mediaAluno,
+                    observacao
                 }
             })
 
@@ -517,7 +555,7 @@ export const PautaGeralPage: React.FC = () => {
                     <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
                 </CardHeader>
                 <CardBody>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Turma</label>
                             <select
@@ -534,19 +572,6 @@ export const PautaGeralPage: React.FC = () => {
                             </select>
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Trimestre</label>
-                            <select
-                                value={trimestre}
-                                onChange={(e) => setTrimestre(parseInt(e.target.value) as 1 | 2 | 3)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value={1}>1º Trimestre</option>
-                                <option value={2}>2º Trimestre</option>
-                                <option value={3}>3º Trimestre</option>
-                            </select>
-                        </div>
-
                         <div className="flex items-end">
                             <button
                                 onClick={loadPautaGeralData}
@@ -556,6 +581,9 @@ export const PautaGeralPage: React.FC = () => {
                                 {loadingData ? 'Carregando...' : 'Carregar Dados'}
                             </button>
                         </div>
+                    </div>
+                    <div className="mt-3 text-xs text-slate-600 bg-blue-50 border border-blue-200 rounded-lg p-2">
+                        <strong>Nota:</strong> A Pauta-Geral é gerada automaticamente com os dados do <strong>3º Trimestre</strong>.
                     </div>
                 </CardBody>
             </Card>

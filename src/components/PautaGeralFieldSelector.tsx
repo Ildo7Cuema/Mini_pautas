@@ -39,6 +39,9 @@ interface FieldSelection {
     showStatistics: boolean
     showNumeroProcesso: boolean
     showNomeCompleto: boolean
+    showMediaGeral: boolean
+    showObservacao: boolean
+    componenteParaMediaGeral: string
 }
 
 interface Props {
@@ -273,7 +276,54 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                                         Mostrar Estatísticas
                                     </label>
                                 </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="show-media-geral"
+                                        checked={selection.showMediaGeral}
+                                        onChange={(e) => onChange({ ...selection, showMediaGeral: e.target.checked })}
+                                        className="w-4 h-4 text-amber-600 border-slate-300 rounded focus:ring-2 focus:ring-amber-500"
+                                    />
+                                    <label htmlFor="show-media-geral" className="text-sm text-slate-700 cursor-pointer">
+                                        Mostrar Média Geral
+                                    </label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input
+                                        type="checkbox"
+                                        id="show-observacao"
+                                        checked={selection.showObservacao}
+                                        onChange={(e) => onChange({ ...selection, showObservacao: e.target.checked })}
+                                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    <label htmlFor="show-observacao" className="text-sm text-slate-700 cursor-pointer">
+                                        Mostrar Observação (Transita/Não Transita)
+                                    </label>
+                                </div>
                             </div>
+                        </div>
+
+                        <div>
+                            <label className="text-sm font-medium text-slate-700 mb-2 block">
+                                Componente para Média Geral
+                            </label>
+                            <select
+                                value={selection.componenteParaMediaGeral}
+                                onChange={(e) => onChange({ ...selection, componenteParaMediaGeral: e.target.value })}
+                                className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            >
+                                <option value="MF">MF - Média Final</option>
+                                <option value="MT">MT - Média Trimestral</option>
+                                <option value="NF">NF - Nota Final</option>
+                                <option value="AC1">AC1 - Avaliação Contínua 1</option>
+                                <option value="AC2">AC2 - Avaliação Contínua 2</option>
+                                <option value="AC3">AC3 - Avaliação Contínua 3</option>
+                                <option value="PP">PP - Prova Parcial</option>
+                                <option value="PT">PT - Prova Trimestral</option>
+                            </select>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Selecione qual componente de cada disciplina será usado para calcular a Média Geral
+                            </p>
                         </div>
                     </div>
 

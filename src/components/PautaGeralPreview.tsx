@@ -40,6 +40,8 @@ interface PautaGeralData {
         numero_processo: string
         nome_completo: string
         notas_por_disciplina: Record<string, Record<string, number>>
+        media_geral: number
+        observacao: 'Transita' | 'Não Transita'
     }>
     disciplinas: DisciplinaComComponentes[]
     estatisticas?: {
@@ -56,6 +58,9 @@ interface FieldSelection {
     showStatistics: boolean
     showNumeroProcesso: boolean
     showNomeCompleto: boolean
+    showMediaGeral: boolean
+    showObservacao: boolean
+    componenteParaMediaGeral: string
 }
 
 interface Props {
@@ -94,6 +99,58 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
         fieldSelection.disciplinas.includes(d.id)
     )
 
+    // Calculate média geral dynamically based on selected disciplines
+    const calculateMediaGeralForSelectedDisciplinas = (aluno: any): { media: number; observacao: 'Transita' | 'Não Transita' } => {
+        const notasFinaisDisciplinas: number[] = []
+
+        // Only calculate for selected/visible disciplines
+        visibleDisciplinas.forEach(disc => {
+            const notasDisciplina = aluno.notas_por_disciplina[disc.id] || {}
+
+            // Find the specific component to use for média geral (e.g., 'MF', 'MT', 'NF')
+            const componenteParaMedia = disc.componentes.find(
+                comp => comp.codigo_componente === fieldSelection.componenteParaMediaGeral
+            )
+
+            if (componenteParaMedia) {
+                const nota = notasDisciplina[componenteParaMedia.id]
+
+                if (nota !== undefined && nota > 0) {
+                    // Use the nota directly from the selected component
+                    let notaFinalDisciplina = nota
+
+                    // CAP at 10: If discipline average > 10, set it to 10
+                    if (notaFinalDisciplina > 10) {
+                        notaFinalDisciplina = 10
+                    }
+
+                    notasFinaisDisciplinas.push(notaFinalDisciplina)
+                }
+            }
+        })
+
+        // Calculate average across selected disciplines
+        let mediaGeral = 0
+        if (notasFinaisDisciplinas.length > 0) {
+            mediaGeral = notasFinaisDisciplinas.reduce((sum, n) => sum + n, 0) / notasFinaisDisciplinas.length
+            mediaGeral = Math.round(mediaGeral * 100) / 100
+        }
+
+        // Determine if Primary or Secondary education
+        const isPrimary = data.nivel_ensino?.toLowerCase().includes('primário') ||
+            data.nivel_ensino?.toLowerCase().includes('primario')
+
+        // Threshold for transition
+        const transitaThreshold = isPrimary ? 4.45 : 9.45
+
+        // Determine observação
+        const observacao: 'Transita' | 'Não Transita' =
+            (mediaGeral >= transitaThreshold && mediaGeral <= 10) ? 'Transita' : 'Não Transita'
+
+        return { media: mediaGeral, observacao }
+    }
+
+
     return (
         <Card>
             <CardBody>
@@ -128,6 +185,16 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                         </th>
                                     )
                                 })}
+                                {fieldSelection.showMediaGeral && (
+                                    <th rowSpan={2} className="px-3 py-2 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-amber-50 border-l-2 border-amber-300">
+                                        Média Geral
+                                    </th>
+                                )}
+                                {fieldSelection.showObservacao && (
+                                    <th rowSpan={2} className="px-3 py-2 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50 border-l-2 border-slate-300">
+                                        Observação
+                                    </th>
+                                )}
                             </tr>
                             {/* Second row: Component codes */}
                             <tr>
@@ -147,42 +214,60 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-slate-200">
-                            {data.alunos.map((aluno, index) => (
-                                <tr key={index} className="hover:bg-slate-50">
-                                    {fieldSelection.showNumeroProcesso && (
-                                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900 border-r border-slate-200 sticky left-0 bg-white">
-                                            {index + 1}
-                                        </td>
-                                    )}
-                                    {fieldSelection.showNomeCompleto && (
-                                        <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900 border-r border-slate-200 sticky left-0 bg-white" style={{ left: fieldSelection.showNumeroProcesso ? '60px' : '0' }}>
-                                            {aluno.nome_completo}
-                                        </td>
-                                    )}
-                                    {visibleDisciplinas.map((disciplina) => {
-                                        const notasDisciplina = aluno.notas_por_disciplina[disciplina.id] || {}
-                                        const visibleComponentes = disciplina.componentes.filter(c =>
-                                            fieldSelection.componentes.includes(c.id)
-                                        )
+                            {data.alunos.map((aluno, index) => {
+                                // Calculate média geral dynamically for selected disciplines
+                                const { media: mediaGeralDinamica, observacao: observacaoDinamica } =
+                                    calculateMediaGeralForSelectedDisciplinas(aluno)
 
-                                        return visibleComponentes.map((componente) => {
-                                            const nota = notasDisciplina[componente.id]
-                                            const hasNota = nota !== undefined && nota !== null
-                                            const color = hasNota ? getGradeColor(nota, componente.is_calculated || false) : '#000000'
-
-                                            return (
-                                                <td
-                                                    key={componente.id}
-                                                    className="px-2 py-2 whitespace-nowrap text-center text-xs font-medium border-r border-slate-200"
-                                                    style={{ color }}
-                                                >
-                                                    {hasNota ? nota.toFixed(1) : '-'}
-                                                </td>
+                                return (
+                                    <tr key={index} className="hover:bg-slate-50">
+                                        {fieldSelection.showNumeroProcesso && (
+                                            <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900 border-r border-slate-200 sticky left-0 bg-white">
+                                                {index + 1}
+                                            </td>
+                                        )}
+                                        {fieldSelection.showNomeCompleto && (
+                                            <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900 border-r border-slate-200 sticky left-0 bg-white" style={{ left: fieldSelection.showNumeroProcesso ? '60px' : '0' }}>
+                                                {aluno.nome_completo}
+                                            </td>
+                                        )}
+                                        {visibleDisciplinas.map((disciplina) => {
+                                            const notasDisciplina = aluno.notas_por_disciplina[disciplina.id] || {}
+                                            const visibleComponentes = disciplina.componentes.filter(c =>
+                                                fieldSelection.componentes.includes(c.id)
                                             )
-                                        })
-                                    })}
-                                </tr>
-                            ))}
+
+                                            return visibleComponentes.map((componente) => {
+                                                const nota = notasDisciplina[componente.id]
+                                                const hasNota = nota !== undefined && nota !== null
+                                                const color = hasNota ? getGradeColor(nota, componente.is_calculated || false) : '#000000'
+
+                                                return (
+                                                    <td
+                                                        key={componente.id}
+                                                        className="px-2 py-2 whitespace-nowrap text-center text-xs font-medium border-r border-slate-200"
+                                                        style={{ color }}
+                                                    >
+                                                        {hasNota ? nota.toFixed(1) : '-'}
+                                                    </td>
+                                                )
+                                            })
+                                        })}
+                                        {fieldSelection.showMediaGeral && (
+                                            <td className="px-3 py-2 whitespace-nowrap text-center text-sm font-bold bg-amber-50 border-l-2 border-amber-300">
+                                                {mediaGeralDinamica.toFixed(2)}
+                                            </td>
+                                        )}
+                                        {fieldSelection.showObservacao && (
+                                            <td className="px-3 py-2 whitespace-nowrap text-center text-xs font-semibold border-l-2 border-slate-300">
+                                                <span className={observacaoDinamica === 'Transita' ? 'text-blue-600' : 'text-red-600'}>
+                                                    {observacaoDinamica}
+                                                </span>
+                                            </td>
+                                        )}
+                                    </tr>
+                                )
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -220,6 +305,6 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                     </div>
                 )}
             </CardBody>
-        </Card>
+        </Card >
     )
 }
