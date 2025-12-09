@@ -10,6 +10,7 @@ interface MiniPautaData {
         nome: string
         ano_lectivo: number
         codigo_turma: string
+        nivel_ensino?: string
     }
     disciplina: {
         nome: string
@@ -29,10 +30,14 @@ interface MiniPautaData {
         }
     }>
     componentes: Array<{
+        id: string  // Component ID for unique identification
         codigo_componente: string
         nome: string
         peso_percentual: number
         trimestre?: number
+        is_calculated?: boolean
+        disciplina_nome?: string // Discipline name for grouping (Primary Education)
+        disciplina_ordem?: number // Discipline order for sorting (Primary Education)
     }>
     estatisticas: {
         total_alunos: number
@@ -51,10 +56,84 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
     // Check if all-trimester mode
     const isAllTrimesters = data.trimestre === 'all' && data.alunos[0]?.trimestres
 
+    // Check if Primary Education
+    const isPrimaryEducation = data.turma.nivel_ensino?.toLowerCase().includes('primário') ||
+        data.turma.nivel_ensino?.toLowerCase().includes('primario')
+
+    // Check if all disciplines mode (Primary Education only)
+    const isAllDisciplines = data.componentes.length > 0 &&
+        data.componentes.some(c => c.disciplina_nome) &&
+        new Set(data.componentes.map(c => c.disciplina_nome)).size > 1
+
     let headerRow: any[]
     let dataRows: any[][]
 
-    if (isAllTrimesters) {
+    if (isPrimaryEducation && isAllDisciplines && !isAllTrimesters) {
+        // PRIMARY EDUCATION - ALL DISCIPLINES FORMAT (Single Trimester)
+        // Group components by discipline
+        interface DisciplineGroup {
+            disciplina_nome: string
+            ordem?: number
+            componentes: Array<{ id: string; codigo_componente: string }>
+        }
+
+        const disciplineMap = new Map<string, DisciplineGroup>()
+        const currentTrimestre = (data.trimestre === 'all' ? 1 : data.trimestre) as number
+
+        data.componentes.forEach(comp => {
+            if (comp.trimestre === currentTrimestre || !comp.trimestre) {
+                const disciplineName = comp.disciplina_nome || 'Sem Disciplina'
+
+                if (!disciplineMap.has(disciplineName)) {
+                    disciplineMap.set(disciplineName, {
+                        disciplina_nome: disciplineName,
+                        ordem: comp.disciplina_ordem,
+                        componentes: []
+                    })
+                }
+
+                disciplineMap.get(disciplineName)!.componentes.push({
+                    id: comp.id,
+                    codigo_componente: comp.codigo_componente
+                })
+            }
+        })
+
+        // Sort by ordem if available
+        const disciplineGroups = Array.from(disciplineMap.values()).sort((a, b) => {
+            if (a.ordem !== undefined && b.ordem !== undefined) {
+                return a.ordem - b.ordem
+            }
+            return a.disciplina_nome.localeCompare(b.disciplina_nome)
+        })
+
+        // Build headers
+        headerRow = ['Nº', 'Nome do Aluno']
+        disciplineGroups.forEach(group => {
+            group.componentes.forEach(comp => {
+                headerRow.push(comp.codigo_componente)
+            })
+        })
+
+        // Build data rows
+        dataRows = data.alunos.map((aluno, index) => {
+            const row: any[] = [
+                index + 1,
+                aluno.nome_completo
+            ]
+
+            disciplineGroups.forEach(group => {
+                group.componentes.forEach(comp => {
+                    // Use component id for grade lookup to avoid conflicts
+                    const nota = aluno.notas[comp.id]
+                    row.push(nota !== undefined ? nota : '')
+                })
+            })
+
+            return row
+        })
+
+    } else if (isAllTrimesters) {
         // Get components for each trimestre
         const componentes1T = data.componentes.filter(c => c.trimestre === 1)
         const componentes2T = data.componentes.filter(c => c.trimestre === 2)
@@ -85,7 +164,6 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
                 const nota = trimestre1?.notas[c.codigo_componente]
                 row.push(nota !== undefined ? nota : '')
             })
-            row.push(trimestre1?.nota_final ?? '')
 
             // 2º Trimestre
             const trimestre2 = aluno.trimestres?.[2]
@@ -93,7 +171,6 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
                 const nota = trimestre2?.notas[c.codigo_componente]
                 row.push(nota !== undefined ? nota : '')
             })
-            row.push(trimestre2?.nota_final ?? '')
 
             // 3º Trimestre
             const trimestre3 = aluno.trimestres?.[3]
@@ -101,34 +178,84 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
                 const nota = trimestre3?.notas[c.codigo_componente]
                 row.push(nota !== undefined ? nota : '')
             })
-            row.push(trimestre3?.nota_final ?? '')
 
             return row
         })
     } else {
-        // Headers for single-trimester layout (without Nº Processo)
+        // Headers for single-trimester layout - MATCH PREVIEW (no Nota Final or Classificação)
         headerRow = [
             'Nº',
             'Nome do Aluno',
-            ...data.componentes.map(c => `${c.codigo_componente} (${c.peso_percentual}%)`),
-            'Nota Final',
-            'Classificação'
+            ...data.componentes.map(c => `${c.codigo_componente} (${c.peso_percentual}%)`)
         ]
 
-        // Data rows for single-trimester layout (without Nº Processo)
+        // Data rows for single-trimester layout - MATCH PREVIEW (no Nota Final or Classificação)
         dataRows = data.alunos.map((aluno, index) => [
             index + 1,
             aluno.nome_completo,
-            ...data.componentes.map(c => aluno.notas[c.codigo_componente] ?? ''),
-            aluno.nota_final ?? '',
-            aluno.classificacao
+            ...data.componentes.map(c => aluno.notas[c.codigo_componente] ?? '')
         ])
     }
 
     // Create header rows
     let headerRows: any[][]
 
-    if (isAllTrimesters) {
+    if (isPrimaryEducation && isAllDisciplines && !isAllTrimesters) {
+        // PRIMARY EDUCATION - ALL DISCIPLINES: Create discipline-grouped headers
+        const disciplineMap = new Map<string, { ordem?: number; componentes: string[] }>()
+        const currentTrimestre = (data.trimestre === 'all' ? 1 : data.trimestre) as number
+
+        data.componentes.forEach(comp => {
+            if (comp.trimestre === currentTrimestre || !comp.trimestre) {
+                const disciplineName = comp.disciplina_nome || 'Sem Disciplina'
+
+                if (!disciplineMap.has(disciplineName)) {
+                    disciplineMap.set(disciplineName, {
+                        ordem: comp.disciplina_ordem,
+                        componentes: []
+                    })
+                }
+
+                disciplineMap.get(disciplineName)!.componentes.push(comp.codigo_componente)
+            }
+        })
+
+        // Sort by ordem if available
+        const disciplineGroups = Array.from(disciplineMap.entries())
+            .sort(([nameA, dataA], [nameB, dataB]) => {
+                if (dataA.ordem !== undefined && dataB.ordem !== undefined) {
+                    return dataA.ordem - dataB.ordem
+                }
+                return nameA.localeCompare(nameB)
+            })
+
+        // First 3 rows: Title and info
+        const infoRows = [
+            ['MINI-PAUTA'],
+            [`Turma: ${data.turma.nome}`, '', `Ano Lectivo: ${data.turma.ano_lectivo}`],
+            [`Trimestre: ${data.trimestre}º`],
+            [] // Empty row
+        ]
+
+        // Discipline group header row
+        const disciplineHeaderRow = ['Nº', 'Nome do Aluno']
+        disciplineGroups.forEach(([disciplineName, disciplineData]) => {
+            disciplineHeaderRow.push(disciplineName)
+            // Add empty cells for the span
+            for (let i = 1; i < disciplineData.componentes.length; i++) {
+                disciplineHeaderRow.push('')
+            }
+        })
+
+        // Component header row
+        const componentHeaderRow = ['', ''] // Empty for Nº, Nome
+        disciplineGroups.forEach(([, disciplineData]) => {
+            componentHeaderRow.push(...disciplineData.componentes)
+        })
+
+        headerRows = [...infoRows, disciplineHeaderRow, componentHeaderRow]
+
+    } else if (isAllTrimesters) {
         const componentsPerTrimestre = data.componentes.length
 
         // First 3 rows: Title and info
@@ -184,8 +311,62 @@ export function generateMiniPautaExcel(data: MiniPautaData): void {
     // Create worksheet
     const worksheet = XLSX.utils.aoa_to_sheet(allRows)
 
-    // Add merges for trimester headers if all-trimester mode
-    if (isAllTrimesters) {
+    // Add merges for discipline or trimester headers
+    if (isPrimaryEducation && isAllDisciplines && !isAllTrimesters) {
+        // PRIMARY EDUCATION - ALL DISCIPLINES: Merge discipline headers
+        const disciplineMap = new Map<string, { ordem?: number; componentes: string[] }>()
+        const currentTrimestre = (data.trimestre === 'all' ? 1 : data.trimestre) as number
+
+        data.componentes.forEach(comp => {
+            if (comp.trimestre === currentTrimestre || !comp.trimestre) {
+                const disciplineName = comp.disciplina_nome || 'Sem Disciplina'
+
+                if (!disciplineMap.has(disciplineName)) {
+                    disciplineMap.set(disciplineName, {
+                        ordem: comp.disciplina_ordem,
+                        componentes: []
+                    })
+                }
+
+                disciplineMap.get(disciplineName)!.componentes.push(comp.codigo_componente)
+            }
+        })
+
+        // Sort by ordem if available
+        const disciplineGroups = Array.from(disciplineMap.entries())
+            .sort(([nameA, dataA], [nameB, dataB]) => {
+                if (dataA.ordem !== undefined && dataB.ordem !== undefined) {
+                    return dataA.ordem - dataB.ordem
+                }
+                return nameA.localeCompare(nameB)
+            })
+
+        const headerRowIndex = 4 // 0-indexed row where discipline headers are
+        const startCol = 2 // After Nº, Nome
+
+        const merges = []
+        let currentCol = startCol
+
+        disciplineGroups.forEach(([, disciplineData]) => {
+            if (disciplineData.componentes.length > 1) {
+                // Merge cells for discipline name spanning its components
+                merges.push({
+                    s: { r: headerRowIndex, c: currentCol },
+                    e: { r: headerRowIndex, c: currentCol + disciplineData.componentes.length - 1 }
+                })
+            }
+            currentCol += disciplineData.componentes.length
+        })
+
+        // Also merge Nº and Nome cells vertically (rows 4 and 5)
+        merges.push(
+            { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } }, // Nº
+            { s: { r: headerRowIndex, c: 1 }, e: { r: headerRowIndex + 1, c: 1 } }  // Nome
+        )
+
+        worksheet['!merges'] = merges
+
+    } else if (isAllTrimesters) {
         const componentsPerTrimestre = data.componentes.length
         const headerRowIndex = 4 // 0-indexed row where trimester headers are
 
@@ -240,10 +421,84 @@ export function generateCSV(data: MiniPautaData): void {
     // Check if all-trimester mode
     const isAllTrimesters = data.trimestre === 'all' && data.alunos[0]?.trimestres
 
+    // Check if Primary Education
+    const isPrimaryEducation = data.turma.nivel_ensino?.toLowerCase().includes('primário') ||
+        data.turma.nivel_ensino?.toLowerCase().includes('primario')
+
+    // Check if all disciplines mode (Primary Education only)
+    const isAllDisciplines = data.componentes.length > 0 &&
+        data.componentes.some(c => c.disciplina_nome) &&
+        new Set(data.componentes.map(c => c.disciplina_nome)).size > 1
+
     let headers: string[]
     let rows: any[][]
 
-    if (isAllTrimesters) {
+    if (isPrimaryEducation && isAllDisciplines && !isAllTrimesters) {
+        // PRIMARY EDUCATION - ALL DISCIPLINES FORMAT (Single Trimester)
+        // Group components by discipline
+        interface DisciplineGroup {
+            disciplina_nome: string
+            ordem?: number
+            componentes: Array<{ id: string; codigo_componente: string }>
+        }
+
+        const disciplineMap = new Map<string, DisciplineGroup>()
+        const currentTrimestre = (data.trimestre === 'all' ? 1 : data.trimestre) as number
+
+        data.componentes.forEach(comp => {
+            if (comp.trimestre === currentTrimestre || !comp.trimestre) {
+                const disciplineName = comp.disciplina_nome || 'Sem Disciplina'
+
+                if (!disciplineMap.has(disciplineName)) {
+                    disciplineMap.set(disciplineName, {
+                        disciplina_nome: disciplineName,
+                        ordem: comp.disciplina_ordem,
+                        componentes: []
+                    })
+                }
+
+                disciplineMap.get(disciplineName)!.componentes.push({
+                    id: comp.id,
+                    codigo_componente: comp.codigo_componente
+                })
+            }
+        })
+
+        // Sort by ordem if available
+        const disciplineGroups = Array.from(disciplineMap.values()).sort((a, b) => {
+            if (a.ordem !== undefined && b.ordem !== undefined) {
+                return a.ordem - b.ordem
+            }
+            return a.disciplina_nome.localeCompare(b.disciplina_nome)
+        })
+
+        // Build headers
+        headers = ['Nº', 'Nome do Aluno']
+        disciplineGroups.forEach(group => {
+            group.componentes.forEach(comp => {
+                headers.push(comp.codigo_componente)
+            })
+        })
+
+        // Build data rows
+        rows = data.alunos.map((aluno, index) => {
+            const row: any[] = [
+                index + 1,
+                aluno.nome_completo
+            ]
+
+            disciplineGroups.forEach(group => {
+                group.componentes.forEach(comp => {
+                    // Use component id for grade lookup to avoid conflicts
+                    const nota = aluno.notas[comp.id]
+                    row.push(nota !== undefined ? nota : '')
+                })
+            })
+
+            return row
+        })
+
+    } else if (isAllTrimesters) {
         // Get components for each trimestre
         const componentes1T = data.componentes.filter(c => c.trimestre === 1)
         const componentes2T = data.componentes.filter(c => c.trimestre === 2)
@@ -274,7 +529,6 @@ export function generateCSV(data: MiniPautaData): void {
                 const nota = trimestre1?.notas[c.codigo_componente]
                 row.push(nota !== undefined ? nota : '')
             })
-            row.push(trimestre1?.nota_final ?? '')
 
             // 2º Trimestre
             const trimestre2 = aluno.trimestres?.[2]
@@ -282,7 +536,6 @@ export function generateCSV(data: MiniPautaData): void {
                 const nota = trimestre2?.notas[c.codigo_componente]
                 row.push(nota !== undefined ? nota : '')
             })
-            row.push(trimestre2?.nota_final ?? '')
 
             // 3º Trimestre
             const trimestre3 = aluno.trimestres?.[3]
@@ -290,27 +543,22 @@ export function generateCSV(data: MiniPautaData): void {
                 const nota = trimestre3?.notas[c.codigo_componente]
                 row.push(nota !== undefined ? nota : '')
             })
-            row.push(trimestre3?.nota_final ?? '')
 
             return row
         })
     } else {
-        // Headers for single-trimester layout (without Nº Processo)
+        // Headers for single-trimester layout - MATCH PREVIEW (no Nota Final or Classificação)
         headers = [
             'Nº',
             'Nome do Aluno',
-            ...data.componentes.map(c => `${c.codigo_componente} (${c.peso_percentual}%)`),
-            'Nota Final',
-            'Classificação'
+            ...data.componentes.map(c => `${c.codigo_componente} (${c.peso_percentual}%)`)
         ]
 
-        // Data rows for single-trimester layout (without Nº Processo)
+        // Data rows for single-trimester layout - MATCH PREVIEW (no Nota Final or Classificação)
         rows = data.alunos.map((aluno, index) => [
             index + 1,
             aluno.nome_completo,
-            ...data.componentes.map(c => aluno.notas[c.codigo_componente] ?? ''),
-            aluno.nota_final ?? '',
-            aluno.classificacao
+            ...data.componentes.map(c => aluno.notas[c.codigo_componente] ?? '')
         ])
     }
 

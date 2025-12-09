@@ -9,10 +9,11 @@ component-meta:
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import { Card, CardBody, CardHeader } from './ui/Card'
+import { Card, CardHeader, CardBody } from './ui/Card'
 import { Button } from './ui/Button'
 import { translateError } from '../utils/translations'
 import { MiniPautaPreview } from './MiniPautaPreview'
+import { OrdenarDisciplinasModal } from './OrdenarDisciplinasModal'
 import { TurmaStatistics } from './TurmaStatistics'
 import { generateMiniPautaPDF } from '../utils/pdfGenerator'
 import { generateMiniPautaExcel, generateCSV } from '../utils/excelGenerator'
@@ -22,6 +23,8 @@ import { FormulaConfig, loadFormulaConfig } from '../utils/formulaConfigUtils'
 import { ConfiguracaoFormulasModal } from './ConfiguracaoFormulasModal'
 import { HeaderConfig, loadHeaderConfig } from '../utils/headerConfigUtils'
 import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
+import { GradeColorConfig, loadGradeColorConfig } from '../utils/gradeColorConfigUtils'
+import { ConfiguracaoCoresModal } from './ConfiguracaoCoresModal'
 
 interface Turma {
     id: string
@@ -35,6 +38,7 @@ interface Disciplina {
     id: string
     nome: string
     codigo_disciplina: string
+    ordem?: number
 }
 
 interface ComponenteAvaliacao {
@@ -45,6 +49,8 @@ interface ComponenteAvaliacao {
     is_calculated?: boolean
     formula_expression?: string
     depends_on_components?: string[]
+    disciplina_nome?: string  // For grouping in Primary Education format
+    disciplina_ordem?: number  // For ordering disciplines in Primary Education format
 }
 
 interface TrimestreData {
@@ -98,6 +104,7 @@ export const ReportsPage: React.FC = () => {
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
+    const [selectedTurmaData, setSelectedTurmaData] = useState<Turma | null>(null)
     const [selectedDisciplina, setSelectedDisciplina] = useState<string>('')
     const [trimestre, setTrimestre] = useState<1 | 2 | 3 | 'all'>(1)
     const [loadingData, setLoadingData] = useState(false)
@@ -108,6 +115,14 @@ export const ReportsPage: React.FC = () => {
     const [showConfigModal, setShowConfigModal] = useState(false)
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig | null>(null)
     const [showHeaderConfigModal, setShowHeaderConfigModal] = useState(false)
+    const [showOrdenarDisciplinasModal, setShowOrdenarDisciplinasModal] = useState(false)
+    const [colorConfig, setColorConfig] = useState<GradeColorConfig | null>(null)
+    const [showColorConfigModal, setShowColorConfigModal] = useState(false)
+
+    // Detect if selected turma is Primary Education
+    const isPrimaryEducation = selectedTurmaData?.nivel_ensino?.toLowerCase().includes('primário') ||
+        selectedTurmaData?.nivel_ensino?.toLowerCase().includes('primario') ||
+        false
 
     useEffect(() => {
         loadTurmas()
@@ -115,12 +130,29 @@ export const ReportsPage: React.FC = () => {
 
     useEffect(() => {
         if (selectedTurma) {
+            loadTurmaDetails()
             loadDisciplinas()
         } else {
+            setSelectedTurmaData(null)
             setDisciplinas([])
             setSelectedDisciplina('')
         }
     }, [selectedTurma])
+
+    // Reset selections when switching between Primary/Secondary education
+    useEffect(() => {
+        if (isPrimaryEducation) {
+            // For Primary Education, default to trimestre 1 (no 'all' option)
+            if (trimestre === 'all') {
+                setTrimestre(1)
+            }
+        } else {
+            // For Secondary Education, reset discipline if 'all' was selected (not valid for Secondary)
+            if (selectedDisciplina === 'all') {
+                setSelectedDisciplina('')
+            }
+        }
+    }, [isPrimaryEducation])
 
     useEffect(() => {
         if (selectedTurma && selectedDisciplina) {
@@ -132,7 +164,8 @@ export const ReportsPage: React.FC = () => {
 
     useEffect(() => {
         loadHeaderConfiguration()
-    }, [])
+        loadColorConfiguration()
+    }, [selectedTurma])
 
     const loadTurmas = async () => {
         try {
@@ -149,7 +182,7 @@ export const ReportsPage: React.FC = () => {
 
             const { data, error } = await supabase
                 .from('turmas')
-                .select('id, nome, ano_lectivo, codigo_turma')
+                .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
                 .eq('professor_id', professor.id)
                 .order('nome')
 
@@ -161,13 +194,28 @@ export const ReportsPage: React.FC = () => {
         }
     }
 
+    const loadTurmaDetails = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('turmas')
+                .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
+                .eq('id', selectedTurma)
+                .single()
+
+            if (error) throw error
+            setSelectedTurmaData(data)
+        } catch (err) {
+            console.error('Error loading turma details:', err)
+        }
+    }
+
     const loadDisciplinas = async () => {
         try {
             const { data, error } = await supabase
                 .from('disciplinas')
-                .select('id, nome, codigo_disciplina')
+                .select('id, nome, codigo_disciplina, ordem')
                 .eq('turma_id', selectedTurma)
-                .order('nome')
+                .order('ordem')
 
             if (error) throw error
             setDisciplinas(data || [])
@@ -203,42 +251,114 @@ export const ReportsPage: React.FC = () => {
             }
             const classe = extractClasse(turmaData.nome)
 
-            // Load disciplina details
-            const { data: disciplinaData, error: disciplinaError } = await supabase
-                .from('disciplinas')
-                .select('id, nome, codigo_disciplina')
-                .eq('id', selectedDisciplina)
-                .single()
+            // Check if this is "All Disciplines" mode for Primary Education
+            const isAllDisciplines = selectedDisciplina === 'all'
+            const isPrimary = turmaData.nivel_ensino?.toLowerCase().includes('primário') ||
+                turmaData.nivel_ensino?.toLowerCase().includes('primario')
 
-            if (disciplinaError) throw disciplinaError
+            // Load disciplina details (skip if all disciplines mode)
+            let disciplinaData: any = null
+            if (!isAllDisciplines) {
+                const { data, error: disciplinaError } = await supabase
+                    .from('disciplinas')
+                    .select('id, nome, codigo_disciplina')
+                    .eq('id', selectedDisciplina)
+                    .single()
+
+                if (disciplinaError) throw disciplinaError
+                disciplinaData = data
+            } else {
+                // For "all disciplines" mode, create a placeholder
+                disciplinaData = {
+                    id: 'all',
+                    nome: 'Todas as Disciplinas',
+                    codigo_disciplina: 'ALL'
+                }
+            }
 
             // Load componentes based on mode
             let componentesData: any[]
 
-            if (trimestre === 'all') {
+            if (isAllDisciplines && isPrimary) {
+                // PRIMARY EDUCATION - ALL DISCIPLINES MODE
+                // Load components from ALL disciplines for the selected trimestre
+                const { data, error: componentesError } = await supabase
+                    .from('componentes_avaliacao')
+                    .select(`
+                        id, 
+                        codigo_componente, 
+                        nome, 
+                        peso_percentual, 
+                        trimestre, 
+                        is_calculated, 
+                        formula_expression, 
+                        depends_on_components,
+                        disciplinas!inner(nome, ordem)
+                    `)
+                    .eq('turma_id', selectedTurma)
+                    .eq('trimestre', trimestre)
+                    .order('disciplinas(ordem)')
+                    .order('ordem')
+
+                if (componentesError) throw componentesError
+                // Map the nested disciplina name and ordem to flat properties
+                componentesData = (data || []).map((comp: any) => ({
+                    ...comp,
+                    disciplina_nome: comp.disciplinas?.nome,
+                    disciplina_ordem: comp.disciplinas?.ordem
+                }))
+            } else if (trimestre === 'all') {
                 // Load ALL components from all trimesters (including calculated components for display in reports)
                 const { data, error: componentesError } = await supabase
                     .from('componentes_avaliacao')
-                    .select('id, codigo_componente, nome, peso_percentual, trimestre, is_calculated, formula_expression, depends_on_components')
+                    .select(`
+                        id, 
+                        codigo_componente, 
+                        nome, 
+                        peso_percentual, 
+                        trimestre, 
+                        is_calculated, 
+                        formula_expression, 
+                        depends_on_components,
+                        disciplinas!inner(nome)
+                    `)
                     .eq('disciplina_id', selectedDisciplina)
                     .eq('turma_id', selectedTurma)
                     .order('trimestre')
                     .order('ordem')
 
                 if (componentesError) throw componentesError
-                componentesData = data || []
+                // Map the nested disciplina name to a flat property
+                componentesData = (data || []).map((comp: any) => ({
+                    ...comp,
+                    disciplina_nome: comp.disciplinas?.nome
+                }))
             } else {
                 // Load components for specific trimestre (including calculated components for display in reports)
                 const { data, error: componentesError } = await supabase
                     .from('componentes_avaliacao')
-                    .select('id, codigo_componente, nome, peso_percentual, trimestre, is_calculated, formula_expression, depends_on_components')
+                    .select(`
+                        id, 
+                        codigo_componente, 
+                        nome, 
+                        peso_percentual, 
+                        trimestre, 
+                        is_calculated, 
+                        formula_expression, 
+                        depends_on_components,
+                        disciplinas!inner(nome)
+                    `)
                     .eq('disciplina_id', selectedDisciplina)
                     .eq('turma_id', selectedTurma)
                     .eq('trimestre', trimestre)
                     .order('ordem')
 
                 if (componentesError) throw componentesError
-                componentesData = data || []
+                // Map the nested disciplina name to a flat property
+                componentesData = (data || []).map((comp: any) => ({
+                    ...comp,
+                    disciplina_nome: comp.disciplinas?.nome
+                }))
             }
 
             if (!componentesData || componentesData.length === 0) {
@@ -264,12 +384,108 @@ export const ReportsPage: React.FC = () => {
                 return
             }
 
-            // Load MT configuration
-            const config = await loadFormulaConfig(selectedDisciplina, selectedTurma, 'MT')
-            setMtConfig(config)
+            // Load MT configuration (skip if "all disciplines" mode)
+            if (selectedDisciplina !== 'all') {
+                const config = await loadFormulaConfig(selectedDisciplina, selectedTurma, 'MT')
+                setMtConfig(config)
+            } else {
+                setMtConfig(null)
+            }
 
-            // Handle ALL TRIMESTERS mode
-            if (trimestre === 'all') {
+
+            // Handle ALL DISCIPLINES mode (Primary Education)
+            if (isAllDisciplines && isPrimary) {
+                // Load notas for all components in the selected trimestre
+                const { data: notasData, error: notasError } = await supabase
+                    .from('notas')
+                    .select('aluno_id, componente_id, valor')
+                    .eq('turma_id', selectedTurma)
+                    .eq('trimestre', trimestre)
+                    .in('componente_id', componentesData.map(c => c.id))
+
+                if (notasError) throw notasError
+
+                // Process data: organize by student with all disciplines
+                const alunosComNotas = alunosData.map(aluno => {
+                    const notasAluno = notasData?.filter(n => n.aluno_id === aluno.id) || []
+
+                    // Build notas map by component ID (not code, since codes can repeat across disciplines)
+                    const notasMap: Record<string, number> = {}
+                    notasAluno.forEach(nota => {
+                        const componente = componentesData.find(c => c.id === nota.componente_id)
+                        if (componente) {
+                            // Use component ID as key to avoid conflicts
+                            notasMap[componente.id] = nota.valor
+                        }
+                    })
+
+                    // Calculate values for calculated components
+                    componentesData.forEach(componente => {
+                        if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
+                            const dependencyValues: Record<string, number> = {}
+
+                            componente.depends_on_components.forEach((depId: string) => {
+                                const depComponent = componentesData.find(c => c.id === depId)
+                                if (depComponent) {
+                                    // Look up by ID
+                                    const value = notasMap[depComponent.id]
+                                    if (value !== undefined) {
+                                        dependencyValues[depComponent.codigo_componente] = value
+                                    } else {
+                                        dependencyValues[depComponent.codigo_componente] = 0
+                                    }
+                                }
+                            })
+
+                            if (Object.keys(dependencyValues).length > 0) {
+                                try {
+                                    const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
+                                    // Store by ID
+                                    notasMap[componente.id] = Math.round(calculatedValue * 100) / 100
+                                } catch (error) {
+                                    console.error(`Error calculating component ${componente.codigo_componente}:`, error)
+                                }
+                            }
+                        }
+                    })
+
+                    return {
+                        numero_processo: aluno.numero_processo,
+                        nome_completo: aluno.nome_completo,
+                        notas: notasMap,
+                        nota_final: undefined,
+                        classificacao: 'N/A',
+                        aprovado: false
+                    }
+                })
+
+                // Calculate statistics (using average of all component grades)
+                const notasFinais = alunosComNotas.map(a => {
+                    const notas = Object.values(a.notas).filter(n => n > 0)
+                    return notas.length > 0 ? notas.reduce((sum, n) => sum + n, 0) / notas.length : 0
+                }).filter(n => n > 0)
+                const estatisticas = calculateStatistics(notasFinais)
+
+                // Load escola info (optional)
+                const { data: escolaData } = await supabase
+                    .from('escolas')
+                    .select('nome, provincia, municipio')
+                    .limit(1)
+                    .single()
+
+                setMiniPautaData({
+                    turma: turmaData,
+                    disciplina: disciplinaData,
+                    trimestre,
+                    nivel_ensino: turmaData.nivel_ensino,
+                    classe,
+                    alunos: alunosComNotas,
+                    componentes: componentesData,
+                    estatisticas,
+                    escola: escolaData || undefined
+                })
+
+            } else if (trimestre === 'all') {
                 // Load notas from all trimestres
                 const { data: allNotasData, error: notasError } = await supabase
                     .from('notas')
@@ -563,6 +779,17 @@ export const ReportsPage: React.FC = () => {
         }
     }
 
+    const loadColorConfiguration = async () => {
+        try {
+            console.log('Loading color configuration for turma:', selectedTurma)
+            const config = await loadGradeColorConfig(selectedTurma || undefined)
+            console.log('Loaded color config:', config)
+            setColorConfig(config)
+        } catch (err) {
+            console.error('Error loading color config:', err)
+        }
+    }
+
     const handleGeneratePDF = async () => {
         if (!miniPautaData) {
             setError('Carregue os dados primeiro')
@@ -570,7 +797,7 @@ export const ReportsPage: React.FC = () => {
         }
 
         try {
-            await generateMiniPautaPDF(miniPautaData, headerConfig)
+            await generateMiniPautaPDF(miniPautaData, headerConfig, colorConfig)
             setSuccess('PDF gerado com sucesso!')
             setTimeout(() => setSuccess(null), 3000)
         } catch (err) {
@@ -636,18 +863,30 @@ export const ReportsPage: React.FC = () => {
                 <CardHeader>
                     <div className="flex items-center justify-between">
                         <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
-                        {selectedTurma && selectedDisciplina && (
-                            <button
-                                onClick={() => setShowConfigModal(true)}
-                                className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                Configurar Fórmulas
-                            </button>
-                        )}
+                        <div className="flex items-center gap-2">
+                            {selectedTurma && (
+                                <button
+                                    onClick={() => setShowOrdenarDisciplinasModal(true)}
+                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                    </svg>
+                                    Ordenar Disciplinas
+                                </button>
+                            )}
+                            {selectedTurma && (
+                                <button
+                                    onClick={() => setShowColorConfigModal(true)}
+                                    className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                    </svg>
+                                    Configurar Cores
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
                 <CardBody>
@@ -677,6 +916,10 @@ export const ReportsPage: React.FC = () => {
                                 disabled={!selectedTurma || disciplinas.length === 0}
                             >
                                 <option value="">Selecione uma disciplina</option>
+                                {/* For Primary Education, show "All Disciplines" option */}
+                                {isPrimaryEducation && (
+                                    <option value="all">Todas as Disciplinas</option>
+                                )}
                                 {disciplinas.map((disciplina) => (
                                     <option key={disciplina.id} value={disciplina.id}>
                                         {disciplina.nome}
@@ -698,7 +941,10 @@ export const ReportsPage: React.FC = () => {
                                 <option value={1}>1º Trimestre</option>
                                 <option value={2}>2º Trimestre</option>
                                 <option value={3}>3º Trimestre</option>
-                                <option value="all">Todos os Trimestres</option>
+                                {/* For Secondary Education, show "All Trimesters" option */}
+                                {!isPrimaryEducation && (
+                                    <option value="all">Todos os Trimestres</option>
+                                )}
                             </select>
                         </div>
 
@@ -772,7 +1018,7 @@ export const ReportsPage: React.FC = () => {
                             </Button>
                         </div>
                     </div>
-                    <MiniPautaPreview data={miniPautaData} loading={loadingData} />
+                    <MiniPautaPreview data={miniPautaData} loading={loadingData} colorConfig={colorConfig} />
                 </div>
             )}
 
@@ -806,6 +1052,32 @@ export const ReportsPage: React.FC = () => {
                     setShowHeaderConfigModal(false)
                     loadHeaderConfiguration()
                 }}
+            />
+
+            {/* Ordenar Disciplinas Modal */}
+            {showOrdenarDisciplinasModal && (
+                <OrdenarDisciplinasModal
+                    turmaId={selectedTurma}
+                    onClose={() => setShowOrdenarDisciplinasModal(false)}
+                    onSave={() => {
+                        setShowOrdenarDisciplinasModal(false)
+                        loadDisciplinas()
+                    }}
+                />
+            )}
+
+            {/* Color Configuration Modal */}
+            <ConfiguracaoCoresModal
+                isOpen={showColorConfigModal}
+                onClose={() => setShowColorConfigModal(false)}
+                onSave={async () => {
+                    console.log('Color config saved, reloading...')
+                    await loadColorConfiguration()
+                    setShowColorConfigModal(false)
+                }}
+                currentConfig={colorConfig}
+                nivelEnsino={selectedTurmaData?.nivel_ensino}
+                turmaId={selectedTurma}
             />
         </div>
     )

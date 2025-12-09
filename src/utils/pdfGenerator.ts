@@ -2,10 +2,11 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import { HeaderConfig, getOrgaoEducacao } from './headerConfigUtils'
 import { imageUrlToBase64, getImageFormat } from './imageUtils'
+import { GradeColorConfig, getGradeColorFromConfig, hexToRGB } from './gradeColorConfigUtils'
 
 interface TrimestreData {
     notas: Record<string, number>
-    nota_final?: number  // Optional - only if NF component configured
+    nota_final?: number
 }
 
 interface MiniPautaData {
@@ -26,7 +27,7 @@ interface MiniPautaData {
         numero_processo: string
         nome_completo: string
         notas: Record<string, number>
-        nota_final?: number  // Optional - only if NF component configured
+        nota_final?: number
         classificacao: string
         trimestres?: {
             1?: TrimestreData
@@ -35,11 +36,14 @@ interface MiniPautaData {
         }
     }>
     componentes: Array<{
+        id: string  // Component ID for unique identification
         codigo_componente: string
         nome: string
         peso_percentual: number
-        trimestre?: number // Optional: which trimestre this component belongs to
+        trimestre?: number
         is_calculated?: boolean
+        disciplina_nome?: string
+        disciplina_ordem?: number
     }>
     estatisticas: {
         total_alunos: number
@@ -58,96 +62,55 @@ interface MiniPautaData {
 }
 
 /**
- * Determines the RGB color for a grade based on educational level, class, and component type
- * Returns [R, G, B] array for jsPDF
+ * Determines the RGB color for a grade based on configuration
  */
 const getGradeColorRGB = (
     nota: number,
     nivelEnsino: string | undefined,
     classe: string | undefined,
-    isCalculated: boolean
+    isCalculated: boolean,
+    config: GradeColorConfig | null
 ): [number, number, number] => {
-    // Extract class number from classe string (e.g., "5ª Classe" -> 5)
-    const classeNumber = classe ? parseInt(classe.match(/\d+/)?.[0] || '0') : 0
-
-    // Ensino Primário (Primary Education)
-    if (nivelEnsino?.toLowerCase().includes('primário') || nivelEnsino?.toLowerCase().includes('primario')) {
-        // For 5ª and 6ª Classe
-        if (classeNumber >= 5 && classeNumber <= 6) {
-            // Calculated components (MFD, MF): negative 0-4.44, positive 4.45-10
-            if (isCalculated) {
-                return nota <= 4.44 ? [220, 38, 38] : [37, 99, 235] // red-600 : blue-600
-            }
-            // Regular components: negative 0-4.44, positive 4.45-10
-            return nota <= 4.44 ? [220, 38, 38] : [37, 99, 235]
-        }
-        // For classes below 5ª Classe
-        else if (classeNumber > 0 && classeNumber < 5) {
-            // Only calculated components get negative color (0-4.44)
-            if (isCalculated) {
-                return nota <= 4.44 ? [220, 38, 38] : [37, 99, 235]
-            }
-            // Other fields remain blue
-            return [37, 99, 235]
-        }
-    }
-
-    // Ensino Secundário and Escolas Tecnicas (Secondary and Technical Schools)
-    // Default behavior for other educational levels
-    // Calculated components (MFD, MF): negative 0-9.44, positive 9.45-20
-    if (isCalculated) {
-        return nota <= 9.44 ? [220, 38, 38] : [37, 99, 235]
-    }
-    // Regular components: negative 0-9.99, positive 10-20
-    return nota < 10 ? [220, 38, 38] : [37, 99, 235]
+    const result = getGradeColorFromConfig(nota, nivelEnsino, classe, isCalculated, config)
+    return hexToRGB(result.color)
 }
 
-export async function generateMiniPautaPDF(data: MiniPautaData, headerConfig?: HeaderConfig | null): Promise<void> {
-    const doc = new jsPDF({
-        orientation: 'landscape',
-        unit: 'mm',
-        format: 'a4'
-    })
-
-    const pageWidth = doc.internal.pageSize.getWidth()
-    const pageHeight = doc.internal.pageSize.getHeight()
-
+/**
+ * Renders the PDF header (logo, school info, etc.)
+ */
+async function renderPDFHeader(
+    doc: jsPDF,
+    data: MiniPautaData,
+    headerConfig: HeaderConfig | null | undefined,
+    pageWidth: number
+): Promise<number> {
     let currentY = 15
 
-    // Render configurable header
     if (headerConfig) {
         // Logo (if configured)
         if (headerConfig.logo_url) {
             try {
-                // Convert image to Base64 for PDF rendering
                 const base64Image = await imageUrlToBase64(headerConfig.logo_url)
                 const imageFormat = getImageFormat(headerConfig.logo_url)
 
-                // Calculate logo dimensions with better scaling
-                // Default to smaller size (30mm max instead of 50mm)
-                const maxLogoSize = 30 // Maximum size in mm
+                const maxLogoSize = 30
                 const logoWidthPx = headerConfig.logo_width || 50
                 const logoHeightPx = headerConfig.logo_height || 50
 
-                // Better conversion: 1px ≈ 0.26mm (96 DPI standard)
                 let logoWidth = logoWidthPx * 0.26
                 let logoHeight = logoHeightPx * 0.26
 
-                // Scale down if too large
                 if (logoWidth > maxLogoSize || logoHeight > maxLogoSize) {
                     const scale = Math.min(maxLogoSize / logoWidth, maxLogoSize / logoHeight)
                     logoWidth *= scale
                     logoHeight *= scale
                 }
 
-                // Center the logo
                 const logoX = (pageWidth - logoWidth) / 2
-
                 doc.addImage(base64Image, imageFormat, logoX, currentY, logoWidth, logoHeight)
-                currentY += logoHeight + 3 // Add spacing after logo
+                currentY += logoHeight + 3
             } catch (err) {
                 console.error('Error adding logo to PDF:', err)
-                // Continue without logo if there's an error
             }
         }
 
@@ -155,19 +118,16 @@ export async function generateMiniPautaPDF(data: MiniPautaData, headerConfig?: H
         doc.setFontSize(fontSize)
         doc.setFont('helvetica', 'normal')
 
-        // República de Angola
         if (headerConfig.mostrar_republica && headerConfig.texto_republica) {
             doc.text(headerConfig.texto_republica, pageWidth / 2, currentY, { align: 'center' })
             currentY += fontSize * 0.5
         }
 
-        // Governo Provincial
         if (headerConfig.mostrar_governo_provincial && headerConfig.provincia) {
             doc.text(`Governo Provincial da ${headerConfig.provincia}`, pageWidth / 2, currentY, { align: 'center' })
             currentY += fontSize * 0.5
         }
 
-        // Órgão de Educação (based on nivel_ensino)
         if (headerConfig.mostrar_orgao_educacao && headerConfig.nivel_ensino) {
             const orgaoText = getOrgaoEducacao(
                 headerConfig.nivel_ensino,
@@ -178,24 +138,20 @@ export async function generateMiniPautaPDF(data: MiniPautaData, headerConfig?: H
             currentY += fontSize * 0.5
         }
 
-        // Nome da Escola
         doc.text(headerConfig.nome_escola, pageWidth / 2, currentY, { align: 'center' })
         currentY += fontSize * 0.7
 
-        // MINI-PAUTA (larger font)
         const miniPautaFontSize = headerConfig.tamanho_fonte_mini_pauta || 16
         doc.setFontSize(miniPautaFontSize)
         doc.setFont('helvetica', 'bold')
         doc.text('MINI-PAUTA', pageWidth / 2, currentY, { align: 'center' })
         currentY += miniPautaFontSize * 0.6
     } else {
-        // Default header (fallback)
         doc.setFontSize(16)
         doc.setFont('helvetica', 'bold')
         doc.text('MINI-PAUTA', pageWidth / 2, currentY, { align: 'center' })
         currentY += 7
 
-        // School info
         if (data.escola) {
             doc.setFontSize(10)
             doc.setFont('helvetica', 'normal')
@@ -208,272 +164,27 @@ export async function generateMiniPautaPDF(data: MiniPautaData, headerConfig?: H
         }
     }
 
-    // Class and subject info
-    doc.setFontSize(11)
-    doc.setFont('helvetica', 'bold')
-    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
-    doc.text(`Disciplina: ${data.disciplina.nome}`, 14, currentY + 11)
-    doc.text(`Trimestre: ${data.trimestre === 'all' ? 'Todos' : data.trimestre + 'º'}`, 14, currentY + 17)
-    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+    return currentY
+}
 
-    const tableStartY = currentY + 23
+/**
+ * Adds footer to PDF page
+ */
+function addPDFFooter(doc: jsPDF, pageWidth: number, pageHeight: number) {
+    const pageCount = (doc as any).internal.getNumberOfPages()
+    const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber
 
-    // Check if all-trimester mode
-    const isAllTrimesters = data.trimestre === 'all' && data.alunos[0]?.trimestres
+    doc.setFontSize(8)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(0, 0, 0)
+    doc.text(`Página ${currentPage} de ${pageCount}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-PT')}`, 14, pageHeight - 10)
+}
 
-    let headers: string[]
-    let tableData: any[][]
-
-    if (isAllTrimesters) {
-        // Get components for each trimestre
-        const componentes1T = data.componentes.filter(c => c.trimestre === 1)
-        const componentes2T = data.componentes.filter(c => c.trimestre === 2)
-        const componentes3T = data.componentes.filter(c => c.trimestre === 3)
-
-        // Headers for all-trimester layout (without Nº Processo)
-        headers = [
-            'Nº',
-            'Nome',
-            // 1º Trimestre
-            ...componentes1T.map(c => c.codigo_componente),
-            // 2º Trimestre
-            ...componentes2T.map(c => c.codigo_componente),
-            // 3º Trimestre
-            ...componentes3T.map(c => c.codigo_componente)
-        ]
-
-        // Table data for all-trimester layout (without Nº Processo)
-        tableData = data.alunos.map((aluno, index) => {
-            const row = [
-                (index + 1).toString(),
-                aluno.nome_completo
-            ]
-
-            // 1º Trimestre
-            const trimestre1 = aluno.trimestres?.[1]
-            componentes1T.forEach(c => {
-                const nota = trimestre1?.notas[c.codigo_componente]
-                row.push(nota !== undefined ? nota.toFixed(1) : '-')
-            })
-            row.push(trimestre1?.nota_final ? trimestre1.nota_final.toFixed(1) : '-')
-
-            // 2º Trimestre
-            const trimestre2 = aluno.trimestres?.[2]
-            componentes2T.forEach(c => {
-                const nota = trimestre2?.notas[c.codigo_componente]
-                row.push(nota !== undefined ? nota.toFixed(1) : '-')
-            })
-            row.push(trimestre2?.nota_final ? trimestre2.nota_final.toFixed(1) : '-')
-
-            // 3º Trimestre
-            const trimestre3 = aluno.trimestres?.[3]
-            componentes3T.forEach(c => {
-                const nota = trimestre3?.notas[c.codigo_componente]
-                row.push(nota !== undefined ? nota.toFixed(1) : '-')
-            })
-            row.push(trimestre3?.nota_final ? trimestre3.nota_final.toFixed(1) : '-')
-
-            return row
-        })
-    } else {
-        // Headers for single-trimester layout (without Nº Processo)
-        headers = [
-            'Nº',
-            'Nome do Aluno',
-            ...data.componentes.map(c => `${c.codigo_componente}\n(${c.peso_percentual}%)`),
-            'Nota Final',
-            'Classificação'
-        ]
-
-        // Table data for single-trimester layout (without Nº Processo)
-        tableData = data.alunos.map((aluno, index) => [
-            (index + 1).toString(),
-            aluno.nome_completo,
-            ...data.componentes.map(c => {
-                const nota = aluno.notas[c.codigo_componente]
-                return nota !== undefined ? nota.toFixed(2) : '-'
-            }),
-            aluno.nota_final !== undefined ? aluno.nota_final.toFixed(2) : '-',
-            aluno.classificacao
-        ])
-    }
-
-    // Generate table
-    if (isAllTrimesters) {
-        // For all-trimester mode, we need two header rows
-        const componentes1T = data.componentes.filter(c => c.trimestre === 1)
-        const componentes2T = data.componentes.filter(c => c.trimestre === 2)
-        const componentes3T = data.componentes.filter(c => c.trimestre === 3)
-
-        // First header row: Trimester groups (without Nº Processo)
-        const headerRow1 = [
-            { content: 'Nº', rowSpan: 2 },
-            { content: 'Nome', rowSpan: 2 },
-            { content: '1º Trimestre', colSpan: componentes1T.length },
-            { content: '2º Trimestre', colSpan: componentes2T.length },
-            { content: '3º Trimestre', colSpan: componentes3T.length }
-        ]
-
-        // Second header row: Component names and MT
-        const headerRow2 = [
-            // 1º Trimestre components
-            ...componentes1T.map(c => c.codigo_componente),
-            // 2º Trimestre components
-            ...componentes2T.map(c => c.codigo_componente),
-            // 3º Trimestre components
-            ...componentes3T.map(c => c.codigo_componente)
-        ]
-
-        autoTable(doc, {
-            startY: tableStartY,
-            head: [headerRow1, headerRow2],
-            body: tableData,
-            theme: 'grid',
-            styles: {
-                fontSize: 7,
-                cellPadding: 1.5,
-                overflow: 'linebreak'
-            },
-            headStyles: {
-                fillColor: [41, 128, 185],
-                textColor: 255,
-                fontStyle: 'bold',
-                halign: 'center',
-                valign: 'middle'
-            },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 8 },
-                1: { halign: 'left', cellWidth: 40 }
-            },
-            didParseCell: (hookData: any) => {
-                // Apply color and center alignment to grade cells
-                if (hookData.section === 'body' && hookData.column.index >= 2) {
-                    // Center align all grade columns
-                    hookData.cell.styles.halign = 'center'
-
-                    const cellValue = hookData.cell.raw
-                    if (cellValue && cellValue !== '-') {
-                        const nota = parseFloat(cellValue)
-                        if (!isNaN(nota)) {
-                            // Determine which component this column represents
-                            const colIndex = hookData.column.index - 2 // Offset for Nº and Nome
-                            const allComponents = [...componentes1T, ...componentes2T, ...componentes3T]
-                            const component = allComponents[colIndex]
-
-                            if (component) {
-                                const color = getGradeColorRGB(
-                                    nota,
-                                    data.nivel_ensino,
-                                    data.classe,
-                                    component.is_calculated || false
-                                )
-                                hookData.cell.styles.textColor = color
-                            }
-                        }
-                    }
-                }
-            },
-            didDrawPage: (data) => {
-                // Footer
-                const pageCount = (doc as any).internal.getNumberOfPages()
-                const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber
-
-                doc.setFontSize(8)
-                doc.setFont('helvetica', 'normal')
-                doc.text(
-                    `Página ${currentPage} de ${pageCount}`,
-                    pageWidth / 2,
-                    pageHeight - 10,
-                    { align: 'center' }
-                )
-
-                doc.text(
-                    `Gerado em: ${new Date().toLocaleDateString('pt-PT')}`,
-                    14,
-                    pageHeight - 10
-                )
-            }
-        })
-    } else {
-        // Single trimester mode - original table
-        autoTable(doc, {
-            startY: 53,
-            head: [headers],
-            body: tableData,
-            theme: 'grid',
-            styles: {
-                fontSize: 8,
-                cellPadding: 2,
-                overflow: 'linebreak'
-            },
-            headStyles: {
-                fillColor: [41, 128, 185],
-                textColor: 255,
-                fontStyle: 'bold',
-                halign: 'center'
-            },
-            columnStyles: {
-                0: { halign: 'center', cellWidth: 10 },
-                1: { halign: 'left', cellWidth: 60 },
-                [headers.length - 2]: { halign: 'center', fontStyle: 'bold' },
-                [headers.length - 1]: { halign: 'center' }
-            },
-            didParseCell: (hookData: any) => {
-                // Apply color and center alignment to grade cells
-                if (hookData.section === 'body' && hookData.column.index >= 2 && hookData.column.index < headers.length - 1) {
-                    // Center align all grade and classification columns
-                    hookData.cell.styles.halign = 'center'
-
-                    // Apply color only to numeric grade cells (not classification)
-                    if (hookData.column.index < headers.length - 2) {
-                        const cellValue = hookData.cell.raw
-                        if (cellValue && cellValue !== '-') {
-                            const nota = parseFloat(cellValue)
-                            if (!isNaN(nota)) {
-                                // Determine which component this column represents
-                                const componentIndex = hookData.column.index - 2 // Offset for Nº and Nome
-                                const component = data.componentes[componentIndex]
-
-                                if (component) {
-                                    const color = getGradeColorRGB(
-                                        nota,
-                                        data.nivel_ensino,
-                                        data.classe,
-                                        component.is_calculated || false
-                                    )
-                                    hookData.cell.styles.textColor = color
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            didDrawPage: (data) => {
-                // Footer
-                const pageCount = (doc as any).internal.getNumberOfPages()
-                const currentPage = (doc as any).internal.getCurrentPageInfo().pageNumber
-
-                doc.setFontSize(8)
-                doc.setFont('helvetica', 'normal')
-                doc.text(
-                    `Página ${currentPage} de ${pageCount}`,
-                    pageWidth / 2,
-                    pageHeight - 10,
-                    { align: 'center' }
-                )
-
-                doc.text(
-                    `Gerado em: ${new Date().toLocaleDateString('pt-PT')}`,
-                    14,
-                    pageHeight - 10
-                )
-            }
-        })
-    }
-
-    // Statistics section
-    const finalY = (doc as any).lastAutoTable.finalY + 10
-
+/**
+ * Adds statistics section to PDF
+ */
+function addPDFStatistics(doc: jsPDF, data: MiniPautaData, finalY: number, pageHeight: number) {
     if (finalY + 30 < pageHeight) {
         doc.setFontSize(10)
         doc.setFont('helvetica', 'bold')
@@ -495,8 +206,12 @@ export async function generateMiniPautaPDF(data: MiniPautaData, headerConfig?: H
             doc.text(stat, 14, finalY + 7 + (index * 5))
         })
     }
+}
 
-    // Signature section
+/**
+ * Adds signature section to PDF
+ */
+function addPDFSignatures(doc: jsPDF, finalY: number, pageWidth: number, pageHeight: number) {
     if (finalY + 60 < pageHeight) {
         const signY = finalY + 50
         doc.setFontSize(9)
@@ -509,9 +224,597 @@ export async function generateMiniPautaPDF(data: MiniPautaData, headerConfig?: H
         doc.text('_____________________________', pageWidth - 70, signY)
         doc.text('Diretor(a) da Escola', pageWidth - 70, signY + 5)
     }
+}
 
-    // Save PDF
-    const trimestreStr = data.trimestre === 'all' ? 'todos' : `${data.trimestre}trim`
+// ============================================================================
+// PRIMARY EDUCATION PDF GENERATION
+// ============================================================================
+
+interface DisciplineGroup {
+    disciplina_nome: string
+    ordem?: number
+    componentes: Array<{ id: string; codigo_componente: string; is_calculated?: boolean }>
+}
+
+function groupComponentsByDiscipline(componentes: MiniPautaData['componentes'], trimestre: number): DisciplineGroup[] {
+    const disciplineMap = new Map<string, DisciplineGroup>()
+
+    componentes.forEach(comp => {
+        if (comp.trimestre === trimestre || !comp.trimestre) {
+            const disciplineName = comp.disciplina_nome || 'Sem Disciplina'
+
+            if (!disciplineMap.has(disciplineName)) {
+                disciplineMap.set(disciplineName, {
+                    disciplina_nome: disciplineName,
+                    ordem: comp.disciplina_ordem,
+                    componentes: []
+                })
+            }
+
+            disciplineMap.get(disciplineName)!.componentes.push({
+                id: comp.id,
+                codigo_componente: comp.codigo_componente,
+                is_calculated: comp.is_calculated
+            })
+        }
+    })
+
+    return Array.from(disciplineMap.values()).sort((a, b) => {
+        if (a.ordem !== undefined && b.ordem !== undefined) {
+            return a.ordem - b.ordem
+        }
+        return a.disciplina_nome.localeCompare(b.disciplina_nome)
+    })
+}
+
+/**
+ * Generates PDF for Primary Education - All Disciplines format
+ * Shows disciplines grouped at the top with their components below
+ */
+async function generatePrimaryEducationAllDisciplinesPDF(
+    data: MiniPautaData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<void> {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    // Render header
+    let currentY = await renderPDFHeader(doc, data, headerConfig, pageWidth)
+
+    // Class info (no discipline line for all-disciplines mode)
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
+    doc.text(`Trimestre: ${data.trimestre}º`, 14, currentY + 11)
+    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+
+    const tableStartY = currentY + 17
+
+    // Group components by discipline
+    const currentTrimestre = (data.trimestre === 'all' ? 1 : data.trimestre) as number
+    const disciplineGroups = groupComponentsByDiscipline(data.componentes, currentTrimestre)
+
+    // Build two-row header
+    // Row 1: Nº (rowSpan 2), Nome (rowSpan 2), Discipline names (colSpan = num components)
+    const headerRow1: any[] = [
+        { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+    ]
+
+    disciplineGroups.forEach((group) => {
+        headerRow1.push({
+            content: group.disciplina_nome,
+            colSpan: group.componentes.length,
+            styles: {
+                halign: 'center',
+                valign: 'middle',
+                fontStyle: 'bold',
+                fillColor: [21, 128, 61] // Darker green for discipline headers
+            }
+        })
+    })
+
+    // Row 2: Component codes only
+    const headerRow2: any[] = []
+    disciplineGroups.forEach(group => {
+        group.componentes.forEach(comp => {
+            headerRow2.push({
+                content: comp.codigo_componente,
+                styles: { halign: 'center', valign: 'middle' }
+            })
+        })
+    })
+
+    // Build table data
+    const tableData = data.alunos.map((aluno, index) => {
+        const row: any[] = [
+            (index + 1).toString(),
+            aluno.nome_completo
+        ]
+
+        disciplineGroups.forEach(group => {
+            group.componentes.forEach(comp => {
+                // Use component id for grade lookup to avoid conflicts
+                const nota = aluno.notas[comp.id]
+                row.push(nota !== undefined ? nota.toFixed(1) : '-')
+            })
+        })
+
+        return row
+    })
+
+    // Generate table with autoTable
+    autoTable(doc, {
+        startY: tableStartY,
+        head: [headerRow1, headerRow2],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 7,
+            cellPadding: 1.5,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [22, 163, 74],  // Green for Primary Education
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle'
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 8 },
+            1: { halign: 'left', cellWidth: 40 }
+        },
+        didParseCell: (hookData: any) => {
+            if (hookData.section === 'body' && hookData.column.index >= 2) {
+                hookData.cell.styles.halign = 'center'
+
+                const cellValue = hookData.cell.raw
+                if (cellValue && cellValue !== '-') {
+                    const nota = parseFloat(cellValue)
+                    if (!isNaN(nota)) {
+                        const colIndex = hookData.column.index - 2
+                        let currentIndex = 0
+                        let component: any = null
+
+                        for (const group of disciplineGroups) {
+                            for (const comp of group.componentes) {
+                                if (currentIndex === colIndex) {
+                                    // Use id to find the correct component
+                                    component = data.componentes.find(c => c.id === comp.id)
+                                    break
+                                }
+                                currentIndex++
+                            }
+                            if (component) break
+                        }
+
+                        if (component) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.nivel_ensino,
+                                data.classe,
+                                component.is_calculated || false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                        }
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    // Statistics and signatures
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    addPDFStatistics(doc, data, finalY, pageHeight)
+    addPDFSignatures(doc, finalY, pageWidth, pageHeight)
+
+    // Save
+    const filename = `mini-pauta_${data.turma.codigo_turma}_todas-disciplinas_${data.trimestre}trim.pdf`
+    doc.save(filename)
+}
+
+/**
+ * Generates PDF for Primary Education - Single Discipline format
+ */
+async function generatePrimaryEducationSingleDisciplinePDF(
+    data: MiniPautaData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<void> {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    let currentY = await renderPDFHeader(doc, data, headerConfig, pageWidth)
+
+    // Class and subject info
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
+    doc.text(`Disciplina: ${data.disciplina.nome}`, 14, currentY + 11)
+    doc.text(`Trimestre: ${data.trimestre}º`, 14, currentY + 17)
+    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+
+    const tableStartY = currentY + 23
+
+    // Simple headers
+    const headers = [
+        'Nº',
+        'Nome do Aluno',
+        ...data.componentes.map(c => `${c.codigo_componente}\n(${c.peso_percentual}%)`)
+    ]
+
+    // Table data
+    const tableData = data.alunos.map((aluno, index) => [
+        (index + 1).toString(),
+        aluno.nome_completo,
+        ...data.componentes.map(c => {
+            const nota = aluno.notas[c.codigo_componente]
+            return nota !== undefined ? nota.toFixed(1) : '-'
+        })
+    ])
+
+    autoTable(doc, {
+        startY: tableStartY,
+        head: [headers],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [22, 163, 74],  // Green for Primary Education
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            1: { halign: 'left', cellWidth: 60 }
+        },
+        didParseCell: (hookData: any) => {
+            if (hookData.section === 'body' && hookData.column.index >= 2) {
+                hookData.cell.styles.halign = 'center'
+
+                const cellValue = hookData.cell.raw
+                if (cellValue && cellValue !== '-') {
+                    const nota = parseFloat(cellValue)
+                    if (!isNaN(nota)) {
+                        const componentIndex = hookData.column.index - 2
+                        const component = data.componentes[componentIndex]
+
+                        if (component) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.nivel_ensino,
+                                data.classe,
+                                component.is_calculated || false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                        }
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    addPDFStatistics(doc, data, finalY, pageHeight)
+    addPDFSignatures(doc, finalY, pageWidth, pageHeight)
+
+    const trimestreStr = `${data.trimestre}trim`
     const filename = `mini-pauta_${data.turma.codigo_turma}_${data.disciplina.codigo_disciplina}_${trimestreStr}.pdf`
     doc.save(filename)
+}
+
+// ============================================================================
+// SECONDARY EDUCATION PDF GENERATION
+// ============================================================================
+
+/**
+ * Generates PDF for Secondary Education - All Trimesters format
+ * Shows trimesters grouped at the top with their components below
+ */
+async function generateSecondaryEducationAllTrimestersPDF(
+    data: MiniPautaData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<void> {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    let currentY = await renderPDFHeader(doc, data, headerConfig, pageWidth)
+
+    // Class and subject info
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
+    doc.text(`Disciplina: ${data.disciplina.nome}`, 14, currentY + 11)
+    doc.text(`Trimestre: Todos`, 14, currentY + 17)
+    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+
+    const tableStartY = currentY + 23
+
+    // Get components for each trimestre
+    const componentes1T = data.componentes.filter(c => c.trimestre === 1)
+    const componentes2T = data.componentes.filter(c => c.trimestre === 2)
+    const componentes3T = data.componentes.filter(c => c.trimestre === 3)
+
+    // Build two-row header
+    const headerRow1: any[] = [
+        { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+    ]
+
+    if (componentes1T.length > 0) {
+        headerRow1.push({
+            content: '1º Trimestre',
+            colSpan: componentes1T.length,
+            styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: [30, 64, 175] }
+        })
+    }
+    if (componentes2T.length > 0) {
+        headerRow1.push({
+            content: '2º Trimestre',
+            colSpan: componentes2T.length,
+            styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: [30, 64, 175] }
+        })
+    }
+    if (componentes3T.length > 0) {
+        headerRow1.push({
+            content: '3º Trimestre',
+            colSpan: componentes3T.length,
+            styles: { halign: 'center', valign: 'middle', fontStyle: 'bold', fillColor: [30, 64, 175] }
+        })
+    }
+
+    // Second row: component codes
+    const headerRow2: any[] = [
+        ...componentes1T.map(c => ({ content: c.codigo_componente, styles: { halign: 'center' } })),
+        ...componentes2T.map(c => ({ content: c.codigo_componente, styles: { halign: 'center' } })),
+        ...componentes3T.map(c => ({ content: c.codigo_componente, styles: { halign: 'center' } }))
+    ]
+
+    // Build table data
+    const tableData = data.alunos.map((aluno, index) => {
+        const row: any[] = [
+            (index + 1).toString(),
+            aluno.nome_completo
+        ]
+
+        // 1º Trimestre
+        const trimestre1 = aluno.trimestres?.[1]
+        componentes1T.forEach(c => {
+            const nota = trimestre1?.notas[c.codigo_componente]
+            row.push(nota !== undefined ? nota.toFixed(1) : '-')
+        })
+
+        // 2º Trimestre
+        const trimestre2 = aluno.trimestres?.[2]
+        componentes2T.forEach(c => {
+            const nota = trimestre2?.notas[c.codigo_componente]
+            row.push(nota !== undefined ? nota.toFixed(1) : '-')
+        })
+
+        // 3º Trimestre
+        const trimestre3 = aluno.trimestres?.[3]
+        componentes3T.forEach(c => {
+            const nota = trimestre3?.notas[c.codigo_componente]
+            row.push(nota !== undefined ? nota.toFixed(1) : '-')
+        })
+
+        return row
+    })
+
+    autoTable(doc, {
+        startY: tableStartY,
+        head: [headerRow1, headerRow2],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 7,
+            cellPadding: 1.5,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [41, 128, 185],  // Blue for Secondary Education
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle'
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 8 },
+            1: { halign: 'left', cellWidth: 40 }
+        },
+        didParseCell: (hookData: any) => {
+            if (hookData.section === 'body' && hookData.column.index >= 2) {
+                hookData.cell.styles.halign = 'center'
+
+                const cellValue = hookData.cell.raw
+                if (cellValue && cellValue !== '-') {
+                    const nota = parseFloat(cellValue)
+                    if (!isNaN(nota)) {
+                        const colIndex = hookData.column.index - 2
+                        const allComponents = [...componentes1T, ...componentes2T, ...componentes3T]
+                        const component = allComponents[colIndex]
+
+                        if (component) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.nivel_ensino,
+                                data.classe,
+                                component.is_calculated || false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                        }
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    addPDFStatistics(doc, data, finalY, pageHeight)
+    addPDFSignatures(doc, finalY, pageWidth, pageHeight)
+
+    const filename = `mini-pauta_${data.turma.codigo_turma}_${data.disciplina.codigo_disciplina}_todos.pdf`
+    doc.save(filename)
+}
+
+/**
+ * Generates PDF for Secondary Education - Single Trimester format
+ */
+async function generateSecondaryEducationSingleTrimesterPDF(
+    data: MiniPautaData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<void> {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    let currentY = await renderPDFHeader(doc, data, headerConfig, pageWidth)
+
+    // Class and subject info
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
+    doc.text(`Disciplina: ${data.disciplina.nome}`, 14, currentY + 11)
+    doc.text(`Trimestre: ${data.trimestre}º`, 14, currentY + 17)
+    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+
+    const tableStartY = currentY + 23
+
+    // Simple headers
+    const headers = [
+        'Nº',
+        'Nome do Aluno',
+        ...data.componentes.map(c => `${c.codigo_componente}\n(${c.peso_percentual}%)`)
+    ]
+
+    // Table data
+    const tableData = data.alunos.map((aluno, index) => [
+        (index + 1).toString(),
+        aluno.nome_completo,
+        ...data.componentes.map(c => {
+            const nota = aluno.notas[c.codigo_componente]
+            return nota !== undefined ? nota.toFixed(1) : '-'
+        })
+    ])
+
+    autoTable(doc, {
+        startY: tableStartY,
+        head: [headers],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [41, 128, 185],  // Blue for Secondary Education
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 10 },
+            1: { halign: 'left', cellWidth: 60 }
+        },
+        didParseCell: (hookData: any) => {
+            if (hookData.section === 'body' && hookData.column.index >= 2) {
+                hookData.cell.styles.halign = 'center'
+
+                const cellValue = hookData.cell.raw
+                if (cellValue && cellValue !== '-') {
+                    const nota = parseFloat(cellValue)
+                    if (!isNaN(nota)) {
+                        const componentIndex = hookData.column.index - 2
+                        const component = data.componentes[componentIndex]
+
+                        if (component) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.nivel_ensino,
+                                data.classe,
+                                component.is_calculated || false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                        }
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+    addPDFStatistics(doc, data, finalY, pageHeight)
+    addPDFSignatures(doc, finalY, pageWidth, pageHeight)
+
+    const trimestreStr = `${data.trimestre}trim`
+    const filename = `mini-pauta_${data.turma.codigo_turma}_${data.disciplina.codigo_disciplina}_${trimestreStr}.pdf`
+    doc.save(filename)
+}
+
+// ============================================================================
+// MAIN EXPORT FUNCTION - Routes to appropriate generator
+// ============================================================================
+
+/**
+ * Main function to generate Mini-Pauta PDF
+ * Routes to the appropriate generator based on education level and mode
+ */
+export async function generateMiniPautaPDF(
+    data: MiniPautaData,
+    headerConfig?: HeaderConfig | null,
+    colorConfig: GradeColorConfig | null = null
+): Promise<void> {
+    // Check if Primary Education
+    const isPrimaryEducation = data.nivel_ensino?.toLowerCase().includes('primário') ||
+        data.nivel_ensino?.toLowerCase().includes('primario')
+
+    // Check if all-trimester mode
+    const isAllTrimesters = data.trimestre === 'all' && data.alunos[0]?.trimestres
+
+    // Check if all disciplines mode (Primary Education only)
+    const isAllDisciplines = data.componentes.length > 0 &&
+        data.componentes.some(c => c.disciplina_nome) &&
+        new Set(data.componentes.map(c => c.disciplina_nome)).size > 1
+
+    console.log('[PDF] Education level:', isPrimaryEducation ? 'Primary' : 'Secondary')
+    console.log('[PDF] Mode:', isAllTrimesters ? 'All Trimesters' : isAllDisciplines ? 'All Disciplines' : 'Single')
+
+    if (isPrimaryEducation) {
+        if (isAllDisciplines) {
+            console.log('[PDF] Using: generatePrimaryEducationAllDisciplinesPDF')
+            await generatePrimaryEducationAllDisciplinesPDF(data, headerConfig, colorConfig)
+        } else {
+            console.log('[PDF] Using: generatePrimaryEducationSingleDisciplinePDF')
+            await generatePrimaryEducationSingleDisciplinePDF(data, headerConfig, colorConfig)
+        }
+    } else {
+        if (isAllTrimesters) {
+            console.log('[PDF] Using: generateSecondaryEducationAllTrimestersPDF')
+            await generateSecondaryEducationAllTrimestersPDF(data, headerConfig, colorConfig)
+        } else {
+            console.log('[PDF] Using: generateSecondaryEducationSingleTrimesterPDF')
+            await generateSecondaryEducationSingleTrimesterPDF(data, headerConfig, colorConfig)
+        }
+    }
 }

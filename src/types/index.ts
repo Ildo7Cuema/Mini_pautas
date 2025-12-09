@@ -76,6 +76,7 @@ export interface Disciplina {
     codigo_disciplina: string;
     carga_horaria?: number;
     descricao?: string;
+    ordem?: number;  // Display order in reports
     created_at: string;
     updated_at: string;
 }
