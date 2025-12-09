@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import JSZip from 'jszip'
 import { HeaderConfig, getOrgaoEducacao } from './headerConfigUtils'
 import { imageUrlToBase64, getImageFormat } from './imageUtils'
 import { GradeColorConfig, getGradeColorFromConfig, hexToRGB } from './gradeColorConfigUtils'
@@ -1034,7 +1035,598 @@ export async function generatePautaGeralPDF(
     addPDFSignatures(doc, finalY, pageWidth, pageHeight)
 
     // Save
-    const filename = `pauta-geral_${data.turma.codigo_turma}_${data.trimestre}trim.pdf`
+}
+
+
+// ============================================================================
+// TERMO DE FREQUÊNCIA DO ALUNO PDF GENERATION
+// ============================================================================
+
+interface ComponenteNota {
+    codigo: string
+    nome: string
+    nota: number | null
+}
+
+interface DisciplinaTermoFrequencia {
+    id: string
+    nome: string
+    codigo_disciplina: string
+    notas_trimestrais: {
+        1: number | null
+        2: number | null
+        3: number | null
+    }
+    // Components separated by trimester - each trimester has its own list
+    componentesPorTrimestre: {
+        1: ComponenteNota[]
+        2: ComponenteNota[]
+        3: ComponenteNota[]
+    }
+    nota_final: number | null
+    classificacao: string
+    transita: boolean
+}
+
+interface TermoFrequenciaData {
+    aluno: {
+        numero_processo: string
+        nome_completo: string
+        data_nascimento?: string
+        genero?: string
+        nome_pai?: string
+        nome_mae?: string
+    }
+    turma: {
+        nome: string
+        ano_lectivo: number
+        codigo_turma: string
+        nivel_ensino: string
+    }
+    disciplinas: DisciplinaTermoFrequencia[]
+    estatisticas: {
+        media_geral: number
+        total_disciplinas: number
+        disciplinas_aprovadas: number
+        disciplinas_reprovadas: number
+        transita: boolean
+    }
+    escola?: {
+        nome: string
+        provincia: string
+        municipio: string
+    }
+}
+
+/**
+ * Renders the PDF header for Termo de Frequência
+ */
+async function renderTermoFrequenciaHeader(
+    doc: jsPDF,
+    data: TermoFrequenciaData,
+    headerConfig: HeaderConfig | null | undefined,
+    pageWidth: number
+): Promise<number> {
+    let currentY = 15
+
+    if (headerConfig) {
+        // Logo (if configured)
+        if (headerConfig.logo_url) {
+            try {
+                const base64Image = await imageUrlToBase64(headerConfig.logo_url)
+                const imageFormat = getImageFormat(headerConfig.logo_url)
+
+                const maxLogoSize = 30
+                const logoWidthPx = headerConfig.logo_width || 50
+                const logoHeightPx = headerConfig.logo_height || 50
+
+                let logoWidth = logoWidthPx * 0.26
+                let logoHeight = logoHeightPx * 0.26
+
+                if (logoWidth > maxLogoSize || logoHeight > maxLogoSize) {
+                    const scale = Math.min(maxLogoSize / logoWidth, maxLogoSize / logoHeight)
+                    logoWidth *= scale
+                    logoHeight *= scale
+                }
+
+                const logoX = (pageWidth - logoWidth) / 2
+                doc.addImage(base64Image, imageFormat, logoX, currentY, logoWidth, logoHeight)
+                currentY += logoHeight + 3
+            } catch (err) {
+                console.error('Error adding logo to PDF:', err)
+            }
+        }
+
+        const fontSize = headerConfig.tamanho_fonte_outros || 10
+        doc.setFontSize(fontSize)
+        doc.setFont('helvetica', 'normal')
+
+        if (headerConfig.mostrar_republica && headerConfig.texto_republica) {
+            doc.text(headerConfig.texto_republica, pageWidth / 2, currentY, { align: 'center' })
+            currentY += fontSize * 0.5
+        }
+
+        if (headerConfig.mostrar_governo_provincial && headerConfig.provincia) {
+            doc.text(`Governo Provincial da ${headerConfig.provincia}`, pageWidth / 2, currentY, { align: 'center' })
+            currentY += fontSize * 0.5
+        }
+
+        if (headerConfig.mostrar_orgao_educacao && headerConfig.nivel_ensino) {
+            const orgaoText = getOrgaoEducacao(
+                headerConfig.nivel_ensino,
+                headerConfig.provincia,
+                headerConfig.municipio
+            )
+            doc.text(orgaoText, pageWidth / 2, currentY, { align: 'center' })
+            currentY += fontSize * 0.5
+        }
+
+        doc.text(headerConfig.nome_escola, pageWidth / 2, currentY, { align: 'center' })
+        currentY += fontSize * 0.7
+
+        const termoFontSize = headerConfig.tamanho_fonte_mini_pauta || 14
+        doc.setFontSize(termoFontSize)
+        doc.setFont('helvetica', 'bold')
+        doc.text('TERMO DE FREQUÊNCIA DO ALUNO', pageWidth / 2, currentY, { align: 'center' })
+        currentY += termoFontSize * 0.6
+    } else {
+        doc.setFontSize(14)
+        doc.setFont('helvetica', 'bold')
+        doc.text('TERMO DE FREQUÊNCIA DO ALUNO', pageWidth / 2, currentY, { align: 'center' })
+        currentY += 7
+
+        if (data.escola) {
+            doc.setFontSize(10)
+            doc.setFont('helvetica', 'normal')
+            doc.text(data.escola.nome, pageWidth / 2, currentY, { align: 'center' })
+            currentY += 5
+            doc.text(`${data.escola.provincia} - ${data.escola.municipio}`, pageWidth / 2, currentY, { align: 'center' })
+            currentY += 7
+        } else {
+            currentY += 7
+        }
+    }
+
+    return currentY
+}
+
+/**
+ * Renders student information section
+ */
+function renderStudentInfo(
+    doc: jsPDF,
+    data: TermoFrequenciaData,
+    startY: number
+): number {
+    let currentY = startY
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text('INFORMAÇÕES DO ALUNO', 14, currentY)
+    currentY += 7
+
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+
+    const infoItems = [
+        { label: 'Nome Completo:', value: data.aluno.nome_completo },
+        { label: 'Número de Processo:', value: data.aluno.numero_processo },
+        { label: 'Turma:', value: data.turma.nome },
+        { label: 'Ano Lectivo:', value: data.turma.ano_lectivo.toString() }
+    ]
+
+    // Add optional fields if available
+    if (data.aluno.data_nascimento) {
+        infoItems.push({ label: 'Data de Nascimento:', value: data.aluno.data_nascimento })
+    }
+    if (data.aluno.genero) {
+        infoItems.push({ label: 'Gênero:', value: data.aluno.genero })
+    }
+    if (data.aluno.nome_pai) {
+        infoItems.push({ label: 'Nome do Pai:', value: data.aluno.nome_pai })
+    }
+    if (data.aluno.nome_mae) {
+        infoItems.push({ label: 'Nome da Mãe:', value: data.aluno.nome_mae })
+    }
+
+    infoItems.forEach(item => {
+        doc.setFont('helvetica', 'bold')
+        doc.text(item.label, 14, currentY)
+        doc.setFont('helvetica', 'normal')
+        doc.text(item.value, 60, currentY)
+        currentY += 6
+    })
+
+    return currentY + 5
+}
+
+/**
+ * Generates PDF for Termo de Frequência do Aluno
+ * Shows student information and academic performance across all disciplines and trimesters
+ */
+export async function generateTermoFrequenciaPDF(
+    data: TermoFrequenciaData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<void> {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    // Render header
+    let currentY = await renderTermoFrequenciaHeader(doc, data, headerConfig, pageWidth)
+
+    // Render student information
+    currentY = renderStudentInfo(doc, data, currentY + 5)
+
+    // Academic Performance Section
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DESEMPENHO ACADÉMICO', 14, currentY)
+    currentY += 7
+
+    // Build table headers
+    const headers = [
+        'Disciplina',
+        '1º Trim',
+        '2º Trim',
+        '3º Trim',
+        'Nota Final',
+        'Observação'
+    ]
+
+    // Build table data with components
+    const tableData: any[] = []
+
+    data.disciplinas.forEach(disciplina => {
+        // Main discipline row
+        tableData.push([
+            disciplina.nome,
+            disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-',
+            disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-',
+            disciplina.notas_trimestrais[3] !== null ? disciplina.notas_trimestrais[3].toFixed(1) : '-',
+            disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-',
+            disciplina.transita ? 'Transita' : 'Não Transita'
+        ])
+    })
+
+    // Generate table
+    autoTable(doc, {
+        startY: currentY,
+        head: [headers],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 9,
+            cellPadding: 3,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [59, 130, 246],  // Blue
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        columnStyles: {
+            0: { halign: 'left', cellWidth: 60 },
+            1: { halign: 'center', cellWidth: 20 },
+            2: { halign: 'center', cellWidth: 20 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'center', cellWidth: 25 },
+            5: { halign: 'center', cellWidth: 30 }
+        },
+        didParseCell: (hookData: any) => {
+            const rowData = hookData.row.raw
+            const isComponentRow = rowData[0].startsWith('  ')
+
+            if (isComponentRow) {
+                // Style for component rows
+                hookData.cell.styles.fillColor = [245, 245, 245]
+                hookData.cell.styles.fontSize = 8
+                hookData.cell.styles.textColor = [100, 100, 100]
+                hookData.cell.styles.fontStyle = 'italic'
+                hookData.cell.styles.cellPadding = 2
+            } else {
+                // Color code the grades (columns 1-4)
+                if (hookData.section === 'body' && hookData.column.index >= 1 && hookData.column.index <= 4) {
+                    const cellValue = hookData.cell.raw
+                    if (cellValue && cellValue !== '-') {
+                        const nota = parseFloat(cellValue)
+                        if (!isNaN(nota)) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.turma.nivel_ensino,
+                                undefined,
+                                false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                            hookData.cell.styles.fontStyle = 'bold'
+                        }
+                    }
+                }
+
+                // Color code the observation column
+                if (hookData.section === 'body' && hookData.column.index === 5 && hookData.cell.raw) {
+                    if (hookData.cell.raw.includes('Transita')) {
+                        hookData.cell.styles.textColor = [34, 197, 94]
+                        hookData.cell.styles.fontStyle = 'bold'
+                    } else if (hookData.cell.raw.includes('Não')) {
+                        hookData.cell.styles.textColor = [239, 68, 68]
+                        hookData.cell.styles.fontStyle = 'bold'
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    // Overall Statistics
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+
+    if (finalY + 40 < pageHeight) {
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.text('ESTATÍSTICAS GERAIS', 14, finalY)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+
+        const stats = [
+            `Total de Disciplinas: ${data.estatisticas.total_disciplinas}`,
+            `Disciplinas Aprovadas: ${data.estatisticas.disciplinas_aprovadas}`,
+            `Disciplinas Reprovadas: ${data.estatisticas.disciplinas_reprovadas}`,
+            `Média Geral: ${data.estatisticas.media_geral.toFixed(2)}`
+        ]
+
+        stats.forEach((stat, index) => {
+            doc.text(stat, 14, finalY + 7 + (index * 6))
+        })
+
+        // Final observation
+        const obsY = finalY + 7 + (stats.length * 6) + 5
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+
+        if (data.estatisticas.transita) {
+            doc.setTextColor(34, 197, 94)  // Green
+            doc.text('OBSERVAÇÃO FINAL: TRANSITA', 14, obsY)
+        } else {
+            doc.setTextColor(239, 68, 68)  // Red
+            doc.text('OBSERVAÇÃO FINAL: NÃO TRANSITA', 14, obsY)
+        }
+        doc.setTextColor(0, 0, 0)  // Reset to black
+
+        // Signatures
+        addPDFSignatures(doc, obsY + 5, pageWidth, pageHeight)
+    }
+
+    // Save
+    const filename = `termo-frequencia_${data.aluno.numero_processo}_${data.turma.ano_lectivo}.pdf`
     doc.save(filename)
+}
+
+/**
+ * Generates Termo de Frequência PDF as Blob (for batch processing)
+ * Same as generateTermoFrequenciaPDF but returns Blob instead of downloading
+ */
+export async function generateTermoFrequenciaPDFBlob(
+    data: TermoFrequenciaData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<Blob> {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    // Render header
+    let currentY = await renderTermoFrequenciaHeader(doc, data, headerConfig, pageWidth)
+
+    // Render student information
+    currentY = renderStudentInfo(doc, data, currentY + 5)
+
+    // Academic Performance Section
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text('DESEMPENHO ACADÉMICO', 14, currentY)
+    currentY += 7
+
+    // Build table headers
+    const headers = [
+        'Disciplina',
+        '1º Trim',
+        '2º Trim',
+        '3º Trim',
+        'Nota Final',
+        'Observação'
+    ]
+
+    // Build table data with components
+    const tableData: any[] = []
+
+    data.disciplinas.forEach(disciplina => {
+        // Main discipline row
+        tableData.push([
+            disciplina.nome,
+            disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-',
+            disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-',
+            disciplina.notas_trimestrais[3] !== null ? disciplina.notas_trimestrais[3].toFixed(1) : '-',
+            disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-',
+            disciplina.transita ? 'Transita' : 'Não Transita'
+        ])
+    })
+
+    // Generate table
+    autoTable(doc, {
+        startY: currentY,
+        head: [headers],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 9,
+            cellPadding: 3,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [59, 130, 246],  // Blue
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center'
+        },
+        columnStyles: {
+            0: { halign: 'left', cellWidth: 60 },
+            1: { halign: 'center', cellWidth: 20 },
+            2: { halign: 'center', cellWidth: 20 },
+            3: { halign: 'center', cellWidth: 20 },
+            4: { halign: 'center', cellWidth: 25 },
+            5: { halign: 'center', cellWidth: 30 }
+        },
+        didParseCell: (hookData: any) => {
+            const rowData = hookData.row.raw
+            const isComponentRow = rowData[0].startsWith('  ')
+
+            if (isComponentRow) {
+                // Style for component rows
+                hookData.cell.styles.fillColor = [245, 245, 245]
+                hookData.cell.styles.fontSize = 8
+                hookData.cell.styles.textColor = [100, 100, 100]
+                hookData.cell.styles.fontStyle = 'italic'
+                hookData.cell.styles.cellPadding = 2
+            } else {
+                // Color code the grades (columns 1-4)
+                if (hookData.section === 'body' && hookData.column.index >= 1 && hookData.column.index <= 4) {
+                    const cellValue = hookData.cell.raw
+                    if (cellValue && cellValue !== '-') {
+                        const nota = parseFloat(cellValue)
+                        if (!isNaN(nota)) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.turma.nivel_ensino,
+                                undefined,
+                                false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                            hookData.cell.styles.fontStyle = 'bold'
+                        }
+                    }
+                }
+
+                // Color code the observation column
+                if (hookData.section === 'body' && hookData.column.index === 5 && hookData.cell.raw) {
+                    if (hookData.cell.raw.includes('Transita')) {
+                        hookData.cell.styles.textColor = [34, 197, 94]
+                        hookData.cell.styles.fontStyle = 'bold'
+                    } else if (hookData.cell.raw.includes('Não')) {
+                        hookData.cell.styles.textColor = [239, 68, 68]
+                        hookData.cell.styles.fontStyle = 'bold'
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    // Overall Statistics
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+
+    if (finalY + 40 < pageHeight) {
+        doc.setFontSize(11)
+        doc.setFont('helvetica', 'bold')
+        doc.text('ESTATÍSTICAS GERAIS', 14, finalY)
+
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+
+        const stats = [
+            `Total de Disciplinas: ${data.estatisticas.total_disciplinas}`,
+            `Disciplinas Aprovadas: ${data.estatisticas.disciplinas_aprovadas}`,
+            `Disciplinas Reprovadas: ${data.estatisticas.disciplinas_reprovadas}`,
+            `Média Geral: ${data.estatisticas.media_geral.toFixed(2)}`
+        ]
+
+        stats.forEach((stat, index) => {
+            doc.text(stat, 14, finalY + 7 + (index * 6))
+        })
+
+        // Final observation
+        const obsY = finalY + 7 + (stats.length * 6) + 5
+        doc.setFontSize(12)
+        doc.setFont('helvetica', 'bold')
+
+        if (data.estatisticas.transita) {
+            doc.setTextColor(34, 197, 94)  // Green
+            doc.text('OBSERVAÇÃO FINAL: TRANSITA', 14, obsY)
+        } else {
+            doc.setTextColor(239, 68, 68)  // Red
+            doc.text('OBSERVAÇÃO FINAL: NÃO TRANSITA', 14, obsY)
+        }
+        doc.setTextColor(0, 0, 0)  // Reset to black
+
+        // Signatures
+        addPDFSignatures(doc, obsY + 5, pageWidth, pageHeight)
+    }
+
+    // Return as Blob instead of saving
+    return doc.output('blob')
+}
+
+/**
+ * Generates batch Termos de Frequência and creates a ZIP file
+ */
+export async function generateBatchTermosFrequenciaZip(
+    termosData: TermoFrequenciaData[],
+    turmaInfo: { codigo: string; ano: number },
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null,
+    onProgress?: (current: number, total: number, alunoNome: string) => void
+): Promise<{ blob: Blob; filename: string; errors: Array<{ aluno: string; error: string }> }> {
+    const zip = new JSZip()
+    const errors: Array<{ aluno: string; error: string }> = []
+    const total = termosData.length
+
+    for (let i = 0; i < termosData.length; i++) {
+        const termoData = termosData[i]
+
+        try {
+            // Update progress
+            if (onProgress) {
+                onProgress(i + 1, total, termoData.aluno.nome_completo)
+            }
+
+            // Generate PDF as Blob
+            const pdfBlob = await generateTermoFrequenciaPDFBlob(termoData, headerConfig, colorConfig)
+
+            // Create filename: termo_[numero_processo]_[nome].pdf
+            const nomeFormatado = termoData.aluno.nome_completo
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '') // Remove accents
+                .replace(/[^a-zA-Z0-9\s]/g, '') // Remove special chars
+                .replace(/\s+/g, '_') // Replace spaces with underscore
+                .substring(0, 50) // Limit length
+
+            const filename = `termo_${termoData.aluno.numero_processo}_${nomeFormatado}.pdf`
+
+            // Add to ZIP
+            zip.file(filename, pdfBlob)
+
+        } catch (error) {
+            console.error(`Error generating PDF for ${termoData.aluno.nome_completo}:`, error)
+            errors.push({
+                aluno: termoData.aluno.nome_completo,
+                error: error instanceof Error ? error.message : 'Erro desconhecido'
+            })
+        }
+    }
+
+    // Generate ZIP blob
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    const zipFilename = `termos_frequencia_${turmaInfo.codigo}_${turmaInfo.ano}.zip`
+
+    return {
+        blob: zipBlob,
+        filename: zipFilename,
+        errors
+    }
 }
 

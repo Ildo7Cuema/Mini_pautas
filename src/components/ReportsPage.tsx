@@ -7,7 +7,7 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardHeader, CardBody } from './ui/Card'
 import { Button } from './ui/Button'
@@ -26,6 +26,8 @@ import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
 import { GradeColorConfig, loadGradeColorConfig } from '../utils/gradeColorConfigUtils'
 import { ConfiguracaoCoresModal } from './ConfiguracaoCoresModal'
 import { PautaGeralPage } from './PautaGeralPage'
+import { TermoFrequenciaPreview } from './TermoFrequenciaPreview'
+import { generateTermoFrequenciaPDF, generateBatchTermosFrequenciaZip } from '../utils/pdfGenerator'
 
 interface Turma {
     id: string
@@ -121,12 +123,263 @@ export const ReportsPage: React.FC = () => {
     const [showColorConfigModal, setShowColorConfigModal] = useState(false)
 
     // Tab state
-    const [activeTab, setActiveTab] = useState<'mini-pauta' | 'pauta-geral'>('mini-pauta')
+    const [activeTab, setActiveTab] = useState<'mini-pauta' | 'pauta-geral' | 'termo-frequencia'>('mini-pauta')
+
+    // Termo de Frequência state
+    const [alunos, setAlunos] = useState<Array<{ id: string, numero_processo: string, nome_completo: string }>>([])
+    const [selectedAluno, setSelectedAluno] = useState<string>('')
+    const [termoFrequenciaData, setTermoFrequenciaData] = useState<any>(null)
+    const [loadingTermo, setLoadingTermo] = useState(false)
+    const [availableComponents, setAvailableComponents] = useState<Array<{ codigo: string, nome: string }>>([])
+    const [selectedComponents, setSelectedComponents] = useState<string[]>([])
+
+    // Batch generation state
+    const [selectedAlunosIds, setSelectedAlunosIds] = useState<string[]>([])
+    const [batchProgress, setBatchProgress] = useState<{
+        current: number
+        total: number
+        currentAluno: string
+    } | null>(null)
+    const [batchGenerating, setBatchGenerating] = useState(false)
 
     // Detect if selected turma is Primary Education
     const isPrimaryEducation = selectedTurmaData?.nivel_ensino?.toLowerCase().includes('primário') ||
         selectedTurmaData?.nivel_ensino?.toLowerCase().includes('primario') ||
         false
+
+    // Define functions before useEffects
+    const loadAlunos = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('alunos')
+                .select('id, numero_processo, nome_completo')
+                .eq('turma_id', selectedTurma)
+                .eq('ativo', true)
+                .order('nome_completo')
+
+            if (error) throw error
+            setAlunos(data || [])
+
+            // Auto-select first student
+            if (data && data.length > 0 && !selectedAluno) {
+                setSelectedAluno(data[0].id)
+            }
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar alunos'
+            setError(translateError(errorMessage))
+        }
+    }, [selectedTurma, selectedAluno])
+
+    const loadTermoFrequenciaData = useCallback(async () => {
+        // Early return if no student selected
+        if (!selectedAluno || !selectedTurma) {
+            return
+        }
+
+        try {
+            setLoadingTermo(true)
+            setError(null)
+
+            console.log('Loading termo data for student:', selectedAluno, 'turma:', selectedTurma)
+
+            // Load student details
+            const { data: alunoData, error: alunoError } = await supabase
+                .from('alunos')
+                .select('id, numero_processo, nome_completo, data_nascimento, genero')
+                .eq('id', selectedAluno)
+                .single()
+
+            if (alunoError) {
+                console.error('Error loading student:', alunoError)
+                throw alunoError
+            }
+
+            // Load turma details
+            const { data: turmaData, error: turmaError } = await supabase
+                .from('turmas')
+                .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
+                .eq('id', selectedTurma)
+                .single()
+
+            if (turmaError) {
+                console.error('Error loading turma:', turmaError)
+                throw turmaError
+            }
+
+            // Load all disciplines for this turma
+            const { data: disciplinasData, error: disciplinasError } = await supabase
+                .from('disciplinas')
+                .select('id, nome, codigo_disciplina')
+                .eq('turma_id', selectedTurma)
+                .order('ordem')
+
+            if (disciplinasError) {
+                console.error('Error loading disciplines:', disciplinasError)
+                throw disciplinasError
+            }
+
+            if (!disciplinasData || disciplinasData.length === 0) {
+                setError('Nenhuma disciplina encontrada para esta turma')
+                setTermoFrequenciaData(null)
+                return
+            }
+
+            // Load all components for all disciplines
+            const { data: componentesData, error: componentesError } = await supabase
+                .from('componentes_avaliacao')
+                .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
+                .eq('turma_id', selectedTurma)
+                .in('disciplina_id', disciplinasData.map(d => d.id))
+
+            if (componentesError) {
+                console.error('Error loading components:', componentesError)
+                throw componentesError
+            }
+
+            // Load all grades for this student across all trimesters
+            const { data: notasData, error: notasError } = await supabase
+                .from('notas')
+                .select('componente_id, valor, trimestre')
+                .eq('aluno_id', selectedAluno)
+                .eq('turma_id', selectedTurma)
+
+            if (notasError) {
+                console.error('Error loading grades:', notasError)
+                throw notasError
+            }
+
+            console.log('Loaded data:', { aluno: alunoData, turma: turmaData, disciplinas: disciplinasData?.length, componentes: componentesData?.length, notas: notasData?.length })
+
+            // Extract unique components for selection
+            const uniqueComponents = Array.from(
+                new Map(componentesData?.map(c => [c.codigo_componente, { codigo: c.codigo_componente, nome: c.nome }]) || []).values()
+            )
+            setAvailableComponents(uniqueComponents)
+
+            // Auto-select all components if none selected yet
+            if (selectedComponents.length === 0 && uniqueComponents.length > 0) {
+                setSelectedComponents(uniqueComponents.map(c => c.codigo))
+            }
+
+            // Process each discipline
+            const disciplinasProcessadas = disciplinasData.map(disciplina => {
+                const componentesDisciplina = componentesData?.filter(c => c.disciplina_id === disciplina.id) || []
+                const notasTrimestrais: { 1: number | null, 2: number | null, 3: number | null } = {
+                    1: null,
+                    2: null,
+                    3: null
+                }
+
+                // Process components BY TRIMESTRE - each trimester has its own components
+                const componentesPorTrimestre: {
+                    1: Array<{ codigo: string, nome: string, nota: number | null }>,
+                    2: Array<{ codigo: string, nome: string, nota: number | null }>,
+                    3: Array<{ codigo: string, nome: string, nota: number | null }>
+                } = { 1: [], 2: [], 3: [] }
+
+                // Process each trimester separately - only include components that belong to that trimester
+                for (let t = 1; t <= 3; t++) {
+                    const componentesDoTrimestre = componentesDisciplina
+                        .filter(comp => comp.trimestre === t)
+                        .filter(comp => selectedComponents.length === 0 || selectedComponents.includes(comp.codigo_componente))
+
+                    componentesDoTrimestre.forEach(comp => {
+                        const nota = notasData?.find(n => n.componente_id === comp.id && n.trimestre === t)?.valor ?? null
+                        componentesPorTrimestre[t as 1 | 2 | 3].push({
+                            codigo: comp.codigo_componente,
+                            nome: comp.nome,
+                            nota: nota
+                        })
+                    })
+                }
+
+                // Calculate grade for each trimestre
+                for (let t = 1; t <= 3; t++) {
+                    const componentesTrimestre = componentesDisciplina.filter(c => c.trimestre === t)
+                    const notasTrimestre = notasData?.filter(n =>
+                        n.trimestre === t &&
+                        componentesTrimestre.some(c => c.id === n.componente_id)
+                    ) || []
+
+                    if (notasTrimestre.length > 0 && componentesTrimestre.length > 0) {
+                        const resultado = calculateNotaFinal(notasTrimestre, componentesTrimestre)
+                        notasTrimestrais[t as 1 | 2 | 3] = resultado.nota_final
+                    }
+                }
+
+                // Calculate final grade (average of available trimester grades)
+                const notasValidas = Object.values(notasTrimestrais).filter(n => n !== null) as number[]
+                const notaFinal = notasValidas.length > 0
+                    ? notasValidas.reduce((sum, n) => sum + n, 0) / notasValidas.length
+                    : null
+
+                // Determine pass/fail (assuming passing grade is 10)
+                const transita = notaFinal !== null && notaFinal >= 10
+
+                return {
+                    id: disciplina.id,
+                    nome: disciplina.nome,
+                    codigo_disciplina: disciplina.codigo_disciplina,
+                    notas_trimestrais: notasTrimestrais,
+                    componentesPorTrimestre: componentesPorTrimestre,
+                    nota_final: notaFinal,
+                    classificacao: notaFinal !== null ? (notaFinal >= 10 ? 'Aprovado' : 'Reprovado') : 'N/A',
+                    transita
+                }
+            })
+
+            // Calculate overall statistics
+            const notasFinaisValidas = disciplinasProcessadas
+                .map(d => d.nota_final)
+                .filter(n => n !== null) as number[]
+
+            const mediaGeral = notasFinaisValidas.length > 0
+                ? notasFinaisValidas.reduce((sum, n) => sum + n, 0) / notasFinaisValidas.length
+                : 0
+
+            const disciplinasAprovadas = disciplinasProcessadas.filter(d => d.transita).length
+            const disciplinasReprovadas = disciplinasProcessadas.filter(d => !d.transita).length
+
+            // Student passes if all disciplines are passed
+            const transitaGeral = disciplinasProcessadas.every(d => d.transita) && mediaGeral >= 10
+
+            // Load escola info (optional)
+            const { data: escolaData } = await supabase
+                .from('escolas')
+                .select('nome, provincia, municipio')
+                .limit(1)
+                .single()
+
+            setTermoFrequenciaData({
+                aluno: {
+                    numero_processo: alunoData.numero_processo,
+                    nome_completo: alunoData.nome_completo,
+                    data_nascimento: alunoData.data_nascimento,
+                    genero: alunoData.genero
+                },
+                turma: turmaData,
+                disciplinas: disciplinasProcessadas,
+                estatisticas: {
+                    media_geral: mediaGeral,
+                    total_disciplinas: disciplinasProcessadas.length,
+                    disciplinas_aprovadas: disciplinasAprovadas,
+                    disciplinas_reprovadas: disciplinasReprovadas,
+                    transita: transitaGeral
+                },
+                escola: escolaData || undefined
+            })
+
+            console.log('Termo data loaded successfully')
+
+        } catch (err) {
+            console.error('Error in loadTermoFrequenciaData:', err)
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dados do termo de frequência'
+            setError(translateError(errorMessage))
+            setTermoFrequenciaData(null)
+        } finally {
+            setLoadingTermo(false)
+        }
+    }, [selectedAluno, selectedTurma, selectedComponents])
 
     useEffect(() => {
         loadTurmas()
@@ -170,6 +423,26 @@ export const ReportsPage: React.FC = () => {
         loadHeaderConfiguration()
         loadColorConfiguration()
     }, [selectedTurma])
+
+    useEffect(() => {
+        if (selectedTurma && activeTab === 'termo-frequencia') {
+            loadAlunos()
+        } else {
+            setAlunos([])
+            setSelectedAluno('')
+            setTermoFrequenciaData(null)
+        }
+    }, [selectedTurma, activeTab, loadAlunos])
+
+    useEffect(() => {
+        if (selectedTurma && selectedAluno && activeTab === 'termo-frequencia') {
+            loadTermoFrequenciaData()
+        } else {
+            setTermoFrequenciaData(null)
+        }
+    }, [selectedTurma, selectedAluno, activeTab, loadTermoFrequenciaData])
+
+
 
     const loadTurmas = async () => {
         try {
@@ -794,6 +1067,9 @@ export const ReportsPage: React.FC = () => {
         }
     }
 
+
+
+
     const handleGeneratePDF = async () => {
         if (!miniPautaData) {
             setError('Carregue os dados primeiro')
@@ -842,6 +1118,253 @@ export const ReportsPage: React.FC = () => {
         }
     }
 
+    const handleGenerateTermoFrequenciaPDF = async () => {
+        if (!termoFrequenciaData) {
+            setError('Carregue os dados do aluno primeiro')
+            return
+        }
+
+        try {
+            await generateTermoFrequenciaPDF(termoFrequenciaData, headerConfig, colorConfig)
+            setSuccess('Termo de Frequência gerado com sucesso!')
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar Termo de Frequência'
+            setError(translateError(errorMessage))
+        }
+    }
+
+    const handleSelectAllAlunos = () => {
+        if (selectedAlunosIds.length === alunos.length) {
+            // Deselect all
+            setSelectedAlunosIds([])
+        } else {
+            // Select all
+            setSelectedAlunosIds(alunos.map(a => a.id))
+        }
+    }
+
+    const handleToggleAluno = (alunoId: string) => {
+        if (selectedAlunosIds.includes(alunoId)) {
+            setSelectedAlunosIds(selectedAlunosIds.filter(id => id !== alunoId))
+        } else {
+            setSelectedAlunosIds([...selectedAlunosIds, alunoId])
+        }
+    }
+
+    // Component selection handlers
+    const handleToggleComponent = (componentCode: string) => {
+        if (selectedComponents.includes(componentCode)) {
+            setSelectedComponents(selectedComponents.filter(c => c !== componentCode))
+        } else {
+            setSelectedComponents([...selectedComponents, componentCode])
+        }
+    }
+
+    const handleSelectAllComponents = () => {
+        if (selectedComponents.length === availableComponents.length) {
+            setSelectedComponents([])
+        } else {
+            setSelectedComponents(availableComponents.map(c => c.codigo))
+        }
+    }
+
+    const handleGenerateBatchPDFs = async () => {
+        if (selectedAlunosIds.length === 0) {
+            setError('Selecione pelo menos um aluno')
+            return
+        }
+
+        if (!selectedTurmaData) {
+            setError('Dados da turma não encontrados')
+            return
+        }
+
+        try {
+            setBatchGenerating(true)
+            setError(null)
+            setBatchProgress({ current: 0, total: selectedAlunosIds.length, currentAluno: '' })
+
+            // Load data for all selected students
+            const termosDataPromises = selectedAlunosIds.map(async (alunoId) => {
+                // Load student details
+                const { data: alunoData, error: alunoError } = await supabase
+                    .from('alunos')
+                    .select('id, numero_processo, nome_completo, data_nascimento, genero')
+                    .eq('id', alunoId)
+                    .single()
+
+                if (alunoError) throw alunoError
+
+                // Load all disciplines for this turma
+                const { data: disciplinasData, error: disciplinasError } = await supabase
+                    .from('disciplinas')
+                    .select('id, nome, codigo_disciplina')
+                    .eq('turma_id', selectedTurma)
+                    .order('ordem')
+
+                if (disciplinasError) throw disciplinasError
+
+                // Load all components
+                const { data: componentesData, error: componentesError } = await supabase
+                    .from('componentes_avaliacao')
+                    .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
+                    .eq('turma_id', selectedTurma)
+                    .in('disciplina_id', disciplinasData.map(d => d.id))
+
+                if (componentesError) throw componentesError
+
+                // Load all grades
+                const { data: notasData, error: notasError } = await supabase
+                    .from('notas')
+                    .select('componente_id, valor, trimestre')
+                    .eq('aluno_id', alunoId)
+                    .eq('turma_id', selectedTurma)
+
+                if (notasError) throw notasError
+
+                // Process disciplines (same logic as loadTermoFrequenciaData)
+                const disciplinasProcessadas = disciplinasData.map(disciplina => {
+                    const componentesDisciplina = componentesData?.filter(c => c.disciplina_id === disciplina.id) || []
+                    const notasTrimestrais: { 1: number | null, 2: number | null, 3: number | null } = {
+                        1: null,
+                        2: null,
+                        3: null
+                    }
+
+                    // Process components BY TRIMESTRE - each trimester has its own components
+                    const componentesPorTrimestre: {
+                        1: Array<{ codigo: string, nome: string, nota: number | null }>,
+                        2: Array<{ codigo: string, nome: string, nota: number | null }>,
+                        3: Array<{ codigo: string, nome: string, nota: number | null }>
+                    } = { 1: [], 2: [], 3: [] }
+
+                    for (let t = 1; t <= 3; t++) {
+                        const componentesTrimestre = componentesDisciplina.filter(c => c.trimestre === t)
+                        const notasTrimestre = notasData?.filter(n =>
+                            n.trimestre === t &&
+                            componentesTrimestre.some(c => c.id === n.componente_id)
+                        ) || []
+
+                        if (notasTrimestre.length > 0 && componentesTrimestre.length > 0) {
+                            const resultado = calculateNotaFinal(notasTrimestre, componentesTrimestre)
+                            notasTrimestrais[t as 1 | 2 | 3] = resultado.nota_final
+                        }
+
+                        // Add components for this trimester
+                        componentesTrimestre.forEach(comp => {
+                            const nota = notasData?.find(n => n.componente_id === comp.id && n.trimestre === t)?.valor ?? null
+                            componentesPorTrimestre[t as 1 | 2 | 3].push({
+                                codigo: comp.codigo_componente,
+                                nome: comp.nome,
+                                nota: nota
+                            })
+                        })
+                    }
+
+                    const notasValidas = Object.values(notasTrimestrais).filter(n => n !== null) as number[]
+                    const notaFinal = notasValidas.length > 0
+                        ? notasValidas.reduce((sum, n) => sum + n, 0) / notasValidas.length
+                        : null
+
+                    const transita = notaFinal !== null && notaFinal >= 10
+
+                    return {
+                        id: disciplina.id,
+                        nome: disciplina.nome,
+                        codigo_disciplina: disciplina.codigo_disciplina,
+                        notas_trimestrais: notasTrimestrais,
+                        componentesPorTrimestre: componentesPorTrimestre,
+                        nota_final: notaFinal,
+                        classificacao: notaFinal !== null ? (notaFinal >= 10 ? 'Aprovado' : 'Reprovado') : 'N/A',
+                        transita
+                    }
+                })
+
+                const notasFinaisValidas = disciplinasProcessadas
+                    .map(d => d.nota_final)
+                    .filter(n => n !== null) as number[]
+
+                const mediaGeral = notasFinaisValidas.length > 0
+                    ? notasFinaisValidas.reduce((sum, n) => sum + n, 0) / notasFinaisValidas.length
+                    : 0
+
+                const disciplinasAprovadas = disciplinasProcessadas.filter(d => d.transita).length
+                const disciplinasReprovadas = disciplinasProcessadas.filter(d => !d.transita).length
+                const transitaGeral = disciplinasProcessadas.every(d => d.transita) && mediaGeral >= 10
+
+                const { data: escolaData } = await supabase
+                    .from('escolas')
+                    .select('nome, provincia, municipio')
+                    .limit(1)
+                    .single()
+
+                return {
+                    aluno: {
+                        numero_processo: alunoData.numero_processo,
+                        nome_completo: alunoData.nome_completo,
+                        data_nascimento: alunoData.data_nascimento,
+                        genero: alunoData.genero
+                    },
+                    turma: selectedTurmaData,
+                    disciplinas: disciplinasProcessadas,
+                    estatisticas: {
+                        media_geral: mediaGeral,
+                        total_disciplinas: disciplinasProcessadas.length,
+                        disciplinas_aprovadas: disciplinasAprovadas,
+                        disciplinas_reprovadas: disciplinasReprovadas,
+                        transita: transitaGeral
+                    },
+                    escola: escolaData || undefined
+                }
+            })
+
+            const termosData = await Promise.all(termosDataPromises)
+
+            // Generate ZIP
+            const result = await generateBatchTermosFrequenciaZip(
+                termosData,
+                { codigo: selectedTurmaData.codigo_turma, ano: selectedTurmaData.ano_lectivo },
+                headerConfig,
+                colorConfig,
+                (current, total, alunoNome) => {
+                    setBatchProgress({ current, total, currentAluno: alunoNome })
+                }
+            )
+
+            // Download ZIP
+            const url = URL.createObjectURL(result.blob)
+            const link = document.createElement('a')
+            link.href = url
+            link.download = result.filename
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+
+            // Show success message
+            if (result.errors.length === 0) {
+                setSuccess(`✅ ${selectedAlunosIds.length} Termos de Frequência gerados com sucesso!`)
+            } else {
+                setSuccess(`⚠️ ${selectedAlunosIds.length - result.errors.length} de ${selectedAlunosIds.length} termos gerados com sucesso`)
+                setError(`Falhas: ${result.errors.map(e => e.aluno).join(', ')}`)
+            }
+
+            setTimeout(() => {
+                setSuccess(null)
+                setError(null)
+            }, 5000)
+
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar termos em lote'
+            setError(translateError(errorMessage))
+        } finally {
+            setBatchGenerating(false)
+            setBatchProgress(null)
+        }
+    }
+
+
     return (
         <div className="space-y-4 md:space-y-6">
             {/* Header with Tabs */}
@@ -851,11 +1374,11 @@ export const ReportsPage: React.FC = () => {
 
                 {/* Tab Navigation */}
                 <div className="mt-4 border-b border-slate-200">
-                    <nav className="-mb-px flex space-x-8">
+                    <nav className="-mb-px flex space-x-4 md:space-x-8 overflow-x-auto">
                         <button
                             onClick={() => setActiveTab('mini-pauta')}
                             className={`
-                                py-2 px-1 border-b-2 font-medium text-sm transition
+                                py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
                                 ${activeTab === 'mini-pauta'
                                     ? 'border-blue-500 text-blue-600'
                                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -867,7 +1390,7 @@ export const ReportsPage: React.FC = () => {
                         <button
                             onClick={() => setActiveTab('pauta-geral')}
                             className={`
-                                py-2 px-1 border-b-2 font-medium text-sm transition
+                                py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
                                 ${activeTab === 'pauta-geral'
                                     ? 'border-blue-500 text-blue-600'
                                     : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
@@ -875,6 +1398,18 @@ export const ReportsPage: React.FC = () => {
                             `}
                         >
                             Pauta-Geral
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('termo-frequencia')}
+                            className={`
+                                py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
+                                ${activeTab === 'termo-frequencia'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                }
+                            `}
+                        >
+                            Termo de Frequência
                         </button>
                     </nav>
                 </div>
@@ -1118,8 +1653,279 @@ export const ReportsPage: React.FC = () => {
                         turmaId={selectedTurma}
                     />
                 </div>
-            ) : (
+            ) : activeTab === 'pauta-geral' ? (
                 <PautaGeralPage />
+            ) : (
+                // Termo de Frequência Tab
+                <div className="space-y-4 md:space-y-6">
+                    {/* Messages */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                            <span className="text-sm">{error}</span>
+                        </div>
+                    )}
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                            <span className="text-sm">{success}</span>
+                        </div>
+                    )}
+
+                    {/* Filters */}
+                    <Card>
+                        <CardHeader>
+                            <h3 className="text-lg font-semibold text-slate-900">Selecionar Aluno</h3>
+                        </CardHeader>
+                        <CardBody>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Turma Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Turma
+                                    </label>
+                                    <select
+                                        value={selectedTurma}
+                                        onChange={(e) => {
+                                            setSelectedTurma(e.target.value)
+                                            setSelectedAluno('')
+                                            setTermoFrequenciaData(null)
+                                        }}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    >
+                                        <option value="">Selecione uma turma</option>
+                                        {turmas.map((turma) => (
+                                            <option key={turma.id} value={turma.id}>
+                                                {turma.nome} - {turma.ano_lectivo}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Student Selection */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                        Aluno
+                                    </label>
+                                    <select
+                                        value={selectedAluno}
+                                        onChange={(e) => setSelectedAluno(e.target.value)}
+                                        disabled={!selectedTurma || alunos.length === 0}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                    >
+                                        <option value="">Selecione um aluno</option>
+                                        {alunos.map((aluno) => (
+                                            <option key={aluno.id} value={aluno.id}>
+                                                {aluno.nome_completo} ({aluno.numero_processo})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* Component Selection Section */}
+                    {selectedTurma && availableComponents.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <h3 className="text-lg font-semibold text-slate-900">Componentes a Exibir</h3>
+                                <p className="text-sm text-slate-500 mt-1">Selecione quais componentes de avaliação deseja mostrar no termo</p>
+                            </CardHeader>
+                            <CardBody>
+                                {/* Select All Components */}
+                                <div className="mb-4 pb-4 border-b border-slate-200">
+                                    <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedComponents.length === availableComponents.length}
+                                            onChange={handleSelectAllComponents}
+                                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                        />
+                                        <span className="font-medium text-slate-900">
+                                            {selectedComponents.length === availableComponents.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                        </span>
+                                        <span className="text-sm text-slate-500">
+                                            ({selectedComponents.length} de {availableComponents.length} selecionados)
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Individual Component Checkboxes */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                    {availableComponents.map((component) => (
+                                        <label
+                                            key={component.codigo}
+                                            className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedComponents.includes(component.codigo)}
+                                                onChange={() => handleToggleComponent(component.codigo)}
+                                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                            />
+                                            <div className="flex flex-col">
+                                                <span className="text-sm font-medium text-slate-900">{component.codigo}</span>
+                                                <span className="text-xs text-slate-500">{component.nome}</span>
+                                            </div>
+                                        </label>
+                                    ))}
+                                </div>
+                            </CardBody>
+                        </Card>
+                    )}
+
+                    {/* Batch Generation Section */}
+                    {selectedTurma && alunos.length > 0 && !batchGenerating && (
+                        <Card>
+                            <CardHeader>
+                                <h3 className="text-lg font-semibold text-slate-900">Geração em Lote</h3>
+                                <p className="text-sm text-slate-500 mt-1">Selecione múltiplos alunos para gerar vários termos de uma vez</p>
+                            </CardHeader>
+                            <CardBody>
+                                {/* Select All Checkbox */}
+                                <div className="mb-4 pb-4 border-b border-slate-200">
+                                    <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition">
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedAlunosIds.length === alunos.length && alunos.length > 0}
+                                            onChange={handleSelectAllAlunos}
+                                            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                        />
+                                        <span className="font-medium text-slate-900">
+                                            Selecionar Todos ({alunos.length} alunos)
+                                        </span>
+                                    </label>
+                                </div>
+
+                                {/* Student List with Checkboxes */}
+                                <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
+                                    {alunos.map((aluno) => (
+                                        <label
+                                            key={aluno.id}
+                                            className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedAlunosIds.includes(aluno.id)}
+                                                onChange={() => handleToggleAluno(aluno.id)}
+                                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                            />
+                                            <span className="text-sm text-slate-700">
+                                                {aluno.nome_completo} <span className="text-slate-500">({aluno.numero_processo})</span>
+                                            </span>
+                                        </label>
+                                    ))}
+                                </div>
+
+                                {/* Counter and Button */}
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+                                    <span className="text-sm text-slate-600">
+                                        {selectedAlunosIds.length} de {alunos.length} alunos selecionados
+                                    </span>
+                                    <Button
+                                        onClick={handleGenerateBatchPDFs}
+                                        disabled={selectedAlunosIds.length === 0}
+                                        className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Gerar PDFs em Lote
+                                    </Button>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    )}
+
+                    {/* Batch Progress */}
+                    {batchGenerating && batchProgress && (
+                        <Card>
+                            <CardBody>
+                                <div className="space-y-4">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-lg font-semibold text-slate-900">Gerando Termos de Frequência...</h3>
+                                        <span className="text-sm text-slate-600">
+                                            {batchProgress.current} de {batchProgress.total}
+                                        </span>
+                                    </div>
+
+                                    {/* Progress Bar */}
+                                    <div className="w-full bg-slate-200 rounded-full h-3 overflow-hidden">
+                                        <div
+                                            className="bg-blue-600 h-full transition-all duration-300 ease-out"
+                                            style={{ width: `${(batchProgress.current / batchProgress.total) * 100}%` }}
+                                        />
+                                    </div>
+
+                                    {/* Current Student */}
+                                    <p className="text-sm text-slate-600">
+                                        Processando: <span className="font-medium text-slate-900">{batchProgress.currentAluno}</span>
+                                    </p>
+
+                                    {/* Percentage */}
+                                    <p className="text-center text-2xl font-bold text-blue-600">
+                                        {Math.round((batchProgress.current / batchProgress.total) * 100)}%
+                                    </p>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    )}
+
+                    {/* Loading State */}
+                    {loadingTermo && (
+                        <Card>
+                            <CardBody>
+                                <div className="flex items-center justify-center py-8">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                    <span className="ml-3 text-slate-600">Carregando dados do aluno...</span>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    )}
+
+
+                    {/* Preview and Actions */}
+                    {termoFrequenciaData && !loadingTermo && (
+                        <>
+                            {/* Preview */}
+                            <TermoFrequenciaPreview data={termoFrequenciaData} />
+
+                            {/* Actions */}
+                            <Card>
+                                <CardHeader>
+                                    <h3 className="text-lg font-semibold text-slate-900">Ações</h3>
+                                </CardHeader>
+                                <CardBody>
+                                    <div className="flex flex-col sm:flex-row gap-3">
+                                        <Button
+                                            onClick={handleGenerateTermoFrequenciaPDF}
+                                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                                        >
+                                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                            Gerar PDF
+                                        </Button>
+                                    </div>
+                                </CardBody>
+                            </Card>
+                        </>
+                    )}
+
+                    {/* Empty State */}
+                    {!selectedTurma && !loadingTermo && (
+                        <Card>
+                            <CardBody>
+                                <div className="text-center py-12">
+                                    <svg className="mx-auto h-12 w-12 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    <h3 className="mt-2 text-sm font-medium text-slate-900">Nenhuma turma selecionada</h3>
+                                    <p className="mt-1 text-sm text-slate-500">Selecione uma turma e um aluno para gerar o Termo de Frequência</p>
+                                </div>
+                            </CardBody>
+                        </Card>
+                    )}
+                </div>
             )}
         </div>
     )
