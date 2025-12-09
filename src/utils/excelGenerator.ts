@@ -574,3 +574,199 @@ export function generateCSV(data: MiniPautaData): void {
     link.download = `mini-pauta_${data.turma.codigo_turma}_${data.disciplina.codigo_disciplina}_${trimestreStr}.csv`
     link.click()
 }
+
+// ============================================================================
+// PAUTA-GERAL EXPORT FUNCTIONS
+// ============================================================================
+
+interface ComponenteAvaliacao {
+    id: string
+    codigo_componente: string
+    nome: string
+    peso_percentual: number
+    trimestre: number
+    is_calculated?: boolean
+}
+
+interface DisciplinaComComponentes {
+    id: string
+    nome: string
+    codigo_disciplina: string
+    ordem: number
+    componentes: ComponenteAvaliacao[]
+}
+
+interface PautaGeralData {
+    turma: {
+        nome: string
+        ano_lectivo: number
+        codigo_turma: string
+        nivel_ensino: string
+    }
+    trimestre: number
+    nivel_ensino?: string
+    classe?: string
+    alunos: Array<{
+        numero_processo: string
+        nome_completo: string
+        notas_por_disciplina: Record<string, Record<string, number>>
+    }>
+    disciplinas: DisciplinaComComponentes[]
+    estatisticas?: {
+        por_disciplina: Record<string, any>
+        geral: any
+    }
+}
+
+export function generatePautaGeralExcel(data: PautaGeralData): void {
+    const workbook = XLSX.utils.book_new()
+
+    // Build headers - two rows
+    // Row 1: Discipline names (merged across their components)
+    const disciplineHeaderRow = ['Nº', 'Nome do Aluno']
+    const componentHeaderRow = ['', ''] // Empty for Nº, Nome
+
+    data.disciplinas.forEach(disc => {
+        // Add discipline name
+        disciplineHeaderRow.push(disc.nome)
+        // Add empty cells for the span
+        for (let i = 1; i < disc.componentes.length; i++) {
+            disciplineHeaderRow.push('')
+        }
+        // Add component codes
+        disc.componentes.forEach(comp => {
+            componentHeaderRow.push(comp.codigo_componente)
+        })
+    })
+
+    // Build data rows
+    const dataRows = data.alunos.map((aluno, index) => {
+        const row: any[] = [
+            index + 1,
+            aluno.nome_completo
+        ]
+
+        data.disciplinas.forEach(disc => {
+            const notasDisciplina = aluno.notas_por_disciplina[disc.id] || {}
+            disc.componentes.forEach(comp => {
+                const nota = notasDisciplina[comp.id]
+                row.push(nota !== undefined ? nota : '')
+            })
+        })
+
+        return row
+    })
+
+    // Create header rows
+    const infoRows = [
+        ['PAUTA-GERAL'],
+        [`Turma: ${data.turma.nome}`, '', `Ano Lectivo: ${data.turma.ano_lectivo}`],
+        [`Trimestre: ${data.trimestre}º`],
+        [] // Empty row
+    ]
+
+    const headerRows = [...infoRows, disciplineHeaderRow, componentHeaderRow]
+
+    // Statistics rows
+    const statsRows: any[][] = []
+    if (data.estatisticas) {
+        statsRows.push(
+            [], // Empty row
+            ['ESTATÍSTICAS GERAIS'],
+            ['Total de Alunos:', data.estatisticas.geral.total_alunos],
+            ['Aprovados:', data.estatisticas.geral.aprovados],
+            ['Reprovados:', data.estatisticas.geral.reprovados],
+            ['Média Geral:', data.estatisticas.geral.media_turma?.toFixed(2) || 'N/A'],
+            ['Nota Mínima:', data.estatisticas.geral.nota_minima?.toFixed(2) || 'N/A'],
+            ['Nota Máxima:', data.estatisticas.geral.nota_maxima?.toFixed(2) || 'N/A']
+        )
+    }
+
+    // Combine all rows
+    const allRows = [...headerRows, ...dataRows, ...statsRows]
+
+    // Create worksheet
+    const worksheet = XLSX.utils.aoa_to_sheet(allRows)
+
+    // Add merges for discipline headers
+    const headerRowIndex = 4 // 0-indexed row where discipline headers are
+    const startCol = 2 // After Nº, Nome
+
+    const merges = []
+    let currentCol = startCol
+
+    data.disciplinas.forEach(disc => {
+        if (disc.componentes.length > 1) {
+            // Merge cells for discipline name spanning its components
+            merges.push({
+                s: { r: headerRowIndex, c: currentCol },
+                e: { r: headerRowIndex, c: currentCol + disc.componentes.length - 1 }
+            })
+        }
+        currentCol += disc.componentes.length
+    })
+
+    // Also merge Nº and Nome cells vertically (rows 4 and 5)
+    merges.push(
+        { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } }, // Nº
+        { s: { r: headerRowIndex, c: 1 }, e: { r: headerRowIndex + 1, c: 1 } }  // Nome
+    )
+
+    worksheet['!merges'] = merges
+
+    // Set column widths
+    const columnWidths = [
+        { wch: 5 },  // Nº
+        { wch: 30 }, // Nome
+        ...data.disciplinas.flatMap(disc => disc.componentes.map(() => ({ wch: 10 })))
+    ]
+    worksheet['!cols'] = columnWidths
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Pauta-Geral')
+
+    // Generate filename and download
+    const filename = `pauta-geral_${data.turma.codigo_turma}_${data.trimestre}trim.xlsx`
+    XLSX.writeFile(workbook, filename)
+}
+
+export function generatePautaGeralCSV(data: PautaGeralData): void {
+    // Build headers
+    const headers = ['Nº', 'Nome do Aluno']
+
+    data.disciplinas.forEach(disc => {
+        disc.componentes.forEach(comp => {
+            headers.push(`${disc.nome} - ${comp.codigo_componente}`)
+        })
+    })
+
+    // Build data rows
+    const rows = data.alunos.map((aluno, index) => {
+        const row: any[] = [
+            index + 1,
+            aluno.nome_completo
+        ]
+
+        data.disciplinas.forEach(disc => {
+            const notasDisciplina = aluno.notas_por_disciplina[disc.id] || {}
+            disc.componentes.forEach(comp => {
+                const nota = notasDisciplina[comp.id]
+                row.push(nota !== undefined ? nota : '')
+            })
+        })
+
+        return row
+    })
+
+    const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `pauta-geral_${data.turma.codigo_turma}_${data.trimestre}trim.csv`
+    link.click()
+}
+

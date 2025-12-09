@@ -818,3 +818,222 @@ export async function generateMiniPautaPDF(
         }
     }
 }
+
+// ============================================================================
+// PAUTA-GERAL PDF GENERATION
+// ============================================================================
+
+interface ComponenteAvaliacaoPG {
+    id: string
+    codigo_componente: string
+    nome: string
+    peso_percentual: number
+    trimestre: number
+    is_calculated?: boolean
+}
+
+interface DisciplinaComComponentes {
+    id: string
+    nome: string
+    codigo_disciplina: string
+    ordem: number
+    componentes: ComponenteAvaliacaoPG[]
+}
+
+interface PautaGeralData {
+    turma: {
+        nome: string
+        ano_lectivo: number
+        codigo_turma: string
+        nivel_ensino: string
+    }
+    trimestre: number
+    nivel_ensino?: string
+    classe?: string
+    alunos: Array<{
+        numero_processo: string
+        nome_completo: string
+        notas_por_disciplina: Record<string, Record<string, number>>
+    }>
+    disciplinas: DisciplinaComComponentes[]
+    estatisticas?: {
+        por_disciplina: Record<string, any>
+        geral: any
+    }
+    escola?: {
+        nome: string
+        provincia: string
+        municipio: string
+    }
+}
+
+/**
+ * Generates PDF for Pauta-Geral (General Report by Class)
+ * Shows all disciplines with their components in a grouped table format
+ */
+export async function generatePautaGeralPDF(
+    data: PautaGeralData,
+    headerConfig: HeaderConfig | null | undefined,
+    colorConfig: GradeColorConfig | null
+): Promise<void> {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    // Render header
+    let currentY = await renderPDFHeader(doc, data as any, headerConfig, pageWidth)
+
+    // Class info
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
+    doc.text(`Trimestre: ${data.trimestre}º`, 14, currentY + 11)
+    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+
+    const tableStartY = currentY + 17
+
+    // Build two-row header
+    // Row 1: Nº (rowSpan 2), Nome (rowSpan 2), Discipline names (colSpan = num components)
+    const headerRow1: any[] = [
+        { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+    ]
+
+    data.disciplinas.forEach((disciplina) => {
+        headerRow1.push({
+            content: disciplina.nome,
+            colSpan: disciplina.componentes.length,
+            styles: {
+                halign: 'center',
+                valign: 'middle',
+                fontStyle: 'bold',
+                fillColor: [59, 130, 246] // Blue for discipline headers
+            }
+        })
+    })
+
+    // Row 2: Component codes only
+    const headerRow2: any[] = []
+    data.disciplinas.forEach(disciplina => {
+        disciplina.componentes.forEach(comp => {
+            headerRow2.push({
+                content: comp.codigo_componente,
+                styles: { halign: 'center', valign: 'middle' }
+            })
+        })
+    })
+
+    // Build table data
+    const tableData = data.alunos.map((aluno, index) => {
+        const row: any[] = [
+            (index + 1).toString(),
+            aluno.nome_completo
+        ]
+
+        data.disciplinas.forEach(disciplina => {
+            const notasDisciplina = aluno.notas_por_disciplina[disciplina.id] || {}
+            disciplina.componentes.forEach(comp => {
+                const nota = notasDisciplina[comp.id]
+                row.push(nota !== undefined ? nota.toFixed(1) : '-')
+            })
+        })
+
+        return row
+    })
+
+    // Generate table with autoTable
+    autoTable(doc, {
+        startY: tableStartY,
+        head: [headerRow1, headerRow2],
+        body: tableData,
+        theme: 'grid',
+        styles: {
+            fontSize: 7,
+            cellPadding: 1.5,
+            overflow: 'linebreak'
+        },
+        headStyles: {
+            fillColor: [59, 130, 246],  // Blue
+            textColor: 255,
+            fontStyle: 'bold',
+            halign: 'center',
+            valign: 'middle'
+        },
+        columnStyles: {
+            0: { halign: 'center', cellWidth: 8 },
+            1: { halign: 'left', cellWidth: 40 }
+        },
+        didParseCell: (hookData: any) => {
+            if (hookData.section === 'body' && hookData.column.index >= 2) {
+                hookData.cell.styles.halign = 'center'
+
+                const cellValue = hookData.cell.raw
+                if (cellValue && cellValue !== '-') {
+                    const nota = parseFloat(cellValue)
+                    if (!isNaN(nota)) {
+                        const colIndex = hookData.column.index - 2
+                        let currentIndex = 0
+                        let component: any = null
+
+                        for (const disciplina of data.disciplinas) {
+                            for (const comp of disciplina.componentes) {
+                                if (currentIndex === colIndex) {
+                                    component = comp
+                                    break
+                                }
+                                currentIndex++
+                            }
+                            if (component) break
+                        }
+
+                        if (component) {
+                            const color = getGradeColorRGB(
+                                nota,
+                                data.nivel_ensino,
+                                data.classe,
+                                component.is_calculated || false,
+                                colorConfig
+                            )
+                            hookData.cell.styles.textColor = color
+                        }
+                    }
+                }
+            }
+        },
+        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+    })
+
+    // Statistics and signatures
+    const finalY = (doc as any).lastAutoTable.finalY + 10
+
+    if (data.estatisticas) {
+        if (finalY + 30 < pageHeight) {
+            doc.setFontSize(10)
+            doc.setFont('helvetica', 'bold')
+            doc.text('ESTATÍSTICAS GERAIS', 14, finalY)
+
+            doc.setFont('helvetica', 'normal')
+            doc.setFontSize(9)
+
+            const stats = [
+                `Total de Alunos: ${data.estatisticas.geral.total_alunos}`,
+                `Aprovados: ${data.estatisticas.geral.aprovados}`,
+                `Reprovados: ${data.estatisticas.geral.reprovados}`,
+                `Média Geral: ${data.estatisticas.geral.media_turma?.toFixed(2) || 'N/A'}`,
+                `Nota Mínima: ${data.estatisticas.geral.nota_minima?.toFixed(2) || 'N/A'}`,
+                `Nota Máxima: ${data.estatisticas.geral.nota_maxima?.toFixed(2) || 'N/A'}`
+            ]
+
+            stats.forEach((stat, index) => {
+                doc.text(stat, 14, finalY + 7 + (index * 5))
+            })
+        }
+    }
+
+    addPDFSignatures(doc, finalY, pageWidth, pageHeight)
+
+    // Save
+    const filename = `pauta-geral_${data.turma.codigo_turma}_${data.trimestre}trim.pdf`
+    doc.save(filename)
+}
+

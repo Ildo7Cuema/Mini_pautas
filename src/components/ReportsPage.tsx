@@ -25,6 +25,7 @@ import { HeaderConfig, loadHeaderConfig } from '../utils/headerConfigUtils'
 import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
 import { GradeColorConfig, loadGradeColorConfig } from '../utils/gradeColorConfigUtils'
 import { ConfiguracaoCoresModal } from './ConfiguracaoCoresModal'
+import { PautaGeralPage } from './PautaGeralPage'
 
 interface Turma {
     id: string
@@ -118,6 +119,9 @@ export const ReportsPage: React.FC = () => {
     const [showOrdenarDisciplinasModal, setShowOrdenarDisciplinasModal] = useState(false)
     const [colorConfig, setColorConfig] = useState<GradeColorConfig | null>(null)
     const [showColorConfigModal, setShowColorConfigModal] = useState(false)
+
+    // Tab state
+    const [activeTab, setActiveTab] = useState<'mini-pauta' | 'pauta-geral'>('mini-pauta')
 
     // Detect if selected turma is Primary Education
     const isPrimaryEducation = selectedTurmaData?.nivel_ensino?.toLowerCase().includes('primário') ||
@@ -840,245 +844,283 @@ export const ReportsPage: React.FC = () => {
 
     return (
         <div className="space-y-4 md:space-y-6">
-            {/* Header */}
+            {/* Header with Tabs */}
             <div>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Relatórios e Mini-Pautas</h2>
                 <p className="text-sm md:text-base text-slate-600 mt-1">Gere relatórios e exporte dados das turmas</p>
+
+                {/* Tab Navigation */}
+                <div className="mt-4 border-b border-slate-200">
+                    <nav className="-mb-px flex space-x-8">
+                        <button
+                            onClick={() => setActiveTab('mini-pauta')}
+                            className={`
+                                py-2 px-1 border-b-2 font-medium text-sm transition
+                                ${activeTab === 'mini-pauta'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                }
+                            `}
+                        >
+                            Mini-Pauta
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('pauta-geral')}
+                            className={`
+                                py-2 px-1 border-b-2 font-medium text-sm transition
+                                ${activeTab === 'pauta-geral'
+                                    ? 'border-blue-500 text-blue-600'
+                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                }
+                            `}
+                        >
+                            Pauta-Geral
+                        </button>
+                    </nav>
+                </div>
             </div>
 
-            {/* Messages */}
-            {error && (
-                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                    <span className="text-sm">{error}</span>
-                </div>
-            )}
-            {success && (
-                <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                    <span className="text-sm">{success}</span>
-                </div>
-            )}
+            {/* Tab Content */}
+            {activeTab === 'mini-pauta' ? (
+                <div className="space-y-4 md:space-y-6">{/* Mini-Pauta Content */}
 
-            {/* Filters */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
-                        <div className="flex items-center gap-2">
-                            {selectedTurma && (
-                                <button
-                                    onClick={() => setShowOrdenarDisciplinasModal(true)}
-                                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                                    </svg>
-                                    Ordenar Disciplinas
-                                </button>
-                            )}
-                            {selectedTurma && (
-                                <button
-                                    onClick={() => setShowColorConfigModal(true)}
-                                    className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                                    </svg>
-                                    Configurar Cores
-                                </button>
-                            )}
+                    {/* Messages */}
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                            <span className="text-sm">{error}</span>
                         </div>
-                    </div>
-                </CardHeader>
-                <CardBody>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    )}
+                    {success && (
+                        <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
+                            <span className="text-sm">{success}</span>
+                        </div>
+                    )}
+
+                    {/* Filters */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
+                                <div className="flex items-center gap-2">
+                                    {selectedTurma && (
+                                        <button
+                                            onClick={() => setShowOrdenarDisciplinasModal(true)}
+                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                            </svg>
+                                            Ordenar Disciplinas
+                                        </button>
+                                    )}
+                                    {selectedTurma && (
+                                        <button
+                                            onClick={() => setShowColorConfigModal(true)}
+                                            className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                            </svg>
+                                            Configurar Cores
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardBody>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Turma</label>
+                                    <select
+                                        value={selectedTurma}
+                                        onChange={(e) => setSelectedTurma(e.target.value)}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value="">Selecione uma turma</option>
+                                        {turmas.map((turma) => (
+                                            <option key={turma.id} value={turma.id}>
+                                                {turma.nome} - {turma.ano_lectivo}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Disciplina</label>
+                                    <select
+                                        value={selectedDisciplina}
+                                        onChange={(e) => setSelectedDisciplina(e.target.value)}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        disabled={!selectedTurma || disciplinas.length === 0}
+                                    >
+                                        <option value="">Selecione uma disciplina</option>
+                                        {/* For Primary Education, show "All Disciplines" option */}
+                                        {isPrimaryEducation && (
+                                            <option value="all">Todas as Disciplinas</option>
+                                        )}
+                                        {disciplinas.map((disciplina) => (
+                                            <option key={disciplina.id} value={disciplina.id}>
+                                                {disciplina.nome}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-2">Trimestre</label>
+                                    <select
+                                        value={trimestre}
+                                        onChange={(e) => {
+                                            const value = e.target.value
+                                            setTrimestre(value === 'all' ? 'all' : parseInt(value) as 1 | 2 | 3)
+                                        }}
+                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    >
+                                        <option value={1}>1º Trimestre</option>
+                                        <option value={2}>2º Trimestre</option>
+                                        <option value={3}>3º Trimestre</option>
+                                        {/* For Secondary Education, show "All Trimesters" option */}
+                                        {!isPrimaryEducation && (
+                                            <option value="all">Todos os Trimestres</option>
+                                        )}
+                                    </select>
+                                </div>
+
+                                <div className="flex items-end">
+                                    <button
+                                        onClick={loadMiniPautaData}
+                                        disabled={!selectedTurma || !selectedDisciplina || loadingData}
+                                        className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                        {loadingData ? 'Carregando...' : 'Carregar Dados'}
+                                    </button>
+                                </div>
+                            </div>
+                        </CardBody>
+                    </Card>
+
+                    {/* Statistics */}
+                    {miniPautaData && (
+                        <TurmaStatistics statistics={miniPautaData.estatisticas} />
+                    )}
+
+                    {/* Preview */}
+                    {miniPautaData && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Turma</label>
-                            <select
-                                value={selectedTurma}
-                                onChange={(e) => setSelectedTurma(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="">Selecione uma turma</option>
-                                {turmas.map((turma) => (
-                                    <option key={turma.id} value={turma.id}>
-                                        {turma.nome} - {turma.ano_lectivo}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="text-lg font-semibold text-slate-900">Preview da Mini-Pauta</h3>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="primary"
+                                        onClick={handleGeneratePDF}
+                                        icon={
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            </svg>
+                                        }
+                                    >
+                                        PDF
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleGenerateExcel}
+                                        icon={
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        }
+                                    >
+                                        Excel
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleExportCSV}
+                                        icon={
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        }
+                                    >
+                                        CSV
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => setShowHeaderConfigModal(true)}
+                                        icon={
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        }
+                                    >
+                                        Cabeçalho
+                                    </Button>
+                                </div>
+                            </div>
+                            <MiniPautaPreview data={miniPautaData} loading={loadingData} colorConfig={colorConfig} />
                         </div>
+                    )}
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Disciplina</label>
-                            <select
-                                value={selectedDisciplina}
-                                onChange={(e) => setSelectedDisciplina(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                disabled={!selectedTurma || disciplinas.length === 0}
-                            >
-                                <option value="">Selecione uma disciplina</option>
-                                {/* For Primary Education, show "All Disciplines" option */}
-                                {isPrimaryEducation && (
-                                    <option value="all">Todas as Disciplinas</option>
-                                )}
-                                {disciplinas.map((disciplina) => (
-                                    <option key={disciplina.id} value={disciplina.id}>
-                                        {disciplina.nome}
-                                    </option>
-                                ))}
-                            </select>
+                    {!miniPautaData && !loadingData && selectedTurma && selectedDisciplina && (
+                        <div className="bg-slate-50 rounded-lg p-8 text-center">
+                            <svg className="w-16 h-16 mx-auto text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <p className="text-slate-600">Clique em "Carregar Dados" para visualizar a mini-pauta</p>
                         </div>
+                    )}
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-2">Trimestre</label>
-                            <select
-                                value={trimestre}
-                                onChange={(e) => {
-                                    const value = e.target.value
-                                    setTrimestre(value === 'all' ? 'all' : parseInt(value) as 1 | 2 | 3)
-                                }}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value={1}>1º Trimestre</option>
-                                <option value={2}>2º Trimestre</option>
-                                <option value={3}>3º Trimestre</option>
-                                {/* For Secondary Education, show "All Trimesters" option */}
-                                {!isPrimaryEducation && (
-                                    <option value="all">Todos os Trimestres</option>
-                                )}
-                            </select>
-                        </div>
+                    {/* Configuration Modal */}
+                    <ConfiguracaoFormulasModal
+                        isOpen={showConfigModal}
+                        onClose={() => setShowConfigModal(false)}
+                        disciplinaId={selectedDisciplina}
+                        turmaId={selectedTurma}
+                        currentConfig={mtConfig}
+                        onSave={() => {
+                            setShowConfigModal(false)
+                            loadMiniPautaData()
+                        }}
+                    />
 
-                        <div className="flex items-end">
-                            <button
-                                onClick={loadMiniPautaData}
-                                disabled={!selectedTurma || !selectedDisciplina || loadingData}
-                                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                {loadingData ? 'Carregando...' : 'Carregar Dados'}
-                            </button>
-                        </div>
-                    </div>
-                </CardBody>
-            </Card>
+                    {/* Header Configuration Modal */}
+                    <ConfiguracaoCabecalhoModal
+                        isOpen={showHeaderConfigModal}
+                        onClose={() => setShowHeaderConfigModal(false)}
+                        onSave={() => {
+                            setShowHeaderConfigModal(false)
+                            loadHeaderConfiguration()
+                        }}
+                    />
 
-            {/* Statistics */}
-            {miniPautaData && (
-                <TurmaStatistics statistics={miniPautaData.estatisticas} />
-            )}
+                    {/* Ordenar Disciplinas Modal */}
+                    {showOrdenarDisciplinasModal && (
+                        <OrdenarDisciplinasModal
+                            turmaId={selectedTurma}
+                            onClose={() => setShowOrdenarDisciplinasModal(false)}
+                            onSave={() => {
+                                setShowOrdenarDisciplinasModal(false)
+                                loadDisciplinas()
+                            }}
+                        />
+                    )}
 
-            {/* Preview */}
-            {miniPautaData && (
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-slate-900">Preview da Mini-Pauta</h3>
-                        <div className="flex gap-2">
-                            <Button
-                                variant="primary"
-                                onClick={handleGeneratePDF}
-                                icon={
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                                    </svg>
-                                }
-                            >
-                                PDF
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={handleGenerateExcel}
-                                icon={
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                }
-                            >
-                                Excel
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={handleExportCSV}
-                                icon={
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                }
-                            >
-                                CSV
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                onClick={() => setShowHeaderConfigModal(true)}
-                                icon={
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                    </svg>
-                                }
-                            >
-                                Cabeçalho
-                            </Button>
-                        </div>
-                    </div>
-                    <MiniPautaPreview data={miniPautaData} loading={loadingData} colorConfig={colorConfig} />
+                    {/* Color Configuration Modal */}
+                    <ConfiguracaoCoresModal
+                        isOpen={showColorConfigModal}
+                        onClose={() => setShowColorConfigModal(false)}
+                        onSave={async () => {
+                            console.log('Color config saved, reloading...')
+                            await loadColorConfiguration()
+                            setShowColorConfigModal(false)
+                        }}
+                        currentConfig={colorConfig}
+                        nivelEnsino={selectedTurmaData?.nivel_ensino}
+                        turmaId={selectedTurma}
+                    />
                 </div>
+            ) : (
+                <PautaGeralPage />
             )}
-
-            {!miniPautaData && !loadingData && selectedTurma && selectedDisciplina && (
-                <div className="bg-slate-50 rounded-lg p-8 text-center">
-                    <svg className="w-16 h-16 mx-auto text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-slate-600">Clique em "Carregar Dados" para visualizar a mini-pauta</p>
-                </div>
-            )}
-
-            {/* Configuration Modal */}
-            <ConfiguracaoFormulasModal
-                isOpen={showConfigModal}
-                onClose={() => setShowConfigModal(false)}
-                disciplinaId={selectedDisciplina}
-                turmaId={selectedTurma}
-                currentConfig={mtConfig}
-                onSave={() => {
-                    setShowConfigModal(false)
-                    loadMiniPautaData()
-                }}
-            />
-
-            {/* Header Configuration Modal */}
-            <ConfiguracaoCabecalhoModal
-                isOpen={showHeaderConfigModal}
-                onClose={() => setShowHeaderConfigModal(false)}
-                onSave={() => {
-                    setShowHeaderConfigModal(false)
-                    loadHeaderConfiguration()
-                }}
-            />
-
-            {/* Ordenar Disciplinas Modal */}
-            {showOrdenarDisciplinasModal && (
-                <OrdenarDisciplinasModal
-                    turmaId={selectedTurma}
-                    onClose={() => setShowOrdenarDisciplinasModal(false)}
-                    onSave={() => {
-                        setShowOrdenarDisciplinasModal(false)
-                        loadDisciplinas()
-                    }}
-                />
-            )}
-
-            {/* Color Configuration Modal */}
-            <ConfiguracaoCoresModal
-                isOpen={showColorConfigModal}
-                onClose={() => setShowColorConfigModal(false)}
-                onSave={async () => {
-                    console.log('Color config saved, reloading...')
-                    await loadColorConfiguration()
-                    setShowColorConfigModal(false)
-                }}
-                currentConfig={colorConfig}
-                nivelEnsino={selectedTurmaData?.nivel_ensino}
-                turmaId={selectedTurma}
-            />
         </div>
     )
 }
