@@ -13,12 +13,14 @@ interface ConfiguracaoCabecalhoModalProps {
     isOpen: boolean
     onClose: () => void
     onSave: () => void
+    documentType?: 'Mini-Pauta' | 'Pauta-Geral' // Type of document this header is for
 }
 
 export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProps> = ({
     isOpen,
     onClose,
-    onSave
+    onSave,
+    documentType = 'Mini-Pauta' // Default to Mini-Pauta for backward compatibility
 }) => {
     const [config, setConfig] = useState<Partial<HeaderConfig>>(getDefaultHeaderConfig())
     const [loading, setLoading] = useState(false)
@@ -117,7 +119,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
             <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-                    <h2 className="text-xl font-bold text-slate-900">Configurar Cabeçalho da Mini-Pauta</h2>
+                    <h2 className="text-xl font-bold text-slate-900">Configurar Cabeçalho da {documentType}</h2>
                     <button
                         onClick={onClose}
                         className="text-slate-400 hover:text-slate-600 transition"
@@ -308,7 +310,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Tamanho Fonte "MINI-PAUTA"
+                                        Tamanho Fonte "{documentType.toUpperCase()}"
                                     </label>
                                     <input
                                         type="number"
@@ -358,7 +360,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
                                         </p>
                                     )}
                                     <p style={{ fontSize: `${config.tamanho_fonte_outros}px` }}>{config.nome_escola}</p>
-                                    <p className="font-bold mt-2" style={{ fontSize: `${config.tamanho_fonte_mini_pauta}px` }}>MINI-PAUTA</p>
+                                    <p className="font-bold mt-2" style={{ fontSize: `${config.tamanho_fonte_mini_pauta}px` }}>{documentType.toUpperCase()}</p>
                                 </div>
                             </div>
                         </>

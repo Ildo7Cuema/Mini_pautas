@@ -11,10 +11,10 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardBody, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
-import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { DisciplinesManagement } from './DisciplinesManagement'
+import { StudentFormModal, StudentFormData, initialStudentFormData } from './StudentFormModal'
 
 interface ClassDetailsPageProps {
     turmaId: string
@@ -37,6 +37,28 @@ interface Aluno {
     nome_completo: string
     numero_processo: string
     turma_id: string
+    data_nascimento?: string
+    genero?: 'M' | 'F'
+    nacionalidade?: string
+    naturalidade?: string
+    tipo_documento?: string
+    numero_documento?: string
+    nome_pai?: string
+    nome_mae?: string
+    nome_encarregado?: string
+    parentesco_encarregado?: string
+    telefone_encarregado?: string
+    email_encarregado?: string
+    profissao_encarregado?: string
+    provincia?: string
+    municipio?: string
+    bairro?: string
+    rua?: string
+    endereco?: string
+    ano_ingresso?: number
+    escola_anterior?: string
+    classe_anterior?: string
+    observacoes_academicas?: string
 }
 
 export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onNavigate }) => {
@@ -54,10 +76,7 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
     const [loadingStudents, setLoadingStudents] = useState(false)
     const [selectedStudent, setSelectedStudent] = useState<Aluno | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
-    const [studentFormData, setStudentFormData] = useState({
-        nome_completo: '',
-        numero_processo: ''
-    })
+    const [studentFormData, setStudentFormData] = useState<Partial<StudentFormData>>({})
 
     // Disciplines management state
     const [showDisciplinesManagement, setShowDisciplinesManagement] = useState(false)
@@ -122,24 +141,27 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
         }
     }
 
-    const handleAddStudent = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleAddStudent = async (data: StudentFormData) => {
         setError(null)
         setSuccess(null)
 
         try {
+            const dataToSubmit = {
+                ...data,
+                turma_id: turmaId,
+                genero: data.genero || null,
+                ano_ingresso: data.ano_ingresso ? parseInt(data.ano_ingresso) : null,
+            }
+
             const { error: insertError } = await supabase
                 .from('alunos')
-                .insert({
-                    ...studentFormData,
-                    turma_id: turmaId
-                })
+                .insert(dataToSubmit)
 
             if (insertError) throw insertError
 
             setSuccess('Aluno adicionado com sucesso!')
             setShowAddStudentModal(false)
-            setStudentFormData({ nome_completo: '', numero_processo: '' })
+            setStudentFormData({})
 
             // Reload turma details to update student count
             loadTurmaDetails()
@@ -151,6 +173,7 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar aluno'
             setError(translateError(errorMessage))
+            throw err // Re-throw to keep modal open
         }
     }
 
@@ -180,26 +203,51 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
     const handleEditStudent = (student: Aluno) => {
         setSelectedStudent(student)
         setStudentFormData({
-            nome_completo: student.nome_completo,
-            numero_processo: student.numero_processo
+            nome_completo: student.nome_completo || '',
+            numero_processo: student.numero_processo || '',
+            turma_id: student.turma_id || '',
+            data_nascimento: student.data_nascimento || '',
+            genero: (student.genero as '' | 'M' | 'F') || '',
+            nacionalidade: student.nacionalidade || '',
+            naturalidade: student.naturalidade || '',
+            tipo_documento: student.tipo_documento || '',
+            numero_documento: student.numero_documento || '',
+            nome_pai: student.nome_pai || '',
+            nome_mae: student.nome_mae || '',
+            nome_encarregado: student.nome_encarregado || '',
+            parentesco_encarregado: student.parentesco_encarregado || '',
+            telefone_encarregado: student.telefone_encarregado || '',
+            email_encarregado: student.email_encarregado || '',
+            profissao_encarregado: student.profissao_encarregado || '',
+            provincia: student.provincia || '',
+            municipio: student.municipio || '',
+            bairro: student.bairro || '',
+            rua: student.rua || '',
+            endereco: student.endereco || '',
+            ano_ingresso: student.ano_ingresso?.toString() || '',
+            escola_anterior: student.escola_anterior || '',
+            classe_anterior: student.classe_anterior || '',
+            observacoes_academicas: student.observacoes_academicas || '',
         })
         setShowEditStudentModal(true)
     }
 
-    const handleUpdateStudent = async (e: React.FormEvent) => {
-        e.preventDefault()
+    const handleUpdateStudent = async (data: StudentFormData) => {
         if (!selectedStudent) return
 
         setError(null)
         setSuccess(null)
 
         try {
+            const dataToUpdate = {
+                ...data,
+                genero: data.genero || null,
+                ano_ingresso: data.ano_ingresso ? parseInt(data.ano_ingresso) : null,
+            }
+
             const { error: updateError } = await supabase
                 .from('alunos')
-                .update({
-                    nome_completo: studentFormData.nome_completo,
-                    numero_processo: studentFormData.numero_processo
-                })
+                .update(dataToUpdate)
                 .eq('id', selectedStudent.id)
 
             if (updateError) throw updateError
@@ -207,13 +255,14 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
             setSuccess('Aluno atualizado com sucesso!')
             setShowEditStudentModal(false)
             setSelectedStudent(null)
-            setStudentFormData({ nome_completo: '', numero_processo: '' })
+            setStudentFormData({})
 
             // Reload students list
             loadStudents()
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar aluno'
             setError(translateError(errorMessage))
+            throw err // Re-throw to keep modal open
         }
     }
 
@@ -543,136 +592,34 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
             )}
 
             {/* Add Student Modal */}
-            {showAddStudentModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
-                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-slate-900">Adicionar Aluno</h3>
-                                <button
-                                    onClick={() => setShowAddStudentModal(false)}
-                                    className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </CardHeader>
-                        <CardBody>
-                            <form onSubmit={handleAddStudent} className="space-y-4">
-                                <Input
-                                    label="Nome Completo"
-                                    type="text"
-                                    value={studentFormData.nome_completo}
-                                    onChange={(e) => setStudentFormData({ ...studentFormData, nome_completo: e.target.value })}
-                                    placeholder="João Silva"
-                                    required
-                                    icon={<Icons.User />}
-                                />
-
-                                <Input
-                                    label="Número de Processo"
-                                    type="text"
-                                    value={studentFormData.numero_processo}
-                                    onChange={(e) => setStudentFormData({ ...studentFormData, numero_processo: e.target.value })}
-                                    placeholder="2025001"
-                                    required
-                                />
-
-                                <div className="bg-slate-50 p-3 rounded-lg">
-                                    <label className="text-sm font-medium text-slate-700">Turma</label>
-                                    <p className="text-base font-semibold text-slate-900 mt-1">{turma.nome}</p>
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onClick={() => setShowAddStudentModal(false)}
-                                        className="flex-1"
-                                    >
-                                        Cancelar
-                                    </Button>
-                                    <Button type="submit" variant="primary" className="flex-1">
-                                        Adicionar Aluno
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardBody>
-                    </Card>
-                </div>
-            )}
+            <StudentFormModal
+                isOpen={showAddStudentModal}
+                onClose={() => {
+                    setShowAddStudentModal(false)
+                    setStudentFormData({})
+                }}
+                onSubmit={handleAddStudent}
+                title="Adicionar Aluno"
+                submitLabel="Adicionar Aluno"
+                turmaId={turmaId}
+                turmaNome={turma.nome}
+            />
 
             {/* Edit Student Modal */}
-            {showEditStudentModal && selectedStudent && (
-                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
-                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-slate-900">Editar Aluno</h3>
-                                <button
-                                    onClick={() => {
-                                        setShowEditStudentModal(false)
-                                        setSelectedStudent(null)
-                                        setStudentFormData({ nome_completo: '', numero_processo: '' })
-                                    }}
-                                    className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </CardHeader>
-                        <CardBody>
-                            <form onSubmit={handleUpdateStudent} className="space-y-4">
-                                <Input
-                                    label="Nome Completo"
-                                    type="text"
-                                    value={studentFormData.nome_completo}
-                                    onChange={(e) => setStudentFormData({ ...studentFormData, nome_completo: e.target.value })}
-                                    placeholder="João Silva"
-                                    required
-                                    icon={<Icons.User />}
-                                />
-
-                                <Input
-                                    label="Número de Processo"
-                                    type="text"
-                                    value={studentFormData.numero_processo}
-                                    onChange={(e) => setStudentFormData({ ...studentFormData, numero_processo: e.target.value })}
-                                    placeholder="2025001"
-                                    required
-                                />
-
-                                <div className="bg-slate-50 p-3 rounded-lg">
-                                    <label className="text-sm font-medium text-slate-700">Turma</label>
-                                    <p className="text-base font-semibold text-slate-900 mt-1">{turma.nome}</p>
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onClick={() => {
-                                            setShowEditStudentModal(false)
-                                            setSelectedStudent(null)
-                                            setStudentFormData({ nome_completo: '', numero_processo: '' })
-                                        }}
-                                        className="flex-1"
-                                    >
-                                        Cancelar
-                                    </Button>
-                                    <Button type="submit" variant="primary" className="flex-1">
-                                        Salvar Alterações
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardBody>
-                    </Card>
-                </div>
-            )}
+            <StudentFormModal
+                isOpen={showEditStudentModal && selectedStudent !== null}
+                onClose={() => {
+                    setShowEditStudentModal(false)
+                    setSelectedStudent(null)
+                    setStudentFormData({})
+                }}
+                onSubmit={handleUpdateStudent}
+                initialData={studentFormData}
+                title="Editar Aluno"
+                submitLabel="Salvar Alterações"
+                turmaId={turmaId}
+                turmaNome={turma.nome}
+            />
 
             {/* Delete Confirmation Modal */}
             {showDeleteConfirmModal && selectedStudent && (

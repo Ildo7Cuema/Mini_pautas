@@ -202,26 +202,28 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
 
                                     {expanded[disciplina.id] && (
                                         <div className="ml-6 mt-2 space-y-1">
-                                            {disciplina.componentes.map((componente) => (
-                                                <div key={componente.id} className="flex items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        id={`comp-${componente.id}`}
-                                                        checked={isComponenteSelected(componente.id)}
-                                                        onChange={() => handleToggleComponente(componente.id)}
-                                                        className="w-3.5 h-3.5 text-purple-600 border-slate-300 rounded focus:ring-2 focus:ring-purple-500"
-                                                    />
-                                                    <label
-                                                        htmlFor={`comp-${componente.id}`}
-                                                        className="text-xs text-slate-700 cursor-pointer"
-                                                    >
-                                                        {componente.codigo_componente} - {componente.nome}
-                                                        {componente.is_calculated && (
-                                                            <span className="ml-1 text-xs text-blue-600">(Calculado)</span>
-                                                        )}
-                                                    </label>
-                                                </div>
-                                            ))}
+                                            {disciplina.componentes
+                                                .filter(c => c.is_calculated)
+                                                .map((componente) => (
+                                                    <div key={componente.id} className="flex items-center gap-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            id={`comp-${componente.id}`}
+                                                            checked={isComponenteSelected(componente.id)}
+                                                            onChange={() => handleToggleComponente(componente.id)}
+                                                            className="w-3.5 h-3.5 text-purple-600 border-slate-300 rounded focus:ring-2 focus:ring-purple-500"
+                                                        />
+                                                        <label
+                                                            htmlFor={`comp-${componente.id}`}
+                                                            className="text-xs text-slate-700 cursor-pointer"
+                                                        >
+                                                            {componente.codigo_componente} - {componente.nome}
+                                                            {componente.is_calculated && (
+                                                                <span className="ml-1 text-xs text-blue-600">(Calculado)</span>
+                                                            )}
+                                                        </label>
+                                                    </div>
+                                                ))}
                                         </div>
                                     )}
                                 </div>
@@ -313,13 +315,7 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                                 className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                             >
                                 <option value="MF">MF - Média Final</option>
-                                <option value="MT">MT - Média Trimestral</option>
-                                <option value="NF">NF - Nota Final</option>
-                                <option value="AC1">AC1 - Avaliação Contínua 1</option>
-                                <option value="AC2">AC2 - Avaliação Contínua 2</option>
-                                <option value="AC3">AC3 - Avaliação Contínua 3</option>
-                                <option value="PP">PP - Prova Parcial</option>
-                                <option value="PT">PT - Prova Trimestral</option>
+                                <option value="MFD">MFD - Média Final da Disciplina</option>
                             </select>
                             <p className="text-xs text-slate-500 mt-1">
                                 Selecione qual componente de cada disciplina será usado para calcular a Média Geral

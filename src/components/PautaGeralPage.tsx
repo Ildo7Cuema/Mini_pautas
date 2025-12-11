@@ -191,12 +191,13 @@ export const PautaGeralPage: React.FC = () => {
                 return
             }
 
-            // Load all componentes for all disciplinas for the selected trimestre
+            // Load all componentes for all disciplinas from all trimesters
+            // (Pauta Geral can include calculated components from T1, T2, T3)
             const { data: componentesData, error: componentesError } = await supabase
                 .from('componentes_avaliacao')
                 .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
                 .eq('turma_id', selectedTurma)
-                .eq('trimestre', trimestre)
+                .order('trimestre')
                 .order('ordem')
 
             if (componentesError) throw componentesError
@@ -234,12 +235,11 @@ export const PautaGeralPage: React.FC = () => {
             // Get all component IDs for loading notas
             const allComponentIds = componentesData?.map(c => c.id) || []
 
-            // Load notas for all components
+            // Load notas for all components from all trimesters
             const { data: notasData, error: notasError } = await supabase
                 .from('notas')
-                .select('aluno_id, componente_id, valor')
+                .select('aluno_id, componente_id, valor, trimestre')
                 .eq('turma_id', selectedTurma)
-                .eq('trimestre', trimestre)
                 .in('componente_id', allComponentIds)
 
             if (notasError) throw notasError
@@ -675,6 +675,7 @@ export const PautaGeralPage: React.FC = () => {
                     setShowHeaderConfigModal(false)
                     loadHeaderConfiguration()
                 }}
+                documentType="Pauta-Geral"
             />
         </div>
     )

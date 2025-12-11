@@ -55,14 +55,39 @@ export interface Aluno {
     id: string;
     turma_id: string;
     user_id?: string;
+
+    // Dados Pessoais
     nome_completo: string;
     numero_processo: string;
     data_nascimento?: string;
     genero?: 'M' | 'F' | 'Outro';
+    nacionalidade?: string;
+    naturalidade?: string;
+    tipo_documento?: string;
+    numero_documento?: string;
+
+    // Dados do Encarregado/Responsável
+    nome_pai?: string;
+    nome_mae?: string;
     nome_encarregado?: string;
+    parentesco_encarregado?: string;
     telefone_encarregado?: string;
     email_encarregado?: string;
-    endereco?: string;
+    profissao_encarregado?: string;
+
+    // Endereço/Morada
+    provincia?: string;
+    municipio?: string;
+    bairro?: string;
+    rua?: string;
+    endereco?: string; // Referência/complemento
+
+    // Dados Acadêmicos
+    ano_ingresso?: number;
+    escola_anterior?: string;
+    classe_anterior?: string;
+    observacoes_academicas?: string;
+
     ativo: boolean;
     created_at: string;
     updated_at: string;

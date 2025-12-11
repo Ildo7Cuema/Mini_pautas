@@ -1074,8 +1074,26 @@ interface TermoFrequenciaData {
         nome_completo: string
         data_nascimento?: string
         genero?: string
+        nacionalidade?: string
+        naturalidade?: string
+        tipo_documento?: string
+        numero_documento?: string
         nome_pai?: string
         nome_mae?: string
+        nome_encarregado?: string
+        parentesco_encarregado?: string
+        telefone_encarregado?: string
+        email_encarregado?: string
+        profissao_encarregado?: string
+        provincia?: string
+        municipio?: string
+        bairro?: string
+        rua?: string
+        endereco?: string
+        ano_ingresso?: number
+        escola_anterior?: string
+        classe_anterior?: string
+        observacoes_academicas?: string
     }
     turma: {
         nome: string
@@ -1100,6 +1118,7 @@ interface TermoFrequenciaData {
 
 /**
  * Renders the PDF header for Termo de Frequência
+ * Includes the student process number in red after the title
  */
 async function renderTermoFrequenciaHeader(
     doc: jsPDF,
@@ -1107,7 +1126,7 @@ async function renderTermoFrequenciaHeader(
     headerConfig: HeaderConfig | null | undefined,
     pageWidth: number
 ): Promise<number> {
-    let currentY = 15
+    let currentY = 10
 
     if (headerConfig) {
         // Logo (if configured)
@@ -1164,15 +1183,42 @@ async function renderTermoFrequenciaHeader(
         doc.text(headerConfig.nome_escola, pageWidth / 2, currentY, { align: 'center' })
         currentY += fontSize * 0.7
 
+        // Title with process number in red
         const termoFontSize = headerConfig.tamanho_fonte_mini_pauta || 14
         doc.setFontSize(termoFontSize)
         doc.setFont('helvetica', 'bold')
-        doc.text('TERMO DE FREQUÊNCIA DO ALUNO', pageWidth / 2, currentY, { align: 'center' })
+
+        const titleText = 'TERMO DE FREQUÊNCIA DO ALUNO Nº '
+        const titleWidth = doc.getTextWidth(titleText)
+        const processNumber = data.aluno.numero_processo
+        const processWidth = doc.getTextWidth(processNumber)
+        const totalWidth = titleWidth + processWidth
+        const startX = (pageWidth - totalWidth) / 2
+
+        doc.setTextColor(0, 0, 0)
+        doc.text(titleText, startX, currentY)
+        doc.setTextColor(220, 38, 38) // Red color
+        doc.text(processNumber, startX + titleWidth, currentY)
+        doc.setTextColor(0, 0, 0) // Reset to black
+
         currentY += termoFontSize * 0.6
     } else {
         doc.setFontSize(14)
         doc.setFont('helvetica', 'bold')
-        doc.text('TERMO DE FREQUÊNCIA DO ALUNO', pageWidth / 2, currentY, { align: 'center' })
+
+        const titleText = 'TERMO DE FREQUÊNCIA DO ALUNO Nº '
+        const titleWidth = doc.getTextWidth(titleText)
+        const processNumber = data.aluno.numero_processo
+        const processWidth = doc.getTextWidth(processNumber)
+        const totalWidth = titleWidth + processWidth
+        const startX = (pageWidth - totalWidth) / 2
+
+        doc.setTextColor(0, 0, 0)
+        doc.text(titleText, startX, currentY)
+        doc.setTextColor(220, 38, 38) // Red color
+        doc.text(processNumber, startX + titleWidth, currentY)
+        doc.setTextColor(0, 0, 0) // Reset to black
+
         currentY += 7
 
         if (data.escola) {
@@ -1191,65 +1237,139 @@ async function renderTermoFrequenciaHeader(
 }
 
 /**
- * Renders student information section
+ * Renders student information section in a 4-column layout
+ * Displays all student information organized in rows with 4 columns each
  */
 function renderStudentInfo(
     doc: jsPDF,
     data: TermoFrequenciaData,
-    startY: number
+    startY: number,
+    pageWidth: number
 ): number {
     let currentY = startY
 
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
     doc.text('INFORMAÇÕES DO ALUNO', 14, currentY)
-    currentY += 7
+    currentY += 5
 
-    doc.setFontSize(10)
-    doc.setFont('helvetica', 'normal')
+    // Helper to format gender
+    const formatGender = (g?: string) => {
+        if (!g) return ''
+        return g === 'M' ? 'Masculino' : 'Feminino'
+    }
 
-    const infoItems = [
-        { label: 'Nome Completo:', value: data.aluno.nome_completo },
-        { label: 'Número de Processo:', value: data.aluno.numero_processo },
-        { label: 'Turma:', value: data.turma.nome },
-        { label: 'Ano Lectivo:', value: data.turma.ano_lectivo.toString() }
+    // Build address string
+    const buildAddress = () => {
+        const parts = [
+            data.aluno.rua,
+            data.aluno.bairro,
+            data.aluno.municipio,
+            data.aluno.provincia
+        ].filter(Boolean)
+        return parts.length > 0 ? parts.join(', ') : (data.aluno.endereco || '')
+    }
+
+    // Prepare rows for student info table (4 columns per row)
+    // Each cell contains label + value
+    const createCell = (label: string, value: string | number | undefined | null) => {
+        if (value === undefined || value === null || value === '') return null
+        return { label, value: String(value) }
+    }
+
+    // Row 1: Basic identification
+    const row1 = [
+        createCell('Nome Completo', data.aluno.nome_completo),
+        createCell('Nº Processo', data.aluno.numero_processo),
+        createCell('Turma', data.turma.nome),
+        createCell('Ano Lectivo', data.turma.ano_lectivo),
     ]
 
-    // Add optional fields if available
-    if (data.aluno.data_nascimento) {
-        infoItems.push({ label: 'Data de Nascimento:', value: data.aluno.data_nascimento })
-    }
-    if (data.aluno.genero) {
-        infoItems.push({ label: 'Gênero:', value: data.aluno.genero })
-    }
-    if (data.aluno.nome_pai) {
-        infoItems.push({ label: 'Nome do Pai:', value: data.aluno.nome_pai })
-    }
-    if (data.aluno.nome_mae) {
-        infoItems.push({ label: 'Nome da Mãe:', value: data.aluno.nome_mae })
+    // Row 2: Personal data
+    const row2 = [
+        createCell('Data Nascimento', data.aluno.data_nascimento),
+        createCell('Género', formatGender(data.aluno.genero)),
+        createCell('Nacionalidade', data.aluno.nacionalidade),
+        createCell('Naturalidade', data.aluno.naturalidade),
+    ]
+
+    // Row 3: Document and parents
+    const docInfo = data.aluno.tipo_documento && data.aluno.numero_documento
+        ? `${data.aluno.tipo_documento}: ${data.aluno.numero_documento}`
+        : data.aluno.numero_documento
+    const row3 = [
+        createCell('Documento', docInfo),
+        createCell('Nome do Pai', data.aluno.nome_pai),
+        createCell('Nome da Mãe', data.aluno.nome_mae),
+        createCell('Encarregado', data.aluno.nome_encarregado),
+    ]
+
+    // Row 4: Guardian details and address
+    const row4 = [
+        createCell('Parentesco', data.aluno.parentesco_encarregado),
+        createCell('Telefone', data.aluno.telefone_encarregado),
+        createCell('Profissão Enc.', data.aluno.profissao_encarregado),
+        createCell('Morada', buildAddress()),
+    ]
+
+    // Render using autoTable for consistent styling
+    const colWidth = (pageWidth - 28) / 4
+    const tableData: any[][] = []
+
+    const processRow = (row: (ReturnType<typeof createCell>)[]) => {
+        const tableRow: any[] = []
+        row.forEach(cell => {
+            if (cell) {
+                tableRow.push({
+                    content: `${cell.label}: ${cell.value}`,
+                    styles: { fontSize: 8, cellPadding: 2 }
+                })
+            } else {
+                tableRow.push({ content: '', styles: { cellPadding: 2 } })
+            }
+        })
+        return tableRow
     }
 
-    infoItems.forEach(item => {
-        doc.setFont('helvetica', 'bold')
-        doc.text(item.label, 14, currentY)
-        doc.setFont('helvetica', 'normal')
-        doc.text(item.value, 60, currentY)
-        currentY += 6
+    tableData.push(processRow(row1))
+    tableData.push(processRow(row2))
+    tableData.push(processRow(row3))
+    tableData.push(processRow(row4))
+
+    autoTable(doc, {
+        startY: currentY,
+        body: tableData,
+        theme: 'plain',
+        styles: {
+            fontSize: 8,
+            cellPadding: 1,
+            lineColor: [230, 230, 230],
+            lineWidth: 0.05,
+        },
+        columnStyles: {
+            0: { cellWidth: colWidth },
+            1: { cellWidth: colWidth },
+            2: { cellWidth: colWidth },
+            3: { cellWidth: colWidth },
+        },
+        margin: { left: 14, right: 14 },
     })
 
-    return currentY + 5
+    return (doc as any).lastAutoTable.finalY + 3
 }
 
 /**
  * Generates PDF for Termo de Frequência do Aluno
  * Shows student information and academic performance across all disciplines and trimesters
+ * Uses landscape orientation to accommodate component columns
  */
 export async function generateTermoFrequenciaPDF(
     data: TermoFrequenciaData,
     headerConfig: HeaderConfig | null | undefined,
     colorConfig: GradeColorConfig | null
 ): Promise<void> {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    // Use landscape orientation for better component display
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
@@ -1257,30 +1377,198 @@ export async function generateTermoFrequenciaPDF(
     let currentY = await renderTermoFrequenciaHeader(doc, data, headerConfig, pageWidth)
 
     // Render student information
-    currentY = renderStudentInfo(doc, data, currentY + 5)
+    currentY = renderStudentInfo(doc, data, currentY + 3, pageWidth)
 
     // Academic Performance Section
+    currentY += 5  // Add space above to separate from previous table
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text('DESEMPENHO ACADÉMICO', 14, currentY)
-    currentY += 7
+    doc.text('DESEMPENHO ACADÉMICO', pageWidth / 2, currentY, { align: 'center' })
+    currentY += 3  // Minimal space below to bring table very close
 
-    // Build table headers
-    const headers = [
-        'Disciplina',
-        '1º Trim',
-        '2º Trim',
-        '3º Trim',
-        'Nota Final',
-        'Observação'
-    ]
-
-    // Build table data with components
-    const tableData: any[] = []
+    // Calculate unified component structure across ALL disciplines
+    const componentCodesByTrimester: { 1: Map<string, ComponenteNota>; 2: Map<string, ComponenteNota>; 3: Map<string, ComponenteNota> } = {
+        1: new Map(),
+        2: new Map(),
+        3: new Map()
+    }
 
     data.disciplinas.forEach(disciplina => {
-        // Main discipline row
-        tableData.push([
+        if (disciplina.componentesPorTrimestre) {
+            ([1, 2, 3] as const).forEach(t => {
+                disciplina.componentesPorTrimestre[t].forEach(comp => {
+                    if (!componentCodesByTrimester[t].has(comp.codigo)) {
+                        componentCodesByTrimester[t].set(comp.codigo, comp)
+                    }
+                })
+            })
+        }
+    })
+
+    const componentsT1 = Array.from(componentCodesByTrimester[1].values())
+    const componentsT2 = Array.from(componentCodesByTrimester[2].values())
+    const componentsT3 = Array.from(componentCodesByTrimester[3].values())
+
+    const hasAnyComponents = componentsT1.length > 0 || componentsT2.length > 0 || componentsT3.length > 0
+
+    // Helper function to get nota for a specific component
+    const getNotaForComponent = (disciplina: DisciplinaTermoFrequencia, trimestre: 1 | 2 | 3, codigo: string): string => {
+        if (!disciplina.componentesPorTrimestre) return '-'
+        const comp = disciplina.componentesPorTrimestre[trimestre].find(c => c.codigo === codigo)
+        return comp?.nota !== null && comp?.nota !== undefined ? comp.nota.toFixed(1) : '-'
+    }
+
+    if (hasAnyComponents) {
+        // Build two-row header for component-based display
+        const headerRow1: any[] = [
+            { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'DISCIPLINAS', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+        ]
+
+        // Add trimester headers with colSpan
+        if (componentsT1.length > 0) {
+            headerRow1.push({
+                content: '1º TRIMESTRE',
+                colSpan: componentsT1.length,
+                styles: { halign: 'center', valign: 'middle', fillColor: [59, 130, 246] }
+            })
+        }
+        if (componentsT2.length > 0) {
+            headerRow1.push({
+                content: '2º TRIMESTRE',
+                colSpan: componentsT2.length,
+                styles: { halign: 'center', valign: 'middle', fillColor: [59, 130, 246] }
+            })
+        }
+        if (componentsT3.length > 0) {
+            headerRow1.push({
+                content: '3º TRIMESTRE',
+                colSpan: componentsT3.length,
+                styles: { halign: 'center', valign: 'middle', fillColor: [59, 130, 246] }
+            })
+        }
+
+        headerRow1.push({ content: 'MÉDIA FINAL', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } })
+        headerRow1.push({ content: 'OBSERVAÇÃO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } })
+
+        // Second row: component codes
+        const headerRow2: any[] = []
+        componentsT1.forEach(comp => {
+            headerRow2.push({ content: comp.codigo, styles: { halign: 'center', valign: 'middle', fontSize: 7 } })
+        })
+        componentsT2.forEach(comp => {
+            headerRow2.push({ content: comp.codigo, styles: { halign: 'center', valign: 'middle', fontSize: 7 } })
+        })
+        componentsT3.forEach(comp => {
+            headerRow2.push({ content: comp.codigo, styles: { halign: 'center', valign: 'middle', fontSize: 7 } })
+        })
+
+        // Build table data
+        const tableData: any[] = []
+        data.disciplinas.forEach((disciplina, index) => {
+            const row: any[] = [
+                (index + 1).toString(),
+                disciplina.nome
+            ]
+
+            // Add component values for each trimester
+            componentsT1.forEach(comp => {
+                row.push(getNotaForComponent(disciplina, 1, comp.codigo))
+            })
+            componentsT2.forEach(comp => {
+                row.push(getNotaForComponent(disciplina, 2, comp.codigo))
+            })
+            componentsT3.forEach(comp => {
+                row.push(getNotaForComponent(disciplina, 3, comp.codigo))
+            })
+
+            row.push(disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-')
+            row.push(disciplina.transita ? 'Transita' : 'Não Transita')
+
+            tableData.push(row)
+        })
+
+        // Calculate column widths dynamically
+        const totalComponents = componentsT1.length + componentsT2.length + componentsT3.length
+        const fixedWidth = 10 + 50 + 20 + 28 // Nº + Disciplina + Média Final + Observação
+        const availableWidth = pageWidth - 28 - fixedWidth // margins
+        const componentColWidth = Math.min(15, availableWidth / totalComponents)
+
+        const columnStyles: any = {
+            0: { halign: 'center', cellWidth: 10 },
+            1: { halign: 'left', cellWidth: 50 }
+        }
+
+        let colIndex = 2
+        for (let i = 0; i < totalComponents; i++) {
+            columnStyles[colIndex++] = { halign: 'center', cellWidth: componentColWidth }
+        }
+        columnStyles[colIndex++] = { halign: 'center', cellWidth: 20 }
+        columnStyles[colIndex] = { halign: 'center', cellWidth: 28 }
+
+        // Generate table
+        autoTable(doc, {
+            startY: currentY,
+            head: [headerRow1, headerRow2],
+            body: tableData,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 1,
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [59, 130, 246],
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center',
+                valign: 'middle'
+            },
+            columnStyles,
+            didParseCell: (hookData: any) => {
+                if (hookData.section === 'body') {
+                    const colIdx = hookData.column.index
+                    const totalCols = 2 + totalComponents + 2 // Nº + Disc + components + MF + Obs
+
+                    // Color code grade values (component columns and média final)
+                    if (colIdx >= 2 && colIdx < totalCols - 1) {
+                        const cellValue = hookData.cell.raw
+                        if (cellValue && cellValue !== '-') {
+                            const nota = parseFloat(cellValue)
+                            if (!isNaN(nota)) {
+                                const color = getGradeColorRGB(
+                                    nota,
+                                    data.turma.nivel_ensino,
+                                    undefined,
+                                    false,
+                                    colorConfig
+                                )
+                                hookData.cell.styles.textColor = color
+                                hookData.cell.styles.fontStyle = 'bold'
+                            }
+                        }
+                    }
+
+                    // Color code observation column (last column)
+                    if (colIdx === totalCols - 1 && hookData.cell.raw) {
+                        if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
+                            hookData.cell.styles.textColor = [34, 197, 94]
+                            hookData.cell.styles.fontStyle = 'bold'
+                        } else if (hookData.cell.raw.includes('Não')) {
+                            hookData.cell.styles.textColor = [239, 68, 68]
+                            hookData.cell.styles.fontStyle = 'bold'
+                        }
+                    }
+                }
+            },
+            didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+        })
+    } else {
+        // Fallback to simple trimester totals if no components
+        const headers = ['Nº', 'Disciplina', '1º Trim', '2º Trim', '3º Trim', 'Média Final', 'Observação']
+
+        const tableData: any[] = data.disciplinas.map((disciplina, index) => [
+            (index + 1).toString(),
             disciplina.nome,
             disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-',
             disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-',
@@ -1288,67 +1576,46 @@ export async function generateTermoFrequenciaPDF(
             disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-',
             disciplina.transita ? 'Transita' : 'Não Transita'
         ])
-    })
 
-    // Generate table
-    autoTable(doc, {
-        startY: currentY,
-        head: [headers],
-        body: tableData,
-        theme: 'grid',
-        styles: {
-            fontSize: 9,
-            cellPadding: 3,
-            overflow: 'linebreak'
-        },
-        headStyles: {
-            fillColor: [59, 130, 246],  // Blue
-            textColor: 255,
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        columnStyles: {
-            0: { halign: 'left', cellWidth: 60 },
-            1: { halign: 'center', cellWidth: 20 },
-            2: { halign: 'center', cellWidth: 20 },
-            3: { halign: 'center', cellWidth: 20 },
-            4: { halign: 'center', cellWidth: 25 },
-            5: { halign: 'center', cellWidth: 30 }
-        },
-        didParseCell: (hookData: any) => {
-            const rowData = hookData.row.raw
-            const isComponentRow = rowData[0].startsWith('  ')
-
-            if (isComponentRow) {
-                // Style for component rows
-                hookData.cell.styles.fillColor = [245, 245, 245]
-                hookData.cell.styles.fontSize = 8
-                hookData.cell.styles.textColor = [100, 100, 100]
-                hookData.cell.styles.fontStyle = 'italic'
-                hookData.cell.styles.cellPadding = 2
-            } else {
-                // Color code the grades (columns 1-4)
-                if (hookData.section === 'body' && hookData.column.index >= 1 && hookData.column.index <= 4) {
+        autoTable(doc, {
+            startY: currentY,
+            head: [headers],
+            body: tableData,
+            theme: 'grid',
+            styles: {
+                fontSize: 9,
+                cellPadding: 3,
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [59, 130, 246],
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 10 },
+                1: { halign: 'left', cellWidth: 80 },
+                2: { halign: 'center', cellWidth: 25 },
+                3: { halign: 'center', cellWidth: 25 },
+                4: { halign: 'center', cellWidth: 25 },
+                5: { halign: 'center', cellWidth: 25 },
+                6: { halign: 'center', cellWidth: 35 }
+            },
+            didParseCell: (hookData: any) => {
+                if (hookData.section === 'body' && hookData.column.index >= 2 && hookData.column.index <= 5) {
                     const cellValue = hookData.cell.raw
                     if (cellValue && cellValue !== '-') {
                         const nota = parseFloat(cellValue)
                         if (!isNaN(nota)) {
-                            const color = getGradeColorRGB(
-                                nota,
-                                data.turma.nivel_ensino,
-                                undefined,
-                                false,
-                                colorConfig
-                            )
+                            const color = getGradeColorRGB(nota, data.turma.nivel_ensino, undefined, false, colorConfig)
                             hookData.cell.styles.textColor = color
                             hookData.cell.styles.fontStyle = 'bold'
                         }
                     }
                 }
-
-                // Color code the observation column
-                if (hookData.section === 'body' && hookData.column.index === 5 && hookData.cell.raw) {
-                    if (hookData.cell.raw.includes('Transita')) {
+                if (hookData.section === 'body' && hookData.column.index === 6 && hookData.cell.raw) {
+                    if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
                         hookData.cell.styles.textColor = [34, 197, 94]
                         hookData.cell.styles.fontStyle = 'bold'
                     } else if (hookData.cell.raw.includes('Não')) {
@@ -1356,50 +1623,60 @@ export async function generateTermoFrequenciaPDF(
                         hookData.cell.styles.fontStyle = 'bold'
                     }
                 }
-            }
-        },
-        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
-    })
-
-    // Overall Statistics
-    const finalY = (doc as any).lastAutoTable.finalY + 10
-
-    if (finalY + 40 < pageHeight) {
-        doc.setFontSize(11)
-        doc.setFont('helvetica', 'bold')
-        doc.text('ESTATÍSTICAS GERAIS', 14, finalY)
-
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(10)
-
-        const stats = [
-            `Total de Disciplinas: ${data.estatisticas.total_disciplinas}`,
-            `Disciplinas Aprovadas: ${data.estatisticas.disciplinas_aprovadas}`,
-            `Disciplinas Reprovadas: ${data.estatisticas.disciplinas_reprovadas}`,
-            `Média Geral: ${data.estatisticas.media_geral.toFixed(2)}`
-        ]
-
-        stats.forEach((stat, index) => {
-            doc.text(stat, 14, finalY + 7 + (index * 6))
+            },
+            didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
         })
-
-        // Final observation
-        const obsY = finalY + 7 + (stats.length * 6) + 5
-        doc.setFontSize(12)
-        doc.setFont('helvetica', 'bold')
-
-        if (data.estatisticas.transita) {
-            doc.setTextColor(34, 197, 94)  // Green
-            doc.text('OBSERVAÇÃO FINAL: TRANSITA', 14, obsY)
-        } else {
-            doc.setTextColor(239, 68, 68)  // Red
-            doc.text('OBSERVAÇÃO FINAL: NÃO TRANSITA', 14, obsY)
-        }
-        doc.setTextColor(0, 0, 0)  // Reset to black
-
-        // Signatures
-        addPDFSignatures(doc, obsY + 5, pageWidth, pageHeight)
     }
+
+    // Overall Statistics - Compact version
+    const finalY = (doc as any).lastAutoTable.finalY + 8
+
+    // Statistics in smaller font, inline format
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('ESTATÍSTICAS:', 14, finalY)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    const statsText = `Total: ${data.estatisticas.total_disciplinas} | Aprov.: ${data.estatisticas.disciplinas_aprovadas} | Reprov.: ${data.estatisticas.disciplinas_reprovadas} | Média Geral: ${data.estatisticas.media_geral.toFixed(2)}`
+    doc.text(statsText, 45, finalY)
+
+    // Final observation - positioned to the right
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+
+    const obsY = finalY
+    if (data.estatisticas.transita) {
+        doc.setTextColor(34, 197, 94)  // Green
+        doc.text('OBSERVAÇÃO: TRANSITA', pageWidth - 14, obsY, { align: 'right' })
+    } else {
+        doc.setTextColor(239, 68, 68)  // Red
+        doc.text('OBSERVAÇÃO: NÃO TRANSITA', pageWidth - 14, obsY, { align: 'right' })
+    }
+    doc.setTextColor(0, 0, 0)  // Reset to black
+
+    // Signatures section
+    const signY = finalY + 25
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+
+    // Three signature boxes
+    const signWidth = (pageWidth - 56) / 3
+    const signX1 = 14
+    const signX2 = 14 + signWidth + 14
+    const signX3 = 14 + (signWidth + 14) * 2
+
+    // Signature lines
+    doc.setDrawColor(100, 100, 100)
+    doc.line(signX1, signY, signX1 + signWidth, signY)
+    doc.line(signX2, signY, signX2 + signWidth, signY)
+    doc.line(signX3, signY, signX3 + signWidth, signY)
+
+    // Labels
+    doc.setFontSize(8)
+    doc.text('O(A) Director(a) de Turma', signX1 + signWidth / 2, signY + 4, { align: 'center' })
+    doc.text('O(A) Director(a) Pedagógico(a)', signX2 + signWidth / 2, signY + 4, { align: 'center' })
+    doc.text('O(A) Director(a) Geral', signX3 + signWidth / 2, signY + 4, { align: 'center' })
 
     // Save
     const filename = `termo-frequencia_${data.aluno.numero_processo}_${data.turma.ano_lectivo}.pdf`
@@ -1409,13 +1686,15 @@ export async function generateTermoFrequenciaPDF(
 /**
  * Generates Termo de Frequência PDF as Blob (for batch processing)
  * Same as generateTermoFrequenciaPDF but returns Blob instead of downloading
+ * Uses landscape orientation to accommodate component columns
  */
 export async function generateTermoFrequenciaPDFBlob(
     data: TermoFrequenciaData,
     headerConfig: HeaderConfig | null | undefined,
     colorConfig: GradeColorConfig | null
 ): Promise<Blob> {
-    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' })
+    // Use landscape orientation for better component display
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' })
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
@@ -1423,30 +1702,197 @@ export async function generateTermoFrequenciaPDFBlob(
     let currentY = await renderTermoFrequenciaHeader(doc, data, headerConfig, pageWidth)
 
     // Render student information
-    currentY = renderStudentInfo(doc, data, currentY + 5)
+    currentY = renderStudentInfo(doc, data, currentY + 3, pageWidth)
 
-    // Academic Performance Section
+    currentY += 5  // Add space above to separate from previous table
     doc.setFontSize(11)
     doc.setFont('helvetica', 'bold')
-    doc.text('DESEMPENHO ACADÉMICO', 14, currentY)
-    currentY += 7
+    doc.text('DESEMPENHO ACADÉMICO', pageWidth / 2, currentY, { align: 'center' })
+    currentY += 3  // Minimal space below to bring table very close
 
-    // Build table headers
-    const headers = [
-        'Disciplina',
-        '1º Trim',
-        '2º Trim',
-        '3º Trim',
-        'Nota Final',
-        'Observação'
-    ]
-
-    // Build table data with components
-    const tableData: any[] = []
+    // Calculate unified component structure across ALL disciplines
+    const componentCodesByTrimester: { 1: Map<string, ComponenteNota>; 2: Map<string, ComponenteNota>; 3: Map<string, ComponenteNota> } = {
+        1: new Map(),
+        2: new Map(),
+        3: new Map()
+    }
 
     data.disciplinas.forEach(disciplina => {
-        // Main discipline row
-        tableData.push([
+        if (disciplina.componentesPorTrimestre) {
+            ([1, 2, 3] as const).forEach(t => {
+                disciplina.componentesPorTrimestre[t].forEach(comp => {
+                    if (!componentCodesByTrimester[t].has(comp.codigo)) {
+                        componentCodesByTrimester[t].set(comp.codigo, comp)
+                    }
+                })
+            })
+        }
+    })
+
+    const componentsT1 = Array.from(componentCodesByTrimester[1].values())
+    const componentsT2 = Array.from(componentCodesByTrimester[2].values())
+    const componentsT3 = Array.from(componentCodesByTrimester[3].values())
+
+    const hasAnyComponents = componentsT1.length > 0 || componentsT2.length > 0 || componentsT3.length > 0
+
+    // Helper function to get nota for a specific component
+    const getNotaForComponent = (disciplina: DisciplinaTermoFrequencia, trimestre: 1 | 2 | 3, codigo: string): string => {
+        if (!disciplina.componentesPorTrimestre) return '-'
+        const comp = disciplina.componentesPorTrimestre[trimestre].find(c => c.codigo === codigo)
+        return comp?.nota !== null && comp?.nota !== undefined ? comp.nota.toFixed(1) : '-'
+    }
+
+    if (hasAnyComponents) {
+        // Build two-row header for component-based display
+        const headerRow1: any[] = [
+            { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+            { content: 'DISCIPLINAS', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+        ]
+
+        // Add trimester headers with colSpan
+        if (componentsT1.length > 0) {
+            headerRow1.push({
+                content: '1º TRIMESTRE',
+                colSpan: componentsT1.length,
+                styles: { halign: 'center', valign: 'middle', fillColor: [59, 130, 246] }
+            })
+        }
+        if (componentsT2.length > 0) {
+            headerRow1.push({
+                content: '2º TRIMESTRE',
+                colSpan: componentsT2.length,
+                styles: { halign: 'center', valign: 'middle', fillColor: [59, 130, 246] }
+            })
+        }
+        if (componentsT3.length > 0) {
+            headerRow1.push({
+                content: '3º TRIMESTRE',
+                colSpan: componentsT3.length,
+                styles: { halign: 'center', valign: 'middle', fillColor: [59, 130, 246] }
+            })
+        }
+
+        headerRow1.push({ content: 'MÉDIA FINAL', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } })
+        headerRow1.push({ content: 'OBSERVAÇÃO', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } })
+
+        // Second row: component codes
+        const headerRow2: any[] = []
+        componentsT1.forEach(comp => {
+            headerRow2.push({ content: comp.codigo, styles: { halign: 'center', valign: 'middle', fontSize: 7 } })
+        })
+        componentsT2.forEach(comp => {
+            headerRow2.push({ content: comp.codigo, styles: { halign: 'center', valign: 'middle', fontSize: 7 } })
+        })
+        componentsT3.forEach(comp => {
+            headerRow2.push({ content: comp.codigo, styles: { halign: 'center', valign: 'middle', fontSize: 7 } })
+        })
+
+        // Build table data
+        const tableData: any[] = []
+        data.disciplinas.forEach((disciplina, index) => {
+            const row: any[] = [
+                (index + 1).toString(),
+                disciplina.nome
+            ]
+
+            // Add component values for each trimester
+            componentsT1.forEach(comp => {
+                row.push(getNotaForComponent(disciplina, 1, comp.codigo))
+            })
+            componentsT2.forEach(comp => {
+                row.push(getNotaForComponent(disciplina, 2, comp.codigo))
+            })
+            componentsT3.forEach(comp => {
+                row.push(getNotaForComponent(disciplina, 3, comp.codigo))
+            })
+
+            row.push(disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-')
+            row.push(disciplina.transita ? 'Transita' : 'Não Transita')
+
+            tableData.push(row)
+        })
+
+        // Calculate column widths dynamically
+        const totalComponents = componentsT1.length + componentsT2.length + componentsT3.length
+        const fixedWidth = 10 + 50 + 20 + 28 // Nº + Disciplina + Média Final + Observação
+        const availableWidth = pageWidth - 28 - fixedWidth // margins
+        const componentColWidth = Math.min(15, availableWidth / totalComponents)
+
+        const columnStyles: any = {
+            0: { halign: 'center', cellWidth: 10 },
+            1: { halign: 'left', cellWidth: 50 }
+        }
+
+        let colIndex = 2
+        for (let i = 0; i < totalComponents; i++) {
+            columnStyles[colIndex++] = { halign: 'center', cellWidth: componentColWidth }
+        }
+        columnStyles[colIndex++] = { halign: 'center', cellWidth: 20 }
+        columnStyles[colIndex] = { halign: 'center', cellWidth: 28 }
+
+        // Generate table
+        autoTable(doc, {
+            startY: currentY,
+            head: [headerRow1, headerRow2],
+            body: tableData,
+            theme: 'grid',
+            styles: {
+                fontSize: 8,
+                cellPadding: 1,
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [59, 130, 246],
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center',
+                valign: 'middle'
+            },
+            columnStyles,
+            didParseCell: (hookData: any) => {
+                if (hookData.section === 'body') {
+                    const colIdx = hookData.column.index
+                    const totalCols = 2 + totalComponents + 2 // Nº + Disc + components + MF + Obs
+
+                    // Color code grade values (component columns and média final)
+                    if (colIdx >= 2 && colIdx < totalCols - 1) {
+                        const cellValue = hookData.cell.raw
+                        if (cellValue && cellValue !== '-') {
+                            const nota = parseFloat(cellValue)
+                            if (!isNaN(nota)) {
+                                const color = getGradeColorRGB(
+                                    nota,
+                                    data.turma.nivel_ensino,
+                                    undefined,
+                                    false,
+                                    colorConfig
+                                )
+                                hookData.cell.styles.textColor = color
+                                hookData.cell.styles.fontStyle = 'bold'
+                            }
+                        }
+                    }
+
+                    // Color code observation column (last column)
+                    if (colIdx === totalCols - 1 && hookData.cell.raw) {
+                        if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
+                            hookData.cell.styles.textColor = [34, 197, 94]
+                            hookData.cell.styles.fontStyle = 'bold'
+                        } else if (hookData.cell.raw.includes('Não')) {
+                            hookData.cell.styles.textColor = [239, 68, 68]
+                            hookData.cell.styles.fontStyle = 'bold'
+                        }
+                    }
+                }
+            },
+            didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
+        })
+    } else {
+        // Fallback to simple trimester totals if no components
+        const headers = ['Nº', 'Disciplina', '1º Trim', '2º Trim', '3º Trim', 'Média Final', 'Observação']
+
+        const tableData: any[] = data.disciplinas.map((disciplina, index) => [
+            (index + 1).toString(),
             disciplina.nome,
             disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-',
             disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-',
@@ -1454,67 +1900,46 @@ export async function generateTermoFrequenciaPDFBlob(
             disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-',
             disciplina.transita ? 'Transita' : 'Não Transita'
         ])
-    })
 
-    // Generate table
-    autoTable(doc, {
-        startY: currentY,
-        head: [headers],
-        body: tableData,
-        theme: 'grid',
-        styles: {
-            fontSize: 9,
-            cellPadding: 3,
-            overflow: 'linebreak'
-        },
-        headStyles: {
-            fillColor: [59, 130, 246],  // Blue
-            textColor: 255,
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        columnStyles: {
-            0: { halign: 'left', cellWidth: 60 },
-            1: { halign: 'center', cellWidth: 20 },
-            2: { halign: 'center', cellWidth: 20 },
-            3: { halign: 'center', cellWidth: 20 },
-            4: { halign: 'center', cellWidth: 25 },
-            5: { halign: 'center', cellWidth: 30 }
-        },
-        didParseCell: (hookData: any) => {
-            const rowData = hookData.row.raw
-            const isComponentRow = rowData[0].startsWith('  ')
-
-            if (isComponentRow) {
-                // Style for component rows
-                hookData.cell.styles.fillColor = [245, 245, 245]
-                hookData.cell.styles.fontSize = 8
-                hookData.cell.styles.textColor = [100, 100, 100]
-                hookData.cell.styles.fontStyle = 'italic'
-                hookData.cell.styles.cellPadding = 2
-            } else {
-                // Color code the grades (columns 1-4)
-                if (hookData.section === 'body' && hookData.column.index >= 1 && hookData.column.index <= 4) {
+        autoTable(doc, {
+            startY: currentY,
+            head: [headers],
+            body: tableData,
+            theme: 'grid',
+            styles: {
+                fontSize: 9,
+                cellPadding: 3,
+                overflow: 'linebreak'
+            },
+            headStyles: {
+                fillColor: [59, 130, 246],
+                textColor: 255,
+                fontStyle: 'bold',
+                halign: 'center'
+            },
+            columnStyles: {
+                0: { halign: 'center', cellWidth: 10 },
+                1: { halign: 'left', cellWidth: 80 },
+                2: { halign: 'center', cellWidth: 25 },
+                3: { halign: 'center', cellWidth: 25 },
+                4: { halign: 'center', cellWidth: 25 },
+                5: { halign: 'center', cellWidth: 25 },
+                6: { halign: 'center', cellWidth: 35 }
+            },
+            didParseCell: (hookData: any) => {
+                if (hookData.section === 'body' && hookData.column.index >= 2 && hookData.column.index <= 5) {
                     const cellValue = hookData.cell.raw
                     if (cellValue && cellValue !== '-') {
                         const nota = parseFloat(cellValue)
                         if (!isNaN(nota)) {
-                            const color = getGradeColorRGB(
-                                nota,
-                                data.turma.nivel_ensino,
-                                undefined,
-                                false,
-                                colorConfig
-                            )
+                            const color = getGradeColorRGB(nota, data.turma.nivel_ensino, undefined, false, colorConfig)
                             hookData.cell.styles.textColor = color
                             hookData.cell.styles.fontStyle = 'bold'
                         }
                     }
                 }
-
-                // Color code the observation column
-                if (hookData.section === 'body' && hookData.column.index === 5 && hookData.cell.raw) {
-                    if (hookData.cell.raw.includes('Transita')) {
+                if (hookData.section === 'body' && hookData.column.index === 6 && hookData.cell.raw) {
+                    if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
                         hookData.cell.styles.textColor = [34, 197, 94]
                         hookData.cell.styles.fontStyle = 'bold'
                     } else if (hookData.cell.raw.includes('Não')) {
@@ -1522,50 +1947,60 @@ export async function generateTermoFrequenciaPDFBlob(
                         hookData.cell.styles.fontStyle = 'bold'
                     }
                 }
-            }
-        },
-        didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
-    })
-
-    // Overall Statistics
-    const finalY = (doc as any).lastAutoTable.finalY + 10
-
-    if (finalY + 40 < pageHeight) {
-        doc.setFontSize(11)
-        doc.setFont('helvetica', 'bold')
-        doc.text('ESTATÍSTICAS GERAIS', 14, finalY)
-
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(10)
-
-        const stats = [
-            `Total de Disciplinas: ${data.estatisticas.total_disciplinas}`,
-            `Disciplinas Aprovadas: ${data.estatisticas.disciplinas_aprovadas}`,
-            `Disciplinas Reprovadas: ${data.estatisticas.disciplinas_reprovadas}`,
-            `Média Geral: ${data.estatisticas.media_geral.toFixed(2)}`
-        ]
-
-        stats.forEach((stat, index) => {
-            doc.text(stat, 14, finalY + 7 + (index * 6))
+            },
+            didDrawPage: () => addPDFFooter(doc, pageWidth, pageHeight)
         })
-
-        // Final observation
-        const obsY = finalY + 7 + (stats.length * 6) + 5
-        doc.setFontSize(12)
-        doc.setFont('helvetica', 'bold')
-
-        if (data.estatisticas.transita) {
-            doc.setTextColor(34, 197, 94)  // Green
-            doc.text('OBSERVAÇÃO FINAL: TRANSITA', 14, obsY)
-        } else {
-            doc.setTextColor(239, 68, 68)  // Red
-            doc.text('OBSERVAÇÃO FINAL: NÃO TRANSITA', 14, obsY)
-        }
-        doc.setTextColor(0, 0, 0)  // Reset to black
-
-        // Signatures
-        addPDFSignatures(doc, obsY + 5, pageWidth, pageHeight)
     }
+
+    // Overall Statistics - Compact version
+    const finalY = (doc as any).lastAutoTable.finalY + 8
+
+    // Statistics in smaller font, inline format
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('ESTATÍSTICAS:', 14, finalY)
+
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+    const statsText = `Total: ${data.estatisticas.total_disciplinas} | Aprov.: ${data.estatisticas.disciplinas_aprovadas} | Reprov.: ${data.estatisticas.disciplinas_reprovadas} | Média Geral: ${data.estatisticas.media_geral.toFixed(2)}`
+    doc.text(statsText, 45, finalY)
+
+    // Final observation - positioned to the right
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+
+    const obsY = finalY
+    if (data.estatisticas.transita) {
+        doc.setTextColor(34, 197, 94)  // Green
+        doc.text('OBSERVAÇÃO: TRANSITA', pageWidth - 14, obsY, { align: 'right' })
+    } else {
+        doc.setTextColor(239, 68, 68)  // Red
+        doc.text('OBSERVAÇÃO: NÃO TRANSITA', pageWidth - 14, obsY, { align: 'right' })
+    }
+    doc.setTextColor(0, 0, 0)  // Reset to black
+
+    // Signatures section
+    const signY = finalY + 25
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+
+    // Three signature boxes
+    const signWidth = (pageWidth - 56) / 3
+    const signX1 = 14
+    const signX2 = 14 + signWidth + 14
+    const signX3 = 14 + (signWidth + 14) * 2
+
+    // Signature lines
+    doc.setDrawColor(100, 100, 100)
+    doc.line(signX1, signY, signX1 + signWidth, signY)
+    doc.line(signX2, signY, signX2 + signWidth, signY)
+    doc.line(signX3, signY, signX3 + signWidth, signY)
+
+    // Labels
+    doc.setFontSize(8)
+    doc.text('O(A) Director(a) de Turma', signX1 + signWidth / 2, signY + 4, { align: 'center' })
+    doc.text('O(A) Director(a) Pedagógico(a)', signX2 + signWidth / 2, signY + 4, { align: 'center' })
+    doc.text('O(A) Director(a) Geral', signX3 + signWidth / 2, signY + 4, { align: 'center' })
 
     // Return as Blob instead of saving
     return doc.output('blob')

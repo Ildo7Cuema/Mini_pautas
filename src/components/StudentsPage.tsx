@@ -1,7 +1,7 @@
 /*
 component-meta:
   name: StudentsPage
-  description: Page for managing students
+  description: Page for managing students with expanded information tabs
   tokens: [--color-primary, --fs-md, min-h-touch]
   responsive: true
   tested-on: [360x800, 768x1024, 1440x900]
@@ -21,6 +21,28 @@ interface Aluno {
     nome_completo: string
     numero_processo: string
     turma_id: string
+    data_nascimento?: string
+    genero?: 'M' | 'F'
+    nacionalidade?: string
+    naturalidade?: string
+    tipo_documento?: string
+    numero_documento?: string
+    nome_pai?: string
+    nome_mae?: string
+    nome_encarregado?: string
+    parentesco_encarregado?: string
+    telefone_encarregado?: string
+    email_encarregado?: string
+    profissao_encarregado?: string
+    provincia?: string
+    municipio?: string
+    bairro?: string
+    rua?: string
+    endereco?: string
+    ano_ingresso?: number
+    escola_anterior?: string
+    classe_anterior?: string
+    observacoes_academicas?: string
     turma?: {
         nome: string
     }
@@ -29,6 +51,41 @@ interface Aluno {
 interface Turma {
     id: string
     nome: string
+}
+
+type TabType = 'pessoal' | 'encarregado' | 'endereco' | 'academico'
+
+const initialFormData = {
+    // Dados básicos
+    nome_completo: '',
+    numero_processo: '',
+    turma_id: '',
+    // Dados pessoais
+    data_nascimento: '',
+    genero: '' as '' | 'M' | 'F',
+    nacionalidade: '',
+    naturalidade: '',
+    tipo_documento: '',
+    numero_documento: '',
+    // Encarregado
+    nome_pai: '',
+    nome_mae: '',
+    nome_encarregado: '',
+    parentesco_encarregado: '',
+    telefone_encarregado: '',
+    email_encarregado: '',
+    profissao_encarregado: '',
+    // Endereço
+    provincia: '',
+    municipio: '',
+    bairro: '',
+    rua: '',
+    endereco: '',
+    // Acadêmico
+    ano_ingresso: '',
+    escola_anterior: '',
+    classe_anterior: '',
+    observacoes_academicas: '',
 }
 
 export const StudentsPage: React.FC = () => {
@@ -42,11 +99,8 @@ export const StudentsPage: React.FC = () => {
     const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null)
     const [alunoToDelete, setAlunoToDelete] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
-    const [formData, setFormData] = useState({
-        nome_completo: '',
-        numero_processo: '',
-        turma_id: '',
-    })
+    const [activeTab, setActiveTab] = useState<TabType>('pessoal')
+    const [formData, setFormData] = useState(initialFormData)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
 
@@ -76,12 +130,34 @@ export const StudentsPage: React.FC = () => {
             let query = supabase
                 .from('alunos')
                 .select(`
-          id,
-          nome_completo,
-          numero_processo,
-          turma_id,
-          turmas(nome)
-        `)
+                    id,
+                    nome_completo,
+                    numero_processo,
+                    turma_id,
+                    data_nascimento,
+                    genero,
+                    nacionalidade,
+                    naturalidade,
+                    tipo_documento,
+                    numero_documento,
+                    nome_pai,
+                    nome_mae,
+                    nome_encarregado,
+                    parentesco_encarregado,
+                    telefone_encarregado,
+                    email_encarregado,
+                    profissao_encarregado,
+                    provincia,
+                    municipio,
+                    bairro,
+                    rua,
+                    endereco,
+                    ano_ingresso,
+                    escola_anterior,
+                    classe_anterior,
+                    observacoes_academicas,
+                    turmas(nome)
+                `)
                 .order('nome_completo')
 
             if (selectedTurma !== 'all') {
@@ -106,15 +182,22 @@ export const StudentsPage: React.FC = () => {
         setSuccess(null)
 
         try {
+            const dataToSubmit = {
+                ...formData,
+                genero: formData.genero || null,
+                ano_ingresso: formData.ano_ingresso ? parseInt(formData.ano_ingresso) : null,
+            }
+
             const { error: insertError } = await supabase
                 .from('alunos')
-                .insert(formData)
+                .insert(dataToSubmit)
 
             if (insertError) throw insertError
 
             setSuccess('Aluno adicionado com sucesso!')
             setShowModal(false)
-            setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
+            setFormData(initialFormData)
+            setActiveTab('pessoal')
             loadAlunos()
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar aluno'
@@ -153,10 +236,33 @@ export const StudentsPage: React.FC = () => {
     const handleEditClick = (aluno: Aluno) => {
         setSelectedAluno(aluno)
         setFormData({
-            nome_completo: aluno.nome_completo,
-            numero_processo: aluno.numero_processo,
-            turma_id: aluno.turma_id
+            nome_completo: aluno.nome_completo || '',
+            numero_processo: aluno.numero_processo || '',
+            turma_id: aluno.turma_id || '',
+            data_nascimento: aluno.data_nascimento || '',
+            genero: (aluno.genero as '' | 'M' | 'F') || '',
+            nacionalidade: aluno.nacionalidade || '',
+            naturalidade: aluno.naturalidade || '',
+            tipo_documento: aluno.tipo_documento || '',
+            numero_documento: aluno.numero_documento || '',
+            nome_pai: aluno.nome_pai || '',
+            nome_mae: aluno.nome_mae || '',
+            nome_encarregado: aluno.nome_encarregado || '',
+            parentesco_encarregado: aluno.parentesco_encarregado || '',
+            telefone_encarregado: aluno.telefone_encarregado || '',
+            email_encarregado: aluno.email_encarregado || '',
+            profissao_encarregado: aluno.profissao_encarregado || '',
+            provincia: aluno.provincia || '',
+            municipio: aluno.municipio || '',
+            bairro: aluno.bairro || '',
+            rua: aluno.rua || '',
+            endereco: aluno.endereco || '',
+            ano_ingresso: aluno.ano_ingresso?.toString() || '',
+            escola_anterior: aluno.escola_anterior || '',
+            classe_anterior: aluno.classe_anterior || '',
+            observacoes_academicas: aluno.observacoes_academicas || '',
         })
+        setActiveTab('pessoal')
         setShowEditModal(true)
     }
 
@@ -168,13 +274,15 @@ export const StudentsPage: React.FC = () => {
         setSuccess(null)
 
         try {
+            const dataToUpdate = {
+                ...formData,
+                genero: formData.genero || null,
+                ano_ingresso: formData.ano_ingresso ? parseInt(formData.ano_ingresso) : null,
+            }
+
             const { error: updateError } = await supabase
                 .from('alunos')
-                .update({
-                    nome_completo: formData.nome_completo,
-                    numero_processo: formData.numero_processo,
-                    turma_id: formData.turma_id
-                })
+                .update(dataToUpdate)
                 .eq('id', selectedAluno.id)
 
             if (updateError) throw updateError
@@ -182,7 +290,8 @@ export const StudentsPage: React.FC = () => {
             setSuccess('Aluno atualizado com sucesso!')
             setShowEditModal(false)
             setSelectedAluno(null)
-            setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
+            setFormData(initialFormData)
+            setActiveTab('pessoal')
             loadAlunos()
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar aluno'
@@ -202,6 +311,312 @@ export const StudentsPage: React.FC = () => {
         aluno.numero_processo.toLowerCase().includes(searchQuery.toLowerCase()) ||
         aluno.turma?.nome?.toLowerCase().includes(searchQuery.toLowerCase())
     )
+
+    const closeModal = () => {
+        setShowModal(false)
+        setFormData(initialFormData)
+        setActiveTab('pessoal')
+    }
+
+    const closeEditModal = () => {
+        setShowEditModal(false)
+        setSelectedAluno(null)
+        setFormData(initialFormData)
+        setActiveTab('pessoal')
+    }
+
+    // Tab component with icons
+    const TabButton: React.FC<{ tab: TabType; label: string; icon: React.ReactNode }> = ({ tab, label, icon }) => (
+        <button
+            type="button"
+            onClick={() => setActiveTab(tab)}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === tab
+                    ? 'bg-primary-600 text-white shadow-md'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+        >
+            {icon}
+            <span className="hidden sm:inline">{label}</span>
+        </button>
+    )
+
+    // Form fields for each tab
+    const renderTabContent = (isEdit: boolean = false) => {
+        switch (activeTab) {
+            case 'pessoal':
+                return (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Nome Completo *"
+                                type="text"
+                                value={formData.nome_completo}
+                                onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
+                                placeholder="Nome completo do aluno"
+                                required
+                                icon={<Icons.User />}
+                            />
+                            <Input
+                                label="Nº de Processo *"
+                                type="text"
+                                value={formData.numero_processo}
+                                onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
+                                placeholder="001"
+                                required
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Data de Nascimento"
+                                type="date"
+                                value={formData.data_nascimento}
+                                onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                            />
+                            <div>
+                                <label className="form-label">Género</label>
+                                <select
+                                    value={formData.genero}
+                                    onChange={(e) => setFormData({ ...formData, genero: e.target.value as '' | 'M' | 'F' })}
+                                    className="form-input min-h-touch"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="M">Masculino</option>
+                                    <option value="F">Feminino</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Nacionalidade"
+                                type="text"
+                                value={formData.nacionalidade}
+                                onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
+                                placeholder="Angolana"
+                            />
+                            <Input
+                                label="Naturalidade"
+                                type="text"
+                                value={formData.naturalidade}
+                                onChange={(e) => setFormData({ ...formData, naturalidade: e.target.value })}
+                                placeholder="Luanda"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label className="form-label">Tipo de Documento</label>
+                                <select
+                                    value={formData.tipo_documento}
+                                    onChange={(e) => setFormData({ ...formData, tipo_documento: e.target.value })}
+                                    className="form-input min-h-touch"
+                                >
+                                    <option value="">Selecione</option>
+                                    <option value="BI">Bilhete de Identidade</option>
+                                    <option value="Passaporte">Passaporte</option>
+                                    <option value="Cédula">Cédula</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <Input
+                                label="Nº do Documento"
+                                type="text"
+                                value={formData.numero_documento}
+                                onChange={(e) => setFormData({ ...formData, numero_documento: e.target.value })}
+                                placeholder="000000000LA000"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="form-label">Turma *</label>
+                            <select
+                                value={formData.turma_id}
+                                onChange={(e) => setFormData({ ...formData, turma_id: e.target.value })}
+                                className="form-input min-h-touch"
+                                required
+                            >
+                                <option value="">Selecione uma turma</option>
+                                {turmas.map((turma) => (
+                                    <option key={turma.id} value={turma.id}>
+                                        {turma.nome}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                )
+
+            case 'encarregado':
+                return (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Nome do Pai"
+                                type="text"
+                                value={formData.nome_pai}
+                                onChange={(e) => setFormData({ ...formData, nome_pai: e.target.value })}
+                                placeholder="Nome completo do pai"
+                            />
+                            <Input
+                                label="Nome da Mãe"
+                                type="text"
+                                value={formData.nome_mae}
+                                onChange={(e) => setFormData({ ...formData, nome_mae: e.target.value })}
+                                placeholder="Nome completo da mãe"
+                            />
+                        </div>
+
+                        <div className="border-t border-slate-200 pt-4 mt-4">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Encarregado de Educação</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <Input
+                                    label="Nome do Encarregado"
+                                    type="text"
+                                    value={formData.nome_encarregado}
+                                    onChange={(e) => setFormData({ ...formData, nome_encarregado: e.target.value })}
+                                    placeholder="Nome completo"
+                                />
+                                <div>
+                                    <label className="form-label">Parentesco</label>
+                                    <select
+                                        value={formData.parentesco_encarregado}
+                                        onChange={(e) => setFormData({ ...formData, parentesco_encarregado: e.target.value })}
+                                        className="form-input min-h-touch"
+                                    >
+                                        <option value="">Selecione</option>
+                                        <option value="Pai">Pai</option>
+                                        <option value="Mãe">Mãe</option>
+                                        <option value="Avô/Avó">Avô/Avó</option>
+                                        <option value="Tio/Tia">Tio/Tia</option>
+                                        <option value="Irmão/Irmã">Irmão/Irmã</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                                <Input
+                                    label="Telefone"
+                                    type="tel"
+                                    value={formData.telefone_encarregado}
+                                    onChange={(e) => setFormData({ ...formData, telefone_encarregado: e.target.value })}
+                                    placeholder="+244 9XX XXX XXX"
+                                />
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    value={formData.email_encarregado}
+                                    onChange={(e) => setFormData({ ...formData, email_encarregado: e.target.value })}
+                                    placeholder="email@exemplo.com"
+                                />
+                            </div>
+
+                            <div className="mt-4">
+                                <Input
+                                    label="Profissão do Encarregado"
+                                    type="text"
+                                    value={formData.profissao_encarregado}
+                                    onChange={(e) => setFormData({ ...formData, profissao_encarregado: e.target.value })}
+                                    placeholder="Ex: Professor, Engenheiro, etc."
+                                />
+                            </div>
+                        </div>
+                    </div>
+                )
+
+            case 'endereco':
+                return (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Província"
+                                type="text"
+                                value={formData.provincia}
+                                onChange={(e) => setFormData({ ...formData, provincia: e.target.value })}
+                                placeholder="Luanda"
+                            />
+                            <Input
+                                label="Município"
+                                type="text"
+                                value={formData.municipio}
+                                onChange={(e) => setFormData({ ...formData, municipio: e.target.value })}
+                                placeholder="Talatona"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Bairro/Comuna"
+                                type="text"
+                                value={formData.bairro}
+                                onChange={(e) => setFormData({ ...formData, bairro: e.target.value })}
+                                placeholder="Nome do bairro"
+                            />
+                            <Input
+                                label="Rua/Avenida"
+                                type="text"
+                                value={formData.rua}
+                                onChange={(e) => setFormData({ ...formData, rua: e.target.value })}
+                                placeholder="Rua e número"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="form-label">Referência/Complemento</label>
+                            <textarea
+                                value={formData.endereco}
+                                onChange={(e) => setFormData({ ...formData, endereco: e.target.value })}
+                                placeholder="Ponto de referência ou informações adicionais"
+                                className="form-input min-h-[80px] resize-none"
+                                rows={3}
+                            />
+                        </div>
+                    </div>
+                )
+
+            case 'academico':
+                return (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Input
+                                label="Ano de Ingresso"
+                                type="number"
+                                value={formData.ano_ingresso}
+                                onChange={(e) => setFormData({ ...formData, ano_ingresso: e.target.value })}
+                                placeholder="2024"
+                            />
+                            <Input
+                                label="Classe Anterior"
+                                type="text"
+                                value={formData.classe_anterior}
+                                onChange={(e) => setFormData({ ...formData, classe_anterior: e.target.value })}
+                                placeholder="5ª Classe"
+                            />
+                        </div>
+
+                        <Input
+                            label="Escola Anterior"
+                            type="text"
+                            value={formData.escola_anterior}
+                            onChange={(e) => setFormData({ ...formData, escola_anterior: e.target.value })}
+                            placeholder="Nome da escola de origem"
+                        />
+
+                        <div>
+                            <label className="form-label">Observações Académicas</label>
+                            <textarea
+                                value={formData.observacoes_academicas}
+                                onChange={(e) => setFormData({ ...formData, observacoes_academicas: e.target.value })}
+                                placeholder="Informações relevantes sobre o histórico académico do aluno"
+                                className="form-input min-h-[100px] resize-none"
+                                rows={4}
+                            />
+                        </div>
+                    </div>
+                )
+        }
+    }
 
     if (loading) {
         return (
@@ -269,7 +684,7 @@ export const StudentsPage: React.FC = () => {
                 </CardBody>
             </Card>
 
-            {/* Alunos List - Premium Card View */}
+            {/* Alunos List */}
             {alunos.length === 0 ? (
                 <Card>
                     <CardBody className="text-center py-8 md:py-12">
@@ -315,7 +730,6 @@ export const StudentsPage: React.FC = () => {
                             </div>
                         ) : (
                             <>
-                                {/* Premium Card View for All Screens */}
                                 <div className="space-y-3">
                                     {filteredAlunos.map((aluno) => (
                                         <div
@@ -323,14 +737,12 @@ export const StudentsPage: React.FC = () => {
                                             className="group relative bg-gradient-to-br from-slate-50 to-white border border-slate-200 rounded-xl p-4 transition-all duration-200 hover:shadow-md hover:border-primary-300 hover:-translate-y-0.5"
                                         >
                                             <div className="flex items-center gap-4">
-                                                {/* Avatar with Initials */}
                                                 <div className="flex-shrink-0">
                                                     <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm shadow-md group-hover:shadow-lg transition-shadow">
                                                         {getStudentInitials(aluno.nome_completo)}
                                                     </div>
                                                 </div>
 
-                                                {/* Student Info */}
                                                 <div className="flex-1 min-w-0">
                                                     <h4 className="font-semibold text-slate-900 text-base truncate">
                                                         {aluno.nome_completo}
@@ -350,7 +762,6 @@ export const StudentsPage: React.FC = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* Action Buttons */}
                                                 <div className="flex-shrink-0 flex items-center gap-2">
                                                     <button
                                                         onClick={() => handleEditClick(aluno)}
@@ -395,15 +806,15 @@ export const StudentsPage: React.FC = () => {
                 </Card>
             )}
 
-            {/* Modal - Full screen on mobile */}
+            {/* New Student Modal with Tabs */}
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
-                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
+                    <Card className="w-full md:max-w-2xl md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[95vh] overflow-hidden flex flex-col">
+                        <CardHeader className="flex-shrink-0">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-slate-900">Novo Aluno</h3>
                                 <button
-                                    onClick={() => setShowModal(false)}
+                                    onClick={closeModal}
                                     className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -411,50 +822,24 @@ export const StudentsPage: React.FC = () => {
                                     </svg>
                                 </button>
                             </div>
+
+                            {/* Tabs */}
+                            <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+                                <TabButton tab="pessoal" label="Pessoal" icon={<Icons.User />} />
+                                <TabButton tab="encarregado" label="Encarregado" icon={<Icons.Users />} />
+                                <TabButton tab="endereco" label="Endereço" icon={<Icons.Home />} />
+                                <TabButton tab="academico" label="Acadêmico" icon={<Icons.ClipboardList />} />
+                            </div>
                         </CardHeader>
-                        <CardBody>
+                        <CardBody className="flex-1 overflow-y-auto">
                             <form onSubmit={handleSubmit} className="space-y-4">
-                                <Input
-                                    label="Nome Completo"
-                                    type="text"
-                                    value={formData.nome_completo}
-                                    onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
-                                    placeholder="João Silva"
-                                    required
-                                    icon={<Icons.User />}
-                                />
+                                {renderTabContent()}
 
-                                <Input
-                                    label="Número de Processo"
-                                    type="text"
-                                    value={formData.numero_processo}
-                                    onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
-                                    placeholder="001"
-                                    required
-                                />
-
-                                <div>
-                                    <label className="form-label">Turma</label>
-                                    <select
-                                        value={formData.turma_id}
-                                        onChange={(e) => setFormData({ ...formData, turma_id: e.target.value })}
-                                        className="form-input min-h-touch"
-                                        required
-                                    >
-                                        <option value="">Selecione uma turma</option>
-                                        {turmas.map((turma) => (
-                                            <option key={turma.id} value={turma.id}>
-                                                {turma.nome}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex gap-3 pt-4 border-t border-slate-200 mt-6">
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        onClick={() => setShowModal(false)}
+                                        onClick={closeModal}
                                         className="flex-1"
                                     >
                                         Cancelar
@@ -469,19 +854,15 @@ export const StudentsPage: React.FC = () => {
                 </div>
             )}
 
-            {/* Edit Student Modal */}
+            {/* Edit Student Modal with Tabs */}
             {showEditModal && selectedAluno && (
                 <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
-                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
+                    <Card className="w-full md:max-w-2xl md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[95vh] overflow-hidden flex flex-col">
+                        <CardHeader className="flex-shrink-0">
                             <div className="flex items-center justify-between">
                                 <h3 className="text-lg font-semibold text-slate-900">Editar Aluno</h3>
                                 <button
-                                    onClick={() => {
-                                        setShowEditModal(false)
-                                        setSelectedAluno(null)
-                                        setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
-                                    }}
+                                    onClick={closeEditModal}
                                     className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
                                 >
                                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -489,54 +870,24 @@ export const StudentsPage: React.FC = () => {
                                     </svg>
                                 </button>
                             </div>
+
+                            {/* Tabs */}
+                            <div className="flex gap-2 mt-4 overflow-x-auto pb-1">
+                                <TabButton tab="pessoal" label="Pessoal" icon={<Icons.User />} />
+                                <TabButton tab="encarregado" label="Encarregado" icon={<Icons.Users />} />
+                                <TabButton tab="endereco" label="Endereço" icon={<Icons.Home />} />
+                                <TabButton tab="academico" label="Acadêmico" icon={<Icons.ClipboardList />} />
+                            </div>
                         </CardHeader>
-                        <CardBody>
+                        <CardBody className="flex-1 overflow-y-auto">
                             <form onSubmit={handleUpdateStudent} className="space-y-4">
-                                <Input
-                                    label="Nome Completo"
-                                    type="text"
-                                    value={formData.nome_completo}
-                                    onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
-                                    placeholder="João Silva"
-                                    required
-                                    icon={<Icons.User />}
-                                />
+                                {renderTabContent(true)}
 
-                                <Input
-                                    label="Número de Processo"
-                                    type="text"
-                                    value={formData.numero_processo}
-                                    onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
-                                    placeholder="001"
-                                    required
-                                />
-
-                                <div>
-                                    <label className="form-label">Turma</label>
-                                    <select
-                                        value={formData.turma_id}
-                                        onChange={(e) => setFormData({ ...formData, turma_id: e.target.value })}
-                                        className="form-input min-h-touch"
-                                        required
-                                    >
-                                        <option value="">Selecione uma turma</option>
-                                        {turmas.map((turma) => (
-                                            <option key={turma.id} value={turma.id}>
-                                                {turma.nome}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex gap-3 pt-4 border-t border-slate-200 mt-6">
                                     <Button
                                         type="button"
                                         variant="ghost"
-                                        onClick={() => {
-                                            setShowEditModal(false)
-                                            setSelectedAluno(null)
-                                            setFormData({ nome_completo: '', numero_processo: '', turma_id: '' })
-                                        }}
+                                        onClick={closeEditModal}
                                         className="flex-1"
                                     >
                                         Cancelar

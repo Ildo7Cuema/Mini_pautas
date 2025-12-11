@@ -41,8 +41,26 @@ interface TermoFrequenciaData {
         nome_completo: string
         data_nascimento?: string
         genero?: string
+        nacionalidade?: string
+        naturalidade?: string
+        tipo_documento?: string
+        numero_documento?: string
         nome_pai?: string
         nome_mae?: string
+        nome_encarregado?: string
+        parentesco_encarregado?: string
+        telefone_encarregado?: string
+        email_encarregado?: string
+        profissao_encarregado?: string
+        provincia?: string
+        municipio?: string
+        bairro?: string
+        rua?: string
+        endereco?: string
+        ano_ingresso?: number
+        escola_anterior?: string
+        classe_anterior?: string
+        observacoes_academicas?: string
     }
     turma: {
         nome: string
@@ -78,7 +96,8 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                     <h3 className="text-lg font-semibold text-slate-900">Informações do Aluno</h3>
                 </CardHeader>
                 <CardBody>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Dados Básicos */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                         <div>
                             <p className="text-sm text-slate-500">Nome Completo</p>
                             <p className="font-medium text-slate-900">{data.aluno.nome_completo}</p>
@@ -103,23 +122,114 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                         )}
                         {data.aluno.genero && (
                             <div>
-                                <p className="text-sm text-slate-500">Gênero</p>
-                                <p className="font-medium text-slate-900">{data.aluno.genero}</p>
+                                <p className="text-sm text-slate-500">Género</p>
+                                <p className="font-medium text-slate-900">{data.aluno.genero === 'M' ? 'Masculino' : 'Feminino'}</p>
                             </div>
                         )}
-                        {data.aluno.nome_pai && (
+                        {data.aluno.nacionalidade && (
                             <div>
-                                <p className="text-sm text-slate-500">Nome do Pai</p>
-                                <p className="font-medium text-slate-900">{data.aluno.nome_pai}</p>
+                                <p className="text-sm text-slate-500">Nacionalidade</p>
+                                <p className="font-medium text-slate-900">{data.aluno.nacionalidade}</p>
                             </div>
                         )}
-                        {data.aluno.nome_mae && (
+                        {data.aluno.naturalidade && (
                             <div>
-                                <p className="text-sm text-slate-500">Nome da Mãe</p>
-                                <p className="font-medium text-slate-900">{data.aluno.nome_mae}</p>
+                                <p className="text-sm text-slate-500">Naturalidade</p>
+                                <p className="font-medium text-slate-900">{data.aluno.naturalidade}</p>
+                            </div>
+                        )}
+                        {data.aluno.tipo_documento && data.aluno.numero_documento && (
+                            <div>
+                                <p className="text-sm text-slate-500">{data.aluno.tipo_documento}</p>
+                                <p className="font-medium text-slate-900">{data.aluno.numero_documento}</p>
                             </div>
                         )}
                     </div>
+
+                    {/* Filiação */}
+                    {(data.aluno.nome_pai || data.aluno.nome_mae) && (
+                        <div className="border-t border-slate-200 pt-4 mb-4">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Filiação</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {data.aluno.nome_pai && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Nome do Pai</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.nome_pai}</p>
+                                    </div>
+                                )}
+                                {data.aluno.nome_mae && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Nome da Mãe</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.nome_mae}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Encarregado */}
+                    {data.aluno.nome_encarregado && (
+                        <div className="border-t border-slate-200 pt-4 mb-4">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Encarregado de Educação</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                <div>
+                                    <p className="text-sm text-slate-500">Nome</p>
+                                    <p className="font-medium text-slate-900">{data.aluno.nome_encarregado}</p>
+                                </div>
+                                {data.aluno.parentesco_encarregado && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Parentesco</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.parentesco_encarregado}</p>
+                                    </div>
+                                )}
+                                {data.aluno.telefone_encarregado && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Telefone</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.telefone_encarregado}</p>
+                                    </div>
+                                )}
+                                {data.aluno.profissao_encarregado && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Profissão</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.profissao_encarregado}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Endereço */}
+                    {(data.aluno.provincia || data.aluno.municipio || data.aluno.bairro) && (
+                        <div className="border-t border-slate-200 pt-4">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Endereço</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {data.aluno.provincia && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Província</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.provincia}</p>
+                                    </div>
+                                )}
+                                {data.aluno.municipio && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Município</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.municipio}</p>
+                                    </div>
+                                )}
+                                {data.aluno.bairro && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Bairro</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.bairro}</p>
+                                    </div>
+                                )}
+                                {data.aluno.rua && (
+                                    <div>
+                                        <p className="text-sm text-slate-500">Rua</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.rua}</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </CardBody>
             </Card>
 
@@ -130,131 +240,178 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                 </CardHeader>
                 <CardBody>
                     <div className="overflow-x-auto">
-                        <table className="w-full border-collapse">
-                            <thead>
-                                {/* Check if we have components to show in any trimester */}
-                                {data.disciplinas.length > 0 && data.disciplinas[0]?.componentesPorTrimestre && (
-                                    data.disciplinas[0].componentesPorTrimestre[1].length > 0 ||
-                                    data.disciplinas[0].componentesPorTrimestre[2].length > 0 ||
-                                    data.disciplinas[0].componentesPorTrimestre[3].length > 0
-                                ) ? (
-                                    <>
-                                        {/* First header row - Main columns with colSpan */}
-                                        <tr className="bg-blue-600 text-white">
-                                            <th rowSpan={2} className="border border-slate-300 px-3 py-2 text-center text-sm font-semibold">Nº</th>
-                                            <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-left text-sm font-semibold">DISCIPLINAS</th>
-                                            {data.disciplinas[0].componentesPorTrimestre[1].length > 0 && (
-                                                <th colSpan={data.disciplinas[0].componentesPorTrimestre[1].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">1º TRIMESTRE</th>
-                                            )}
-                                            {data.disciplinas[0].componentesPorTrimestre[2].length > 0 && (
-                                                <th colSpan={data.disciplinas[0].componentesPorTrimestre[2].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">2º TRIMESTRE</th>
-                                            )}
-                                            {data.disciplinas[0].componentesPorTrimestre[3].length > 0 && (
-                                                <th colSpan={data.disciplinas[0].componentesPorTrimestre[3].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">3º TRIMESTRE</th>
-                                            )}
-                                            <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">MÉDIA FINAL</th>
-                                            <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">OBSERVAÇÃO</th>
-                                        </tr>
+                        {(() => {
+                            // Calculate unified header structure based on ALL disciplines
+                            // Find max components per trimester across all disciplines
+                            const maxComponentsPerTrimester: { 1: ComponenteNota[]; 2: ComponenteNota[]; 3: ComponenteNota[] } = {
+                                1: [],
+                                2: [],
+                                3: []
+                            }
 
-                                        {/* Second header row - Component columns for each trimester */}
-                                        <tr className="bg-blue-700 text-white">
-                                            {/* Components for 1st trimester */}
-                                            {data.disciplinas[0].componentesPorTrimestre[1].map((comp: ComponenteNota, idx: number) => (
-                                                <th key={`t1-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
-                                                    {comp.codigo}
-                                                </th>
-                                            ))}
-                                            {/* Components for 2nd trimester */}
-                                            {data.disciplinas[0].componentesPorTrimestre[2].map((comp: ComponenteNota, idx: number) => (
-                                                <th key={`t2-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
-                                                    {comp.codigo}
-                                                </th>
-                                            ))}
-                                            {/* Components for 3rd trimester */}
-                                            {data.disciplinas[0].componentesPorTrimestre[3].map((comp: ComponenteNota, idx: number) => (
-                                                <th key={`t3-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
-                                                    {comp.codigo}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </>
-                                ) : (
-                                    /* Fallback header when no components */
-                                    <tr className="bg-blue-600 text-white">
-                                        <th className="border border-slate-300 px-3 py-2 text-center text-sm font-semibold">Nº</th>
-                                        <th className="border border-slate-300 px-4 py-2 text-left text-sm font-semibold">DISCIPLINAS</th>
-                                        <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">1º TRIM</th>
-                                        <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">2º TRIM</th>
-                                        <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">3º TRIM</th>
-                                        <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">MÉDIA FINAL</th>
-                                        <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">OBSERVAÇÃO</th>
-                                    </tr>
-                                )}
-                            </thead>
-                            <tbody>
-                                {data.disciplinas.map((disciplina, index) => {
-                                    const hasComponents = disciplina.componentesPorTrimestre && (
-                                        disciplina.componentesPorTrimestre[1].length > 0 ||
-                                        disciplina.componentesPorTrimestre[2].length > 0 ||
-                                        disciplina.componentesPorTrimestre[3].length > 0
-                                    )
+                            // Collect unique component codes for each trimester
+                            const componentCodesByTrimester: { 1: Map<string, ComponenteNota>; 2: Map<string, ComponenteNota>; 3: Map<string, ComponenteNota> } = {
+                                1: new Map(),
+                                2: new Map(),
+                                3: new Map()
+                            }
 
-                                    return (
-                                        <tr key={disciplina.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                                            <td className="border border-slate-300 px-3 py-2 text-center text-sm">
-                                                {index + 1}
-                                            </td>
-                                            <td className="border border-slate-300 px-4 py-2 font-medium text-sm">
-                                                {disciplina.nome}
-                                            </td>
+                            data.disciplinas.forEach(disciplina => {
+                                if (disciplina.componentesPorTrimestre) {
+                                    ([1, 2, 3] as const).forEach(t => {
+                                        disciplina.componentesPorTrimestre[t].forEach(comp => {
+                                            if (!componentCodesByTrimester[t].has(comp.codigo)) {
+                                                componentCodesByTrimester[t].set(comp.codigo, comp)
+                                            }
+                                        })
+                                    })
+                                }
+                            })
 
-                                            {/* Show components if they exist, otherwise show trimester totals */}
-                                            {hasComponents ? (
-                                                <>
-                                                    {/* 1st Trimester components */}
-                                                    {disciplina.componentesPorTrimestre[1].map((comp: ComponenteNota, idx: number) => (
-                                                        <td key={`${disciplina.id}-t1-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
-                                                            {comp.nota !== null ? comp.nota.toFixed(1) : '-'}
-                                                        </td>
+                            // Convert maps to arrays preserving order
+                            maxComponentsPerTrimester[1] = Array.from(componentCodesByTrimester[1].values())
+                            maxComponentsPerTrimester[2] = Array.from(componentCodesByTrimester[2].values())
+                            maxComponentsPerTrimester[3] = Array.from(componentCodesByTrimester[3].values())
+
+                            const hasAnyComponents =
+                                maxComponentsPerTrimester[1].length > 0 ||
+                                maxComponentsPerTrimester[2].length > 0 ||
+                                maxComponentsPerTrimester[3].length > 0
+
+                            return (
+                                <table className="w-full border-collapse">
+                                    <thead>
+                                        {/* Check if we have components to show in any trimester */}
+                                        {data.disciplinas.length > 0 && hasAnyComponents ? (
+                                            <>
+                                                {/* First header row - Main columns with colSpan */}
+                                                <tr className="bg-blue-600 text-white">
+                                                    <th rowSpan={2} className="border border-slate-300 px-3 py-2 text-center text-sm font-semibold">Nº</th>
+                                                    <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-left text-sm font-semibold">DISCIPLINAS</th>
+                                                    {maxComponentsPerTrimester[1].length > 0 && (
+                                                        <th colSpan={maxComponentsPerTrimester[1].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">1º TRIMESTRE</th>
+                                                    )}
+                                                    {maxComponentsPerTrimester[2].length > 0 && (
+                                                        <th colSpan={maxComponentsPerTrimester[2].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">2º TRIMESTRE</th>
+                                                    )}
+                                                    {maxComponentsPerTrimester[3].length > 0 && (
+                                                        <th colSpan={maxComponentsPerTrimester[3].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">3º TRIMESTRE</th>
+                                                    )}
+                                                    <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">MÉDIA FINAL</th>
+                                                    <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">OBSERVAÇÃO</th>
+                                                </tr>
+
+                                                {/* Second header row - Component columns for each trimester */}
+                                                <tr className="bg-blue-700 text-white">
+                                                    {/* Components for 1st trimester */}
+                                                    {maxComponentsPerTrimester[1].map((comp: ComponenteNota, idx: number) => (
+                                                        <th key={`t1-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
+                                                            {comp.codigo}
+                                                        </th>
                                                     ))}
-                                                    {/* 2nd Trimester components */}
-                                                    {disciplina.componentesPorTrimestre[2].map((comp: ComponenteNota, idx: number) => (
-                                                        <td key={`${disciplina.id}-t2-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
-                                                            {comp.nota !== null ? comp.nota.toFixed(1) : '-'}
-                                                        </td>
+                                                    {/* Components for 2nd trimester */}
+                                                    {maxComponentsPerTrimester[2].map((comp: ComponenteNota, idx: number) => (
+                                                        <th key={`t2-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
+                                                            {comp.codigo}
+                                                        </th>
                                                     ))}
-                                                    {/* 3rd Trimester components */}
-                                                    {disciplina.componentesPorTrimestre[3].map((comp: ComponenteNota, idx: number) => (
-                                                        <td key={`${disciplina.id}-t3-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
-                                                            {comp.nota !== null ? comp.nota.toFixed(1) : '-'}
-                                                        </td>
+                                                    {/* Components for 3rd trimester */}
+                                                    {maxComponentsPerTrimester[3].map((comp: ComponenteNota, idx: number) => (
+                                                        <th key={`t3-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
+                                                            {comp.codigo}
+                                                        </th>
                                                     ))}
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
-                                                        {disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-'}
-                                                    </td>
-                                                    <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
-                                                        {disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-'}
-                                                    </td>
-                                                    <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
-                                                        {disciplina.notas_trimestrais[3] !== null ? disciplina.notas_trimestrais[3].toFixed(1) : '-'}
-                                                    </td>
-                                                </>
-                                            )}
+                                                </tr>
+                                            </>
+                                        ) : (
+                                            /* Fallback header when no components */
+                                            <tr className="bg-blue-600 text-white">
+                                                <th className="border border-slate-300 px-3 py-2 text-center text-sm font-semibold">Nº</th>
+                                                <th className="border border-slate-300 px-4 py-2 text-left text-sm font-semibold">DISCIPLINAS</th>
+                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">1º TRIM</th>
+                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">2º TRIM</th>
+                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">3º TRIM</th>
+                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">MÉDIA FINAL</th>
+                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">OBSERVAÇÃO</th>
+                                            </tr>
+                                        )}
+                                    </thead>
+                                    <tbody>
+                                        {data.disciplinas.map((disciplina, index) => {
+                                            // For each discipline, map components to the unified header structure
+                                            const getNotaForComponent = (trimestre: 1 | 2 | 3, codigo: string): number | null => {
+                                                if (!disciplina.componentesPorTrimestre) return null
+                                                const comp = disciplina.componentesPorTrimestre[trimestre].find(c => c.codigo === codigo)
+                                                return comp?.nota ?? null
+                                            }
 
-                                            <td className="border border-slate-300 px-4 py-2 text-center font-bold text-sm">
-                                                {disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-'}
-                                            </td>
-                                            <td className={`border border-slate-300 px-4 py-2 text-center font-bold text-sm ${disciplina.transita ? 'text-green-600' : 'text-red-600'}`}>
-                                                {disciplina.transita ? 'Transita' : 'Não Transita'}
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
+                                            return (
+                                                <tr key={disciplina.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                                    <td className="border border-slate-300 px-3 py-2 text-center text-sm">
+                                                        {index + 1}
+                                                    </td>
+                                                    <td className="border border-slate-300 px-4 py-2 font-medium text-sm">
+                                                        {disciplina.nome}
+                                                    </td>
+
+                                                    {/* Show components matching header structure, or trimester totals if no components */}
+                                                    {hasAnyComponents ? (
+                                                        <>
+                                                            {/* 1st Trimester components - match header structure */}
+                                                            {maxComponentsPerTrimester[1].map((headerComp: ComponenteNota, idx: number) => {
+                                                                const nota = getNotaForComponent(1, headerComp.codigo)
+                                                                return (
+                                                                    <td key={`${disciplina.id}-t1-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
+                                                                        {nota !== null ? nota.toFixed(1) : '-'}
+                                                                    </td>
+                                                                )
+                                                            })}
+                                                            {/* 2nd Trimester components - match header structure */}
+                                                            {maxComponentsPerTrimester[2].map((headerComp: ComponenteNota, idx: number) => {
+                                                                const nota = getNotaForComponent(2, headerComp.codigo)
+                                                                return (
+                                                                    <td key={`${disciplina.id}-t2-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
+                                                                        {nota !== null ? nota.toFixed(1) : '-'}
+                                                                    </td>
+                                                                )
+                                                            })}
+                                                            {/* 3rd Trimester components - match header structure */}
+                                                            {maxComponentsPerTrimester[3].map((headerComp: ComponenteNota, idx: number) => {
+                                                                const nota = getNotaForComponent(3, headerComp.codigo)
+                                                                return (
+                                                                    <td key={`${disciplina.id}-t3-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
+                                                                        {nota !== null ? nota.toFixed(1) : '-'}
+                                                                    </td>
+                                                                )
+                                                            })}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
+                                                                {disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-'}
+                                                            </td>
+                                                            <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
+                                                                {disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-'}
+                                                            </td>
+                                                            <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
+                                                                {disciplina.notas_trimestrais[3] !== null ? disciplina.notas_trimestrais[3].toFixed(1) : '-'}
+                                                            </td>
+                                                        </>
+                                                    )}
+
+                                                    <td className="border border-slate-300 px-4 py-2 text-center font-bold text-sm">
+                                                        {disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-'}
+                                                    </td>
+                                                    <td className={`border border-slate-300 px-4 py-2 text-center font-bold text-sm ${disciplina.transita ? 'text-green-600' : 'text-red-600'}`}>
+                                                        {disciplina.transita ? 'Transita' : 'Não Transita'}
+                                                    </td>
+                                                </tr>
+                                            )
+                                        })}
+                                    </tbody>
+                                </table>
+                            )
+                        })()}
                     </div>
                 </CardBody>
             </Card>

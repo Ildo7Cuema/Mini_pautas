@@ -182,10 +182,17 @@ export const ReportsPage: React.FC = () => {
 
             console.log('Loading termo data for student:', selectedAluno, 'turma:', selectedTurma)
 
-            // Load student details
+            // Load student details with all expanded fields
             const { data: alunoData, error: alunoError } = await supabase
                 .from('alunos')
-                .select('id, numero_processo, nome_completo, data_nascimento, genero')
+                .select(`
+                    id, numero_processo, nome_completo, data_nascimento, genero,
+                    nacionalidade, naturalidade, tipo_documento, numero_documento,
+                    nome_pai, nome_mae, nome_encarregado, parentesco_encarregado,
+                    telefone_encarregado, email_encarregado, profissao_encarregado,
+                    provincia, municipio, bairro, rua, endereco,
+                    ano_ingresso, escola_anterior, classe_anterior, observacoes_academicas
+                `)
                 .eq('id', selectedAluno)
                 .single()
 
@@ -224,7 +231,7 @@ export const ReportsPage: React.FC = () => {
                 return
             }
 
-            // Load all components for all disciplines
+            // Load all components for all disciplines (including calculated ones that are registered)
             const { data: componentesData, error: componentesError } = await supabase
                 .from('componentes_avaliacao')
                 .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
@@ -250,7 +257,7 @@ export const ReportsPage: React.FC = () => {
 
             console.log('Loaded data:', { aluno: alunoData, turma: turmaData, disciplinas: disciplinasData?.length, componentes: componentesData?.length, notas: notasData?.length })
 
-            // Extract unique components for selection
+            // Extract unique components for selection (all registered components)
             const uniqueComponents = Array.from(
                 new Map(componentesData?.map(c => [c.codigo_componente, { codigo: c.codigo_componente, nome: c.nome }]) || []).values()
             )
@@ -355,7 +362,27 @@ export const ReportsPage: React.FC = () => {
                     numero_processo: alunoData.numero_processo,
                     nome_completo: alunoData.nome_completo,
                     data_nascimento: alunoData.data_nascimento,
-                    genero: alunoData.genero
+                    genero: alunoData.genero,
+                    nacionalidade: alunoData.nacionalidade,
+                    naturalidade: alunoData.naturalidade,
+                    tipo_documento: alunoData.tipo_documento,
+                    numero_documento: alunoData.numero_documento,
+                    nome_pai: alunoData.nome_pai,
+                    nome_mae: alunoData.nome_mae,
+                    nome_encarregado: alunoData.nome_encarregado,
+                    parentesco_encarregado: alunoData.parentesco_encarregado,
+                    telefone_encarregado: alunoData.telefone_encarregado,
+                    email_encarregado: alunoData.email_encarregado,
+                    profissao_encarregado: alunoData.profissao_encarregado,
+                    provincia: alunoData.provincia,
+                    municipio: alunoData.municipio,
+                    bairro: alunoData.bairro,
+                    rua: alunoData.rua,
+                    endereco: alunoData.endereco,
+                    ano_ingresso: alunoData.ano_ingresso,
+                    escola_anterior: alunoData.escola_anterior,
+                    classe_anterior: alunoData.classe_anterior,
+                    observacoes_academicas: alunoData.observacoes_academicas,
                 },
                 turma: turmaData,
                 disciplinas: disciplinasProcessadas,
@@ -1187,10 +1214,17 @@ export const ReportsPage: React.FC = () => {
 
             // Load data for all selected students
             const termosDataPromises = selectedAlunosIds.map(async (alunoId) => {
-                // Load student details
+                // Load student details with all expanded fields
                 const { data: alunoData, error: alunoError } = await supabase
                     .from('alunos')
-                    .select('id, numero_processo, nome_completo, data_nascimento, genero')
+                    .select(`
+                        id, numero_processo, nome_completo, data_nascimento, genero,
+                        nacionalidade, naturalidade, tipo_documento, numero_documento,
+                        nome_pai, nome_mae, nome_encarregado, parentesco_encarregado,
+                        telefone_encarregado, email_encarregado, profissao_encarregado,
+                        provincia, municipio, bairro, rua, endereco,
+                        ano_ingresso, escola_anterior, classe_anterior, observacoes_academicas
+                    `)
                     .eq('id', alunoId)
                     .single()
 
@@ -1205,7 +1239,7 @@ export const ReportsPage: React.FC = () => {
 
                 if (disciplinasError) throw disciplinasError
 
-                // Load all components
+                // Load all components (including calculated ones that are registered)
                 const { data: componentesData, error: componentesError } = await supabase
                     .from('componentes_avaliacao')
                     .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
@@ -1304,7 +1338,27 @@ export const ReportsPage: React.FC = () => {
                         numero_processo: alunoData.numero_processo,
                         nome_completo: alunoData.nome_completo,
                         data_nascimento: alunoData.data_nascimento,
-                        genero: alunoData.genero
+                        genero: alunoData.genero,
+                        nacionalidade: alunoData.nacionalidade,
+                        naturalidade: alunoData.naturalidade,
+                        tipo_documento: alunoData.tipo_documento,
+                        numero_documento: alunoData.numero_documento,
+                        nome_pai: alunoData.nome_pai,
+                        nome_mae: alunoData.nome_mae,
+                        nome_encarregado: alunoData.nome_encarregado,
+                        parentesco_encarregado: alunoData.parentesco_encarregado,
+                        telefone_encarregado: alunoData.telefone_encarregado,
+                        email_encarregado: alunoData.email_encarregado,
+                        profissao_encarregado: alunoData.profissao_encarregado,
+                        provincia: alunoData.provincia,
+                        municipio: alunoData.municipio,
+                        bairro: alunoData.bairro,
+                        rua: alunoData.rua,
+                        endereco: alunoData.endereco,
+                        ano_ingresso: alunoData.ano_ingresso,
+                        escola_anterior: alunoData.escola_anterior,
+                        classe_anterior: alunoData.classe_anterior,
+                        observacoes_academicas: alunoData.observacoes_academicas,
                     },
                     turma: selectedTurmaData,
                     disciplinas: disciplinasProcessadas,

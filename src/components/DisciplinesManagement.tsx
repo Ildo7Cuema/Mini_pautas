@@ -1246,54 +1246,64 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                             </p>
                                         </div>
 
-                                        {/* Available Components - Only for trimestral */}
-                                        {componenteFormData.tipo_calculo === 'trimestral' && (
-                                            <div>
-                                                <label className="form-label text-sm">
-                                                    Componentes para usar na fórmula
-                                                </label>
-                                                {selectedDisciplina && componentes[selectedDisciplina.id] && componentes[selectedDisciplina.id].filter(c => !c.is_calculated).length > 0 ? (
+                                        {/* Available Components - Filter based on calculation type */}
+                                        <div>
+                                            <label className="form-label text-sm">
+                                                Componentes para usar na fórmula
+                                            </label>
+                                            {(() => {
+                                                // For trimestral: show only non-calculated components
+                                                // For anual: show calculated components (like MT) + manual components from 3rd trimester
+                                                const availableComponents = selectedDisciplina && componentes[selectedDisciplina.id]
+                                                    ? componentes[selectedDisciplina.id].filter(c =>
+                                                        componenteFormData.tipo_calculo === 'trimestral'
+                                                            ? !c.is_calculated  // Trimestral: only manual components
+                                                            : c.is_calculated || (!c.is_calculated && c.trimestre === 3)   // Anual: calculated components + 3rd trimester manual components
+                                                    )
+                                                    : [];
+
+                                                return availableComponents.length > 0 ? (
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        {componentes[selectedDisciplina.id]
-                                                            .filter(c => !c.is_calculated)
-                                                            .map((comp) => (
-                                                                <label
-                                                                    key={comp.id}
-                                                                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
-                                                                        ? 'border-primary-500 bg-primary-50'
-                                                                        : 'border-slate-200 bg-white hover:border-primary-300'
-                                                                        }`}
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={componenteFormData.depends_on_components.includes(comp.id)}
-                                                                        onChange={(e) => {
-                                                                            const newDeps = e.target.checked
-                                                                                ? [...componenteFormData.depends_on_components, comp.id]
-                                                                                : componenteFormData.depends_on_components.filter(id => id !== comp.id)
-                                                                            setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
-                                                                        }}
-                                                                        className="w-3 h-3 text-primary-600 border-slate-300 rounded"
-                                                                    />
-                                                                    <div className="flex-1 flex items-center justify-between gap-1">
-                                                                        <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
-                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
-                                                                            comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
-                                                                                'bg-orange-100 text-orange-700'
-                                                                            }`}>
-                                                                            T{comp.trimestre}
-                                                                        </span>
-                                                                    </div>
-                                                                </label>
-                                                            ))}
+                                                        {availableComponents.map((comp) => (
+                                                            <label
+                                                                key={comp.id}
+                                                                className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
+                                                                    ? 'border-primary-500 bg-primary-50'
+                                                                    : 'border-slate-200 bg-white hover:border-primary-300'
+                                                                    }`}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={componenteFormData.depends_on_components.includes(comp.id)}
+                                                                    onChange={(e) => {
+                                                                        const newDeps = e.target.checked
+                                                                            ? [...componenteFormData.depends_on_components, comp.id]
+                                                                            : componenteFormData.depends_on_components.filter(id => id !== comp.id)
+                                                                        setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
+                                                                    }}
+                                                                    className="w-3 h-3 text-primary-600 border-slate-300 rounded"
+                                                                />
+                                                                <div className="flex-1 flex items-center justify-between gap-1">
+                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
+                                                                        comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
+                                                                            'bg-orange-100 text-orange-700'
+                                                                        }`}>
+                                                                        T{comp.trimestre}
+                                                                    </span>
+                                                                </div>
+                                                            </label>
+                                                        ))}
                                                     </div>
                                                 ) : (
                                                     <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200">
-                                                        Nenhum componente manual disponível. Crie componentes manuais primeiro.
+                                                        {componenteFormData.tipo_calculo === 'trimestral'
+                                                            ? 'Nenhum componente manual disponível. Crie componentes manuais primeiro.'
+                                                            : 'Nenhum componente disponível. Crie componentes calculáveis (ex: MT) ou componentes do 3º trimestre.'}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                );
+                                            })()}
+                                        </div>
 
                                         {/* Formula Input */}
                                         <div>
@@ -1516,54 +1526,66 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                             </p>
                                         </div>
 
-                                        {/* Available Components - Only for trimestral */}
-                                        {componenteFormData.tipo_calculo === 'trimestral' && (
-                                            <div>
-                                                <label className="form-label text-sm">
-                                                    Componentes para usar na fórmula
-                                                </label>
-                                                {selectedDisciplina && componentes[selectedDisciplina.id] && componentes[selectedDisciplina.id].filter(c => !c.is_calculated && c.id !== selectedComponente?.id).length > 0 ? (
+                                        {/* Available Components - Filter based on calculation type */}
+                                        <div>
+                                            <label className="form-label text-sm">
+                                                Componentes para usar na fórmula
+                                            </label>
+                                            {(() => {
+                                                // For trimestral: show only non-calculated components
+                                                // For anual: show calculated components (like MT) + manual components from 3rd trimester
+                                                const availableComponents = selectedDisciplina && componentes[selectedDisciplina.id]
+                                                    ? componentes[selectedDisciplina.id].filter(c =>
+                                                        c.id !== selectedComponente?.id && (
+                                                            componenteFormData.tipo_calculo === 'trimestral'
+                                                                ? !c.is_calculated  // Trimestral: only manual components
+                                                                : c.is_calculated || (!c.is_calculated && c.trimestre === 3)   // Anual: calculated components + 3rd trimester manual components
+                                                        )
+                                                    )
+                                                    : [];
+
+                                                return availableComponents.length > 0 ? (
                                                     <div className="grid grid-cols-2 gap-2">
-                                                        {componentes[selectedDisciplina.id]
-                                                            .filter(c => !c.is_calculated && c.id !== selectedComponente?.id)
-                                                            .map((comp) => (
-                                                                <label
-                                                                    key={comp.id}
-                                                                    className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
-                                                                        ? 'border-primary-500 bg-primary-50'
-                                                                        : 'border-slate-200 bg-white hover:border-primary-300'
-                                                                        }`}
-                                                                >
-                                                                    <input
-                                                                        type="checkbox"
-                                                                        checked={componenteFormData.depends_on_components.includes(comp.id)}
-                                                                        onChange={(e) => {
-                                                                            const newDeps = e.target.checked
-                                                                                ? [...componenteFormData.depends_on_components, comp.id]
-                                                                                : componenteFormData.depends_on_components.filter(id => id !== comp.id)
-                                                                            setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
-                                                                        }}
-                                                                        className="w-3 h-3 text-primary-600 border-slate-300 rounded"
-                                                                    />
-                                                                    <div className="flex-1 flex items-center justify-between gap-1">
-                                                                        <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
-                                                                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
-                                                                            comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
-                                                                                'bg-orange-100 text-orange-700'
-                                                                            }`}>
-                                                                            T{comp.trimestre}
-                                                                        </span>
-                                                                    </div>
-                                                                </label>
-                                                            ))}
+                                                        {availableComponents.map((comp) => (
+                                                            <label
+                                                                key={comp.id}
+                                                                className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
+                                                                    ? 'border-primary-500 bg-primary-50'
+                                                                    : 'border-slate-200 bg-white hover:border-primary-300'
+                                                                    }`}
+                                                            >
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={componenteFormData.depends_on_components.includes(comp.id)}
+                                                                    onChange={(e) => {
+                                                                        const newDeps = e.target.checked
+                                                                            ? [...componenteFormData.depends_on_components, comp.id]
+                                                                            : componenteFormData.depends_on_components.filter(id => id !== comp.id)
+                                                                        setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
+                                                                    }}
+                                                                    className="w-3 h-3 text-primary-600 border-slate-300 rounded"
+                                                                />
+                                                                <div className="flex-1 flex items-center justify-between gap-1">
+                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
+                                                                        comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
+                                                                            'bg-orange-100 text-orange-700'
+                                                                        }`}>
+                                                                        T{comp.trimestre}
+                                                                    </span>
+                                                                </div>
+                                                            </label>
+                                                        ))}
                                                     </div>
                                                 ) : (
                                                     <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200">
-                                                        Nenhum componente manual disponível.
+                                                        {componenteFormData.tipo_calculo === 'trimestral'
+                                                            ? 'Nenhum componente manual disponível.'
+                                                            : 'Nenhum componente disponível. Crie componentes calculáveis (ex: MT) ou componentes do 3º trimestre.'}
                                                     </div>
-                                                )}
-                                            </div>
-                                        )}
+                                                );
+                                            })()}
+                                        </div>
 
                                         {/* Formula Input */}
                                         <div>
