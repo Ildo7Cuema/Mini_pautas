@@ -72,6 +72,10 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
     const [showDeleteComponenteModal, setShowDeleteComponenteModal] = useState(false)
     const [selectedComponente, setSelectedComponente] = useState<ComponenteAvaliacao | null>(null)
 
+    // Disciplinas obrigatórias state
+    const [disciplinasObrigatorias, setDisciplinasObrigatorias] = useState<Set<string>>(new Set())
+    const [loadingObrigatorias, setLoadingObrigatorias] = useState(false)
+
     // Discipline form state
     const [formData, setFormData] = useState({
         nome: '',
@@ -99,6 +103,7 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
 
     useEffect(() => {
         loadDisciplinas()
+        loadDisciplinasObrigatorias()
     }, [turmaId])
 
     const loadDisciplinas = async () => {
@@ -117,6 +122,78 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             setError(translateError(errorMessage))
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadDisciplinasObrigatorias = async () => {
+        try {
+            setLoadingObrigatorias(true)
+            const { data, error } = await supabase
+                .from('disciplinas_obrigatorias')
+                .select('disciplina_id')
+                .eq('turma_id', turmaId)
+                .eq('is_obrigatoria', true)
+
+            if (error) throw error
+
+            const ids = new Set((data || []).map(d => d.disciplina_id))
+            setDisciplinasObrigatorias(ids)
+        } catch (err: any) {
+            console.error('Erro ao carregar disciplinas obrigatórias:', err)
+            setDisciplinasObrigatorias(new Set())
+        } finally {
+            setLoadingObrigatorias(false)
+        }
+    }
+
+    const toggleDisciplinaObrigatoria = async (disciplinaId: string) => {
+        const isCurrentlyObrigatoria = disciplinasObrigatorias.has(disciplinaId)
+        const newSet = new Set(disciplinasObrigatorias)
+
+        // Validação: 3-4 disciplinas obrigatórias
+        if (!isCurrentlyObrigatoria && newSet.size >= 4) {
+            setError('Máximo de 4 disciplinas obrigatórias permitido')
+            setTimeout(() => setError(null), 3000)
+            return
+        }
+
+        if (isCurrentlyObrigatoria && newSet.size <= 3) {
+            setError('Mínimo de 3 disciplinas obrigatórias necessário')
+            setTimeout(() => setError(null), 3000)
+            return
+        }
+
+        try {
+            if (isCurrentlyObrigatoria) {
+                // Remove
+                const { error } = await supabase
+                    .from('disciplinas_obrigatorias')
+                    .delete()
+                    .eq('turma_id', turmaId)
+                    .eq('disciplina_id', disciplinaId)
+
+                if (error) throw error
+                newSet.delete(disciplinaId)
+            } else {
+                // Add
+                const { error } = await supabase
+                    .from('disciplinas_obrigatorias')
+                    .insert({
+                        turma_id: turmaId,
+                        disciplina_id: disciplinaId,
+                        is_obrigatoria: true
+                    })
+
+                if (error) throw error
+                newSet.add(disciplinaId)
+            }
+
+            setDisciplinasObrigatorias(newSet)
+            setSuccess(isCurrentlyObrigatoria ? 'Disciplina desmarcada como obrigatória' : 'Disciplina marcada como obrigatória')
+            setTimeout(() => setSuccess(null), 2000)
+        } catch (err: any) {
+            const errorMessage = err?.message || 'Erro ao atualizar disciplina obrigatória'
+            setError(translateError(errorMessage))
         }
     }
 
@@ -656,16 +733,46 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                             {disciplina.nome.substring(0, 2).toUpperCase()}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <h4 className="font-semibold text-slate-900 text-base truncate">
-                                                                {disciplina.nome}
-                                                            </h4>
+                                                            <div className="flex items-center gap-2">
+                                                                <h4 className="font-semibold text-slate-900 text-base truncate">
+                                                                    {disciplina.nome}
+                                                                </h4>
+                                                                {disciplinasObrigatorias.has(disciplina.id) && (
+                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+                                                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        Obrigatória
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                             <p className="text-sm text-slate-500">
                                                                 Código: {disciplina.codigo_disciplina}
                                                             </p>
                                                         </div>
                                                     </div>
-                                                    {(disciplina.carga_horaria || disciplina.descricao) && (
+                                                    {(disciplina.carga_horaria || disciplina.descricao || true) && (
                                                         <div className="ml-13 space-y-1">
+                                                            {/* Checkbox para marcar como obrigatória */}
+                                                            <div className="flex items-center gap-2 mb-2">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    id={`obrigatoria-${disciplina.id}`}
+                                                                    checked={disciplinasObrigatorias.has(disciplina.id)}
+                                                                    onChange={() => toggleDisciplinaObrigatoria(disciplina.id)}
+                                                                    disabled={loadingObrigatorias}
+                                                                    className="w-4 h-4 text-amber-600 bg-white border-slate-300 rounded focus:ring-amber-500 focus:ring-2 cursor-pointer disabled:opacity-50"
+                                                                />
+                                                                <label
+                                                                    htmlFor={`obrigatoria-${disciplina.id}`}
+                                                                    className="text-sm font-medium text-slate-700 cursor-pointer select-none"
+                                                                >
+                                                                    Disciplina obrigatória para transição
+                                                                </label>
+                                                                <span className="text-xs text-slate-500">
+                                                                    ({disciplinasObrigatorias.size}/3-4)
+                                                                </span>
+                                                            </div>
                                                             {disciplina.carga_horaria && (
                                                                 <p className="text-sm text-slate-600">
                                                                     <span className="font-medium">Carga Horária:</span> {disciplina.carga_horaria}h

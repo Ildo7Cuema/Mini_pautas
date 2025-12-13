@@ -132,6 +132,7 @@ export const ReportsPage: React.FC = () => {
     const [loadingTermo, setLoadingTermo] = useState(false)
     const [availableComponents, setAvailableComponents] = useState<Array<{ codigo: string, nome: string }>>([])
     const [selectedComponents, setSelectedComponents] = useState<string[]>([])
+    const [componentAlignment, setComponentAlignment] = useState<'left' | 'center' | 'right'>('center')
 
     // Batch generation state
     const [selectedAlunosIds, setSelectedAlunosIds] = useState<string[]>([])
@@ -279,9 +280,9 @@ export const ReportsPage: React.FC = () => {
 
                 // Process components BY TRIMESTRE - each trimester has its own components
                 const componentesPorTrimestre: {
-                    1: Array<{ codigo: string, nome: string, nota: number | null }>,
-                    2: Array<{ codigo: string, nome: string, nota: number | null }>,
-                    3: Array<{ codigo: string, nome: string, nota: number | null }>
+                    1: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>,
+                    2: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>,
+                    3: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>
                 } = { 1: [], 2: [], 3: [] }
 
                 // Process each trimester separately - only include components that belong to that trimester
@@ -295,7 +296,8 @@ export const ReportsPage: React.FC = () => {
                         componentesPorTrimestre[t as 1 | 2 | 3].push({
                             codigo: comp.codigo_componente,
                             nome: comp.nome,
-                            nota: nota
+                            nota: nota,
+                            is_calculated: comp.is_calculated || false
                         })
                     })
                 }
@@ -624,6 +626,7 @@ export const ReportsPage: React.FC = () => {
                         is_calculated, 
                         formula_expression, 
                         depends_on_components,
+                        tipo_calculo,
                         disciplinas!inner(nome)
                     `)
                     .eq('disciplina_id', selectedDisciplina)
@@ -823,51 +826,53 @@ export const ReportsPage: React.FC = () => {
                             }
                         })
 
-                        // Calculate values for calculated components in this trimestre
+                        // Calculate values for TRIMESTRAL calculated components in this trimestre
                         componentesTrimestre.forEach(componente => {
                             if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
-                                console.log(`[DEBUG T${t}] Processing calculated component: ${componente.codigo_componente}`, {
-                                    formula: componente.formula_expression,
-                                    dependencies: componente.depends_on_components
-                                })
-                                console.log(`[DEBUG T${t}] Available components in trimester:`, componentesTrimestre.map(c => `${c.codigo_componente} (${c.id})`))
-                                console.log(`[DEBUG T${t}] Current notasMap:`, notasMap)
+                                // Only process trimestral calculated components here
+                                if (componente.tipo_calculo === 'trimestral' || !componente.tipo_calculo) {
+                                    console.log(`[DEBUG T${t}] Processing TRIMESTRAL calculated component: ${componente.codigo_componente}`, {
+                                        formula: componente.formula_expression,
+                                        dependencies: componente.depends_on_components
+                                    })
+                                    console.log(`[DEBUG T${t}] Available components in trimester:`, componentesTrimestre.map(c => `${c.codigo_componente} (${c.id})`))
+                                    console.log(`[DEBUG T${t}] Current notasMap:`, notasMap)
 
-                                // Build dependency values, using 0 for missing values
-                                const dependencyValues: Record<string, number> = {}
-                                let hasAtLeastOneValue = false
+                                    // Build dependency values, using 0 for missing values
+                                    const dependencyValues: Record<string, number> = {}
+                                    let hasAtLeastOneValue = false
 
-                                componente.depends_on_components.forEach((depId: string) => {
-                                    // Search in ALL components from this trimester, not just componentesTrimestre
-                                    // This is important because componentesTrimestre might be filtered
-                                    const depComponent = componentesData.find(c => c.id === depId && c.trimestre === t)
-                                    console.log(`[DEBUG T${t}] Looking for dependency ${depId}:`, depComponent?.codigo_componente)
-                                    if (depComponent) {
-                                        // Use the value if present, otherwise use 0
-                                        const value = notasMap[depComponent.codigo_componente]
-                                        if (value !== undefined) {
-                                            dependencyValues[depComponent.codigo_componente] = value
-                                            hasAtLeastOneValue = true
-                                            console.log(`[DEBUG T${t}] Found value for ${depComponent.codigo_componente}:`, value)
-                                        } else {
-                                            dependencyValues[depComponent.codigo_componente] = 0
-                                            console.log(`[DEBUG T${t}] Using 0 for missing dependency ${depComponent.codigo_componente}`)
+                                    componente.depends_on_components.forEach((depId: string) => {
+                                        // Search in components from this trimester only
+                                        const depComponent = componentesData.find(c => c.id === depId && c.trimestre === t)
+                                        console.log(`[DEBUG T${t}] Looking for dependency ${depId}:`, depComponent?.codigo_componente)
+                                        if (depComponent) {
+                                            // Use the value if present, otherwise use 0
+                                            const value = notasMap[depComponent.codigo_componente]
+                                            if (value !== undefined) {
+                                                dependencyValues[depComponent.codigo_componente] = value
+                                                hasAtLeastOneValue = true
+                                                console.log(`[DEBUG T${t}] Found value for ${depComponent.codigo_componente}:`, value)
+                                            } else {
+                                                dependencyValues[depComponent.codigo_componente] = 0
+                                                console.log(`[DEBUG T${t}] Using 0 for missing dependency ${depComponent.codigo_componente}`)
+                                            }
                                         }
-                                    }
-                                })
+                                    })
 
-                                // Calculate if we have the dependency components defined (even if some values are 0)
-                                if (Object.keys(dependencyValues).length > 0) {
-                                    try {
-                                        console.log(`[DEBUG T${t}] Calculating ${componente.codigo_componente} with values:`, dependencyValues)
-                                        const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
-                                        notasMap[componente.codigo_componente] = Math.round(calculatedValue * 100) / 100
-                                        console.log(`[DEBUG T${t}] Calculated value for ${componente.codigo_componente}:`, notasMap[componente.codigo_componente])
-                                    } catch (error) {
-                                        console.error(`Error calculating component ${componente.codigo_componente} in trimestre ${t}:`, error)
+                                    // Calculate if we have the dependency components defined (even if some values are 0)
+                                    if (Object.keys(dependencyValues).length > 0) {
+                                        try {
+                                            console.log(`[DEBUG T${t}] Calculating ${componente.codigo_componente} with values:`, dependencyValues)
+                                            const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
+                                            notasMap[componente.codigo_componente] = Math.round(calculatedValue * 100) / 100
+                                            console.log(`[DEBUG T${t}] Calculated value for ${componente.codigo_componente}:`, notasMap[componente.codigo_componente])
+                                        } catch (error) {
+                                            console.error(`Error calculating component ${componente.codigo_componente} in trimestre ${t}:`, error)
+                                        }
+                                    } else {
+                                        console.log(`[DEBUG T${t}] Skipping calculation for ${componente.codigo_componente} - no dependency components found`)
                                     }
-                                } else {
-                                    console.log(`[DEBUG T${t}] Skipping calculation for ${componente.codigo_componente} - no dependency components found`)
                                 }
                             }
                         })
@@ -887,6 +892,68 @@ export const ReportsPage: React.FC = () => {
 
                         nfPorTrimestre[t] = nf
                     }
+
+                    // Now process ANNUAL calculated components (like MFD)
+                    // These can access components from all trimesters
+                    const componentesAnuais = componentesData.filter(c =>
+                        c.is_calculated && c.tipo_calculo === 'anual'
+                    )
+
+                    componentesAnuais.forEach(componente => {
+                        console.log(`[DEBUG ANNUAL] Processing annual calculated component: ${componente.codigo_componente}`, {
+                            formula: componente.formula_expression,
+                            dependencies: componente.depends_on_components
+                        })
+
+                        if (componente.formula_expression && componente.depends_on_components) {
+                            // Build dependency values from all trimesters
+                            const dependencyValues: Record<string, number> = {}
+
+                            componente.depends_on_components.forEach((depId: string) => {
+                                // Find the dependency component (could be from any trimestre)
+                                const depComponent = componentesData.find(c => c.id === depId)
+                                console.log(`[DEBUG ANNUAL] Looking for dependency ${depId}:`, depComponent ? {
+                                    code: depComponent.codigo_componente,
+                                    trimestre: depComponent.trimestre
+                                } : 'NOT FOUND')
+
+                                if (depComponent) {
+                                    // Get the value from the appropriate trimestre
+                                    const trimestreData = trimestres[depComponent.trimestre]
+                                    if (trimestreData) {
+                                        const value = trimestreData.notas[depComponent.codigo_componente]
+                                        if (value !== undefined) {
+                                            dependencyValues[depComponent.codigo_componente] = value
+                                            console.log(`[DEBUG ANNUAL] Found value for ${depComponent.codigo_componente} from T${depComponent.trimestre}:`, value)
+                                        } else {
+                                            dependencyValues[depComponent.codigo_componente] = 0
+                                            console.log(`[DEBUG ANNUAL] Using 0 for missing dependency ${depComponent.codigo_componente}`)
+                                        }
+                                    }
+                                }
+                            })
+
+                            // Calculate the annual component value
+                            if (Object.keys(dependencyValues).length > 0) {
+                                try {
+                                    console.log(`[DEBUG ANNUAL] Calculating ${componente.codigo_componente} with values:`, dependencyValues)
+                                    const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
+                                    const roundedValue = Math.round(calculatedValue * 100) / 100
+                                    console.log(`[DEBUG ANNUAL] Calculated value for ${componente.codigo_componente}:`, roundedValue)
+
+                                    // Store the annual component value in the trimestre it belongs to
+                                    // (for display purposes in the table)
+                                    if (trimestres[componente.trimestre]) {
+                                        trimestres[componente.trimestre].notas[componente.codigo_componente] = roundedValue
+                                    }
+                                } catch (error) {
+                                    console.error(`Error calculating annual component ${componente.codigo_componente}:`, error)
+                                }
+                            } else {
+                                console.log(`[DEBUG ANNUAL] Skipping calculation for ${componente.codigo_componente} - no dependency components found`)
+                            }
+                        }
+                    })
 
                     // MF is no longer calculated automatically
                     // It should be configured as a calculated component if needed
@@ -1268,9 +1335,9 @@ export const ReportsPage: React.FC = () => {
 
                     // Process components BY TRIMESTRE - each trimester has its own components
                     const componentesPorTrimestre: {
-                        1: Array<{ codigo: string, nome: string, nota: number | null }>,
-                        2: Array<{ codigo: string, nome: string, nota: number | null }>,
-                        3: Array<{ codigo: string, nome: string, nota: number | null }>
+                        1: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>,
+                        2: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>,
+                        3: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>
                     } = { 1: [], 2: [], 3: [] }
 
                     for (let t = 1; t <= 3; t++) {
@@ -1291,7 +1358,8 @@ export const ReportsPage: React.FC = () => {
                             componentesPorTrimestre[t as 1 | 2 | 3].push({
                                 codigo: comp.codigo_componente,
                                 nome: comp.nome,
-                                nota: nota
+                                nota: nota,
+                                is_calculated: comp.is_calculated || false
                             })
                         })
                     }
@@ -1823,6 +1891,49 @@ export const ReportsPage: React.FC = () => {
                                         </label>
                                     ))}
                                 </div>
+
+                                {/* Alignment Controls */}
+                                <div className="mt-6 pt-4 border-t border-slate-200">
+                                    <label className="block text-sm font-medium text-slate-700 mb-3">Alinhamento dos Componentes</label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setComponentAlignment('left')}
+                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition ${componentAlignment === 'left'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h7" />
+                                            </svg>
+                                            <span className="block mt-1">Esquerda</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setComponentAlignment('center')}
+                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition ${componentAlignment === 'center'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M7 12h10M9 18h6" />
+                                            </svg>
+                                            <span className="block mt-1">Centro</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setComponentAlignment('right')}
+                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition ${componentAlignment === 'right'
+                                                ? 'bg-blue-600 text-white'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                                }`}
+                                        >
+                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M10 12h10M13 18h7" />
+                                            </svg>
+                                            <span className="block mt-1">Direita</span>
+                                        </button>
+                                    </div>
+                                </div>
                             </CardBody>
                         </Card>
                     )}
@@ -1941,7 +2052,7 @@ export const ReportsPage: React.FC = () => {
                     {termoFrequenciaData && !loadingTermo && (
                         <>
                             {/* Preview */}
-                            <TermoFrequenciaPreview data={termoFrequenciaData} />
+                            <TermoFrequenciaPreview data={termoFrequenciaData} colorConfig={colorConfig} componentAlignment={componentAlignment} />
 
                             {/* Actions */}
                             <Card>

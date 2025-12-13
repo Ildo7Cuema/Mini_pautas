@@ -8,6 +8,7 @@ component-meta:
 
 import { Card, CardBody } from './ui/Card'
 import { GradeColorConfig, getGradeColorFromConfig } from '../utils/gradeColorConfigUtils'
+import { classifyStudent, DisciplinaGrade } from '../utils/studentClassification'
 
 interface ComponenteAvaliacao {
     id: string
@@ -41,7 +42,10 @@ interface PautaGeralData {
         nome_completo: string
         notas_por_disciplina: Record<string, Record<string, number>>
         media_geral: number
-        observacao: 'Transita' | 'Não Transita'
+        observacao: 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas'
+        motivos: string[]
+        disciplinas_em_risco: string[]
+        acoes_recomendadas: string[]
     }>
     disciplinas: DisciplinaComComponentes[]
     estatisticas?: {
@@ -68,9 +72,10 @@ interface Props {
     loading: boolean
     colorConfig: GradeColorConfig | null
     fieldSelection: FieldSelection
+    disciplinasObrigatorias?: string[]
 }
 
-export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig, fieldSelection }) => {
+export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig, fieldSelection, disciplinasObrigatorias }) => {
     if (loading) {
         return (
             <Card>
@@ -99,9 +104,16 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
         fieldSelection.disciplinas.includes(d.id)
     )
 
-    // Calculate média geral dynamically based on selected disciplines
-    const calculateMediaGeralForSelectedDisciplinas = (aluno: any): { media: number; observacao: 'Transita' | 'Não Transita' } => {
+    // Calculate classification dynamically based on selected disciplines using new rules
+    const calculateClassificationForSelectedDisciplinas = (aluno: any): {
+        media: number;
+        observacao: 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas'
+        motivos: string[]
+        disciplinas_em_risco: string[]
+        acoes_recomendadas: string[]
+    } => {
         const notasFinaisDisciplinas: number[] = []
+        const disciplinaGrades: DisciplinaGrade[] = []
 
         // Only calculate for selected/visible disciplines
         visibleDisciplinas.forEach(disc => {
@@ -125,6 +137,13 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                     }
 
                     notasFinaisDisciplinas.push(notaFinalDisciplina)
+
+                    // Add to disciplinaGrades for classification
+                    disciplinaGrades.push({
+                        id: disc.id,
+                        nome: disc.nome,
+                        nota: notaFinalDisciplina
+                    })
                 }
             }
         })
@@ -136,18 +155,21 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
             mediaGeral = Math.round(mediaGeral * 100) / 100
         }
 
-        // Determine if Primary or Secondary education
-        const isPrimary = data.nivel_ensino?.toLowerCase().includes('primário') ||
-            data.nivel_ensino?.toLowerCase().includes('primario')
+        // Use new classification logic
+        const classification = classifyStudent(
+            disciplinaGrades,
+            data.nivel_ensino,
+            data.classe,
+            disciplinasObrigatorias
+        )
 
-        // Threshold for transition
-        const transitaThreshold = isPrimary ? 4.45 : 9.45
-
-        // Determine observação
-        const observacao: 'Transita' | 'Não Transita' =
-            (mediaGeral >= transitaThreshold && mediaGeral <= 10) ? 'Transita' : 'Não Transita'
-
-        return { media: mediaGeral, observacao }
+        return {
+            media: mediaGeral,
+            observacao: classification.status,
+            motivos: classification.motivos,
+            disciplinas_em_risco: classification.disciplinas_em_risco,
+            acoes_recomendadas: classification.acoes_recomendadas
+        }
     }
 
 
@@ -155,17 +177,17 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
         <Card>
             <CardBody>
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <table className="min-w-full border-collapse text-sm">
                         <thead className="bg-slate-50">
                             {/* First row: Discipline headers */}
                             <tr>
                                 {fieldSelection.showNumeroProcesso && (
-                                    <th rowSpan={2} className="px-3 py-2 text-left text-xs font-medium text-slate-700 uppercase tracking-wider border-r border-slate-200 sticky left-0 bg-slate-50 z-10">
+                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-xs font-medium text-slate-700 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">
                                         Nº
                                     </th>
                                 )}
                                 {fieldSelection.showNomeCompleto && (
-                                    <th rowSpan={2} className="px-3 py-2 text-left text-xs font-medium text-slate-700 uppercase tracking-wider border-r border-slate-200 sticky left-0 bg-slate-50 z-10" style={{ left: fieldSelection.showNumeroProcesso ? '60px' : '0' }}>
+                                    <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-xs font-medium text-slate-700 uppercase tracking-wider sticky bg-slate-50 z-10" style={{ left: fieldSelection.showNumeroProcesso ? '45px' : '0' }}>
                                         Nome do Aluno
                                     </th>
                                 )}
@@ -179,19 +201,19 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                         <th
                                             key={disciplina.id}
                                             colSpan={visibleComponentes.length}
-                                            className="px-3 py-2 text-center text-xs font-bold text-white uppercase tracking-wider bg-blue-600 border-r border-blue-700"
+                                            className="border border-slate-300 px-2 py-0.5 text-center text-xs font-bold text-white uppercase tracking-wider bg-blue-600"
                                         >
                                             {disciplina.nome}
                                         </th>
                                     )
                                 })}
                                 {fieldSelection.showMediaGeral && (
-                                    <th rowSpan={2} className="px-3 py-2 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-amber-50 border-l-2 border-amber-300">
+                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-amber-100">
                                         Média Geral
                                     </th>
                                 )}
                                 {fieldSelection.showObservacao && (
-                                    <th rowSpan={2} className="px-3 py-2 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50 border-l-2 border-slate-300">
+                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50">
                                         Observação
                                     </th>
                                 )}
@@ -205,7 +227,7 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                     return visibleComponentes.map((componente) => (
                                         <th
                                             key={componente.id}
-                                            className="px-2 py-2 text-center text-xs font-medium text-slate-700 bg-slate-100 border-r border-slate-200"
+                                            className={`border border-slate-300 px-2 py-0.5 text-center text-xs font-medium text-slate-700 ${['MF', 'MFD', 'MEC'].includes(componente.codigo_componente) ? 'bg-amber-100' : 'bg-slate-100'}`}
                                         >
                                             {componente.codigo_componente}
                                         </th>
@@ -213,21 +235,23 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                 })}
                             </tr>
                         </thead>
-                        <tbody className="bg-white divide-y divide-slate-200">
+                        <tbody className="bg-white">
                             {data.alunos.map((aluno, index) => {
-                                // Calculate média geral dynamically for selected disciplines
-                                const { media: mediaGeralDinamica, observacao: observacaoDinamica } =
-                                    calculateMediaGeralForSelectedDisciplinas(aluno)
+                                // Calculate classification dynamically for selected disciplines
+                                const {
+                                    media: mediaGeralDinamica,
+                                    observacao: observacaoDinamica
+                                } = calculateClassificationForSelectedDisciplinas(aluno)
 
                                 return (
                                     <tr key={index} className="hover:bg-slate-50">
                                         {fieldSelection.showNumeroProcesso && (
-                                            <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900 border-r border-slate-200 sticky left-0 bg-white">
+                                            <td className="border border-slate-300 px-2 py-0.5 whitespace-nowrap text-xs text-slate-900 sticky left-0 bg-white">
                                                 {index + 1}
                                             </td>
                                         )}
                                         {fieldSelection.showNomeCompleto && (
-                                            <td className="px-3 py-2 whitespace-nowrap text-xs text-slate-900 border-r border-slate-200 sticky left-0 bg-white" style={{ left: fieldSelection.showNumeroProcesso ? '60px' : '0' }}>
+                                            <td className="border border-slate-300 px-3 py-0.5 whitespace-nowrap text-xs text-slate-900 sticky bg-white" style={{ left: fieldSelection.showNumeroProcesso ? '45px' : '0' }}>
                                                 {aluno.nome_completo}
                                             </td>
                                         )}
@@ -245,7 +269,7 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                                 return (
                                                     <td
                                                         key={componente.id}
-                                                        className="px-2 py-2 whitespace-nowrap text-center text-xs font-medium border-r border-slate-200"
+                                                        className={`border border-slate-300 px-2 py-0.5 whitespace-nowrap text-center text-xs font-medium ${['MF', 'MFD', 'MEC'].includes(componente.codigo_componente) ? 'bg-amber-50' : ''}`}
                                                         style={{ color }}
                                                     >
                                                         {hasNota ? nota.toFixed(1) : '-'}
@@ -254,13 +278,18 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                             })
                                         })}
                                         {fieldSelection.showMediaGeral && (
-                                            <td className="px-3 py-2 whitespace-nowrap text-center text-sm font-bold bg-amber-50 border-l-2 border-amber-300">
+                                            <td className="border border-slate-300 px-2 py-0.5 whitespace-nowrap text-center text-sm font-bold bg-amber-100">
                                                 {mediaGeralDinamica.toFixed(2)}
                                             </td>
                                         )}
                                         {fieldSelection.showObservacao && (
-                                            <td className="px-3 py-2 whitespace-nowrap text-center text-xs font-semibold border-l-2 border-slate-300">
-                                                <span className={observacaoDinamica === 'Transita' ? 'text-blue-600' : 'text-red-600'}>
+                                            <td className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
+                                                <span className={
+                                                    observacaoDinamica === 'Transita' ? 'text-blue-600' :
+                                                        observacaoDinamica === 'Condicional' ? 'text-yellow-600' :
+                                                            observacaoDinamica === 'AguardandoNotas' ? 'text-gray-500' :
+                                                                'text-red-600'
+                                                }>
                                                     {observacaoDinamica}
                                                 </span>
                                             </td>

@@ -16,11 +16,11 @@ import { PautaGeralFieldSelector } from './PautaGeralFieldSelector'
 import { PautaGeralPreview } from './PautaGeralPreview'
 import { generatePautaGeralPDF } from '../utils/pdfGenerator'
 import { generatePautaGeralExcel, generatePautaGeralCSV } from '../utils/excelGenerator'
-import { calculateStatistics } from '../utils/gradeCalculations'
 import { evaluateFormula } from '../utils/formulaUtils'
 import { HeaderConfig, loadHeaderConfig } from '../utils/headerConfigUtils'
 import { GradeColorConfig, loadGradeColorConfig } from '../utils/gradeColorConfigUtils'
 import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
+import { classifyStudent, DisciplinaGrade } from '../utils/studentClassification'
 
 interface Turma {
     id: string
@@ -59,7 +59,10 @@ interface PautaGeralData {
         nome_completo: string
         notas_por_disciplina: Record<string, Record<string, number>> // disciplinaId -> componenteId -> nota
         media_geral: number // Average across all disciplines
-        observacao: 'Transita' | 'Não Transita' // Based on média_geral
+        observacao: 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas'
+        motivos: string[]
+        disciplinas_em_risco: string[]
+        acoes_recomendadas: string[]
     }>
     disciplinas: DisciplinaComComponentes[]
     estatisticas?: {
@@ -111,6 +114,9 @@ export const PautaGeralPage: React.FC = () => {
         componenteParaMediaGeral: 'MF' // Default to MF (Média Final)
     })
 
+    // Disciplinas obrigatórias state
+    const [disciplinasObrigatorias, setDisciplinasObrigatorias] = useState<string[]>([])
+
     useEffect(() => {
         loadTurmas()
     }, [])
@@ -118,8 +124,10 @@ export const PautaGeralPage: React.FC = () => {
     useEffect(() => {
         if (selectedTurma) {
             loadPautaGeralData()
+            loadDisciplinasObrigatorias()
         } else {
             setPautaGeralData(null)
+            setDisciplinasObrigatorias([])
         }
     }, [selectedTurma]) // trimestre is now fixed at 3
 
@@ -152,6 +160,26 @@ export const PautaGeralPage: React.FC = () => {
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar turmas'
             setError(translateError(errorMessage))
+        }
+    }
+
+    const loadDisciplinasObrigatorias = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('disciplinas_obrigatorias')
+                .select('disciplina_id')
+                .eq('turma_id', selectedTurma)
+                .eq('is_obrigatoria', true)
+
+            if (error) throw error
+
+            // Extract just the IDs
+            const ids = (data || []).map(d => d.disciplina_id)
+            setDisciplinasObrigatorias(ids)
+        } catch (err) {
+            console.error('Erro ao carregar disciplinas obrigatórias:', err)
+            // Don't show error to user, just use empty array (fallback to Português/Matemática)
+            setDisciplinasObrigatorias([])
         }
     }
 
@@ -295,58 +323,45 @@ export const PautaGeralPage: React.FC = () => {
                     numero_processo: aluno.numero_processo,
                     nome_completo: aluno.nome_completo,
                     notas_por_disciplina: notasPorDisciplina,
-                    media_geral: 0, // Will be calculated below
-                    observacao: 'Não Transita' as 'Transita' | 'Não Transita' // Will be updated below
+                    media_geral: 0,
+                    observacao: 'AguardandoNotas' as any,
+                    motivos: [] as string[],
+                    disciplinas_em_risco: [] as string[],
+                    acoes_recomendadas: [] as string[]
                 }
             })
 
-            // Determine if Primary or Secondary education
-            const isPrimary = turmaData.nivel_ensino?.toLowerCase().includes('primário') ||
-                turmaData.nivel_ensino?.toLowerCase().includes('primario')
-
-            // Threshold for transition: 4.45 for Primary, 9.45 for Secondary
-            const transitaThreshold = isPrimary ? 4.45 : 9.45
-
             // Calculate statistics per discipline and general statistics
-            const estatisticasPorDisciplina: Record<string, any> = {}
             const notasFinaisPorAluno: number[] = [] // Store average final grade per student across all disciplines
 
-            // For each student, calculate their average final grade across all disciplines
+            // For each student, calculate their classification based on new rules
             alunosComNotas.forEach((aluno, index) => {
                 const notasFinaisDisciplinas: number[] = []
+                const disciplinaGrades: DisciplinaGrade[] = []
 
+                // Collect grades from MF or MFD component for each discipline
                 disciplinasComComponentes.forEach(disc => {
                     const notasDisciplina = aluno.notas_por_disciplina[disc.id] || {}
-                    const componentesComNota = disc.componentes.filter(comp => {
-                        const nota = notasDisciplina[comp.id]
-                        return nota !== undefined && nota > 0
-                    })
 
-                    if (componentesComNota.length > 0) {
-                        // Calculate weighted average for this discipline
-                        let somaContribuicoes = 0
-                        let somaPesos = 0
+                    // Find MF or MFD component
+                    const componenteMF = disc.componentes.find(
+                        comp => comp.codigo_componente === 'MF' || comp.codigo_componente === 'MFD'
+                    )
 
-                        componentesComNota.forEach(comp => {
-                            const nota = notasDisciplina[comp.id]
-                            const peso = comp.peso_percentual / 100
-                            somaContribuicoes += nota * peso
-                            somaPesos += comp.peso_percentual
-                        })
-
-                        // Normalize if weights don't sum to 100%
-                        let notaFinalDisciplina = somaPesos > 0 ? (somaContribuicoes / somaPesos) * 100 : 0
-
-                        // CAP at 10: If discipline average > 10, set it to 10
-                        if (notaFinalDisciplina > 10) {
-                            notaFinalDisciplina = 10
+                    if (componenteMF) {
+                        const nota = notasDisciplina[componenteMF.id]
+                        if (nota !== undefined && nota > 0) {
+                            disciplinaGrades.push({
+                                id: disc.id,
+                                nome: disc.nome,
+                                nota: nota
+                            })
+                            notasFinaisDisciplinas.push(nota)
                         }
-
-                        notasFinaisDisciplinas.push(notaFinalDisciplina)
                     }
                 })
 
-                // Calculate average across all disciplines for this student
+                // Calculate average across all disciplines for this student (for statistics)
                 let mediaAluno = 0
                 if (notasFinaisDisciplinas.length > 0) {
                     mediaAluno = notasFinaisDisciplinas.reduce((sum, n) => sum + n, 0) / notasFinaisDisciplinas.length
@@ -355,74 +370,56 @@ export const PautaGeralPage: React.FC = () => {
                     notasFinaisPorAluno.push(mediaAluno)
                 }
 
-                // Determine observação based on média_geral and education level
-                // Transita if: média >= threshold AND média <= 10
-                const observacao: 'Transita' | 'Não Transita' =
-                    (mediaAluno >= transitaThreshold && mediaAluno <= 10) ? 'Transita' : 'Não Transita'
+                // Use new classification logic
+                const classification = classifyStudent(
+                    disciplinaGrades,
+                    turmaData.nivel_ensino,
+                    classe,
+                    disciplinasObrigatorias
+                )
 
-                // Update aluno with média_geral and observação
+                // Update aluno with média_geral and classification results
                 alunosComNotas[index] = {
                     ...aluno,
                     media_geral: mediaAluno,
-                    observacao
+                    observacao: classification.status,
+                    motivos: classification.motivos,
+                    disciplinas_em_risco: classification.disciplinas_em_risco,
+                    acoes_recomendadas: classification.acoes_recomendadas
                 }
             })
 
-            // Calculate statistics per discipline (for future use)
-            disciplinasComComponentes.forEach(disc => {
-                const notasFinaisDisciplina: number[] = []
+            // Calculate General Statistics
+            const totalAlunos = alunosComNotas.length
+            const aprovados = alunosComNotas.filter(a => a.observacao === 'Transita').length
+            const reprovados = totalAlunos - aprovados
 
-                alunosComNotas.forEach(aluno => {
-                    const notasDisciplina = aluno.notas_por_disciplina[disc.id] || {}
-                    const componentesComNota = disc.componentes.filter(comp => {
-                        const nota = notasDisciplina[comp.id]
-                        return nota !== undefined && nota > 0
-                    })
+            const mediaTurma = notasFinaisPorAluno.length > 0
+                ? notasFinaisPorAluno.reduce((a, b) => a + b, 0) / notasFinaisPorAluno.length
+                : 0
 
-                    if (componentesComNota.length > 0) {
-                        // Calculate weighted average for this discipline
-                        let somaContribuicoes = 0
-                        let somaPesos = 0
-
-                        componentesComNota.forEach(comp => {
-                            const nota = notasDisciplina[comp.id]
-                            const peso = comp.peso_percentual / 100
-                            somaContribuicoes += nota * peso
-                            somaPesos += comp.peso_percentual
-                        })
-
-                        const notaFinalDisciplina = somaPesos > 0 ? (somaContribuicoes / somaPesos) * 100 : 0
-                        notasFinaisDisciplina.push(notaFinalDisciplina)
-                    }
-                })
-
-                estatisticasPorDisciplina[disc.id] = calculateStatistics(notasFinaisDisciplina)
-            })
-
-            // Calculate general statistics based on student averages
-            const estatisticasGeral = calculateStatistics(notasFinaisPorAluno)
-
-            // Load escola info (optional)
-            const { data: escolaData } = await supabase
-                .from('escolas')
-                .select('nome, provincia, municipio')
-                .limit(1)
-                .single()
+            const notaMinima = notasFinaisPorAluno.length > 0 ? Math.min(...notasFinaisPorAluno) : 0
+            const notaMaxima = notasFinaisPorAluno.length > 0 ? Math.max(...notasFinaisPorAluno) : 0
 
             setPautaGeralData({
                 turma: turmaData,
-                trimestre,
+                trimestre: 3,
                 nivel_ensino: turmaData.nivel_ensino,
-                classe,
+                classe: classe,
                 alunos: alunosComNotas,
                 disciplinas: disciplinasComComponentes,
                 estatisticas: {
-                    por_disciplina: estatisticasPorDisciplina,
-                    geral: estatisticasGeral
-                },
-                escola: escolaData || undefined
+                    por_disciplina: {},
+                    geral: {
+                        total_alunos: totalAlunos,
+                        aprovados,
+                        reprovados,
+                        media_turma: mediaTurma,
+                        nota_minima: notaMinima,
+                        nota_maxima: notaMaxima
+                    }
+                }
             })
-
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dados'
             setError(translateError(errorMessage))
@@ -654,6 +651,7 @@ export const PautaGeralPage: React.FC = () => {
                         loading={loadingData}
                         colorConfig={colorConfig}
                         fieldSelection={fieldSelection}
+                        disciplinasObrigatorias={disciplinasObrigatorias}
                     />
                 </div>
             )}

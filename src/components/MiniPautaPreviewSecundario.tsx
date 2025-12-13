@@ -125,93 +125,93 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
         return (
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full border-collapse">
                         <thead className="bg-blue-600 text-white">
                             <tr>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-sm font-semibold border-r border-blue-500">Nº</th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-sm font-semibold border-r border-blue-500">Nome do Aluno</th>
+                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold sticky left-0 bg-blue-600 z-10">Nº</th>
+                                <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold sticky left-[45px] bg-blue-600 z-10">Nome do Aluno</th>
 
                                 {/* 1º Trimestre header */}
                                 {componentes1T.length > 0 && (
-                                    <th colSpan={componentes1T.length} className="px-4 py-2 text-center text-sm font-semibold border-r-2 border-blue-700 bg-blue-700">
+                                    <th colSpan={componentes1T.length} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold bg-blue-700">
                                         1º Trimestre
                                     </th>
                                 )}
 
                                 {/* 2º Trimestre header */}
                                 {componentes2T.length > 0 && (
-                                    <th colSpan={componentes2T.length} className="px-4 py-2 text-center text-sm font-semibold border-r-2 border-blue-700 bg-blue-700">
+                                    <th colSpan={componentes2T.length} className="border border-slate-300 px-2 py-1 text-center text-sm font-semibold bg-blue-700">
                                         2º Trimestre
                                     </th>
                                 )}
 
                                 {/* 3º Trimestre header */}
                                 {componentes3T.length > 0 && (
-                                    <th colSpan={componentes3T.length} className="px-4 py-2 text-center text-sm font-semibold bg-blue-700">
+                                    <th colSpan={componentes3T.length} className="border border-slate-300 px-2 py-1 text-center text-sm font-semibold bg-blue-700">
                                         3º Trimestre
                                     </th>
                                 )}
                             </tr>
                             <tr>
                                 {/* 1º Trimestre components */}
-                                {componentes1T.map((comp, idx) => (
+                                {componentes1T.map((comp) => (
                                     <th
                                         key={`1-${comp.codigo_componente}`}
-                                        className={`px-2 py-2 text-center text-xs font-semibold ${idx === componentes1T.length - 1 ? 'border-r-2 border-blue-700' : 'border-r border-blue-500'}`}
+                                        className={`border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}
                                     >
                                         <div className="flex items-center justify-center gap-1">
                                             {comp.codigo_componente}
                                             {comp.is_calculated && (
-                                                <span className="text-yellow-300" title="Componente Calculado">📊</span>
+                                                <span className="text-yellow-600" title="Componente Calculado">📊</span>
                                             )}
                                         </div>
                                     </th>
                                 ))}
 
                                 {/* 2º Trimestre components */}
-                                {componentes2T.map((comp, idx) => (
+                                {componentes2T.map((comp) => (
                                     <th
                                         key={`2-${comp.codigo_componente}`}
-                                        className={`px-2 py-2 text-center text-xs font-semibold ${idx === componentes2T.length - 1 ? 'border-r-2 border-blue-700' : 'border-r border-blue-500'}`}
+                                        className={`border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}
                                     >
                                         <div className="flex items-center justify-center gap-1">
                                             {comp.codigo_componente}
                                             {comp.is_calculated && (
-                                                <span className="text-yellow-300" title="Componente Calculado">📊</span>
+                                                <span className="text-yellow-600" title="Componente Calculado">📊</span>
                                             )}
                                         </div>
                                     </th>
                                 ))}
 
                                 {/* 3º Trimestre components */}
-                                {componentes3T.map((comp, idx) => (
+                                {componentes3T.map((comp) => (
                                     <th
                                         key={`3-${comp.codigo_componente}`}
-                                        className={`px-2 py-2 text-center text-xs font-semibold ${idx < componentes3T.length - 1 ? 'border-r border-blue-500' : ''}`}
+                                        className={`border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}
                                     >
                                         <div className="flex items-center justify-center gap-1">
                                             {comp.codigo_componente}
                                             {comp.is_calculated && (
-                                                <span className="text-yellow-300" title="Componente Calculado">📊</span>
+                                                <span className="text-yellow-600" title="Componente Calculado">📊</span>
                                             )}
                                         </div>
                                     </th>
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200">
+                        <tbody>
                             {data.alunos.map((aluno, index) => (
                                 <tr key={aluno.numero_processo} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 text-sm text-slate-600 border-r border-slate-200">{index + 1}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-900 border-r border-slate-200">{aluno.nome_completo}</td>
+                                    <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600 sticky left-0 bg-white z-10">{index + 1}</td>
+                                    <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900 sticky left-[45px] bg-white z-10">{aluno.nome_completo}</td>
 
                                     {/* 1º Trimestre data */}
-                                    {componentes1T.map((comp, idx) => {
+                                    {componentes1T.map((comp) => {
                                         const nota = aluno.trimestres?.[1]?.notas[comp.codigo_componente]
                                         return (
                                             <td
                                                 key={`1-${comp.codigo_componente}`}
-                                                className={`px-2 py-3 text-center text-sm ${idx === componentes1T.length - 1 ? 'border-r-2 border-slate-300' : 'border-r border-slate-200'}`}
+                                                className={`border border-slate-300 px-2 py-0.5 text-center text-sm ${comp.is_calculated ? 'bg-blue-50' : ''}`}
                                             >
                                                 {renderGradeWithColor(nota, comp.is_calculated || false)}
                                             </td>
@@ -219,12 +219,12 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                                     })}
 
                                     {/* 2º Trimestre data */}
-                                    {componentes2T.map((comp, idx) => {
+                                    {componentes2T.map((comp) => {
                                         const nota = aluno.trimestres?.[2]?.notas[comp.codigo_componente]
                                         return (
                                             <td
                                                 key={`2-${comp.codigo_componente}`}
-                                                className={`px-2 py-3 text-center text-sm ${idx === componentes2T.length - 1 ? 'border-r-2 border-slate-300' : 'border-r border-slate-200'}`}
+                                                className={`border border-slate-300 px-2 py-0.5 text-center text-sm ${comp.is_calculated ? 'bg-blue-50' : ''}`}
                                             >
                                                 {renderGradeWithColor(nota, comp.is_calculated || false)}
                                             </td>
@@ -232,12 +232,12 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                                     })}
 
                                     {/* 3º Trimestre data */}
-                                    {componentes3T.map((comp, idx) => {
+                                    {componentes3T.map((comp) => {
                                         const nota = aluno.trimestres?.[3]?.notas[comp.codigo_componente]
                                         return (
                                             <td
                                                 key={`3-${comp.codigo_componente}`}
-                                                className={`px-2 py-3 text-center text-sm ${idx < componentes3T.length - 1 ? 'border-r border-slate-200' : ''}`}
+                                                className={`border border-slate-300 px-2 py-0.5 text-center text-sm ${comp.is_calculated ? 'bg-blue-50' : ''}`}
                                             >
                                                 {renderGradeWithColor(nota, comp.is_calculated || false)}
                                             </td>
@@ -256,17 +256,17 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                     <thead className="bg-blue-600 text-white">
                         <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Nº</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Nome do Aluno</th>
+                            <th className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold">Nº</th>
+                            <th className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold">Nome do Aluno</th>
                             {data.componentes.map((comp) => (
-                                <th key={comp.codigo_componente} className="px-4 py-3 text-center text-sm font-semibold">
+                                <th key={comp.codigo_componente} className={`border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}>
                                     <div className="flex items-center justify-center gap-1">
                                         <span>{comp.codigo_componente}</span>
                                         {comp.is_calculated && (
-                                            <span className="text-yellow-300" title="Componente Calculado">📊</span>
+                                            <span className="text-yellow-600" title="Componente Calculado">📊</span>
                                         )}
                                     </div>
                                     <div className="text-xs font-normal opacity-90">({comp.peso_percentual}%)</div>
@@ -274,15 +274,15 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody>
                         {data.alunos.map((aluno, index) => (
                             <tr key={aluno.numero_processo} className="hover:bg-slate-50">
-                                <td className="px-4 py-3 text-sm text-slate-600">{index + 1}</td>
-                                <td className="px-4 py-3 text-sm text-slate-900">{aluno.nome_completo}</td>
+                                <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600">{index + 1}</td>
+                                <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900">{aluno.nome_completo}</td>
                                 {data.componentes.map((comp) => {
                                     const nota = aluno.notas[comp.codigo_componente]
                                     return (
-                                        <td key={comp.codigo_componente} className="px-4 py-3 text-center text-sm">
+                                        <td key={comp.codigo_componente} className={`border border-slate-300 px-2 py-0.5 text-center text-sm ${comp.is_calculated ? 'bg-blue-50' : ''}`}>
                                             {renderGradeWithColor(nota, comp.is_calculated || false)}
                                         </td>
                                     )

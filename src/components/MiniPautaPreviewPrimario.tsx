@@ -157,18 +157,18 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
         return (
             <div className="bg-white rounded-lg shadow-md overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="w-full border-collapse">
                         <thead className="bg-green-600 text-white">
                             <tr>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-sm font-semibold border-r border-green-500">Nº</th>
-                                <th rowSpan={2} className="px-4 py-3 text-left text-sm font-semibold border-r border-green-500">Nome do Aluno</th>
+                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold sticky left-0 bg-green-600 z-10">Nº</th>
+                                <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold sticky left-[45px] bg-green-600 z-10">Nome do Aluno</th>
 
                                 {/* Discipline headers */}
-                                {disciplineGroups.map((group, groupIdx) => (
+                                {disciplineGroups.map((group) => (
                                     <th
                                         key={group.disciplina_nome}
                                         colSpan={group.componentes.length}
-                                        className={`px-4 py-2 text-center text-sm font-semibold bg-green-700 ${groupIdx < disciplineGroups.length - 1 ? 'border-r-2 border-green-800' : ''}`}
+                                        className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold bg-green-700"
                                     >
                                         {group.disciplina_nome}
                                     </th>
@@ -176,20 +176,17 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                             </tr>
                             <tr>
                                 {/* Component headers for each discipline */}
-                                {disciplineGroups.map((group, groupIdx) => (
+                                {disciplineGroups.map((group) => (
                                     <React.Fragment key={`comps-${group.disciplina_nome}`}>
                                         {group.componentes.map((comp, compIdx) => (
                                             <th
                                                 key={`${group.disciplina_nome}-${compIdx}`}
-                                                className={`px-2 py-2 text-center text-xs font-semibold ${compIdx === group.componentes.length - 1 && groupIdx < disciplineGroups.length - 1
-                                                    ? 'border-r-2 border-green-800'
-                                                    : 'border-r border-green-500'
-                                                    }`}
+                                                className={`border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}
                                             >
                                                 <div className="flex items-center justify-center gap-1">
                                                     {comp.codigo_componente}
                                                     {comp.is_calculated && (
-                                                        <span className="text-yellow-300" title="Componente Calculado">📊</span>
+                                                        <span className="text-yellow-600" title="Componente Calculado">📊</span>
                                                     )}
                                                 </div>
                                             </th>
@@ -198,14 +195,14 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-200">
+                        <tbody>
                             {data.alunos.map((aluno, index) => (
                                 <tr key={aluno.numero_processo} className="hover:bg-slate-50">
-                                    <td className="px-4 py-3 text-sm text-slate-600 border-r border-slate-200">{index + 1}</td>
-                                    <td className="px-4 py-3 text-sm text-slate-900 border-r border-slate-200">{aluno.nome_completo}</td>
+                                    <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600 sticky left-0 bg-white z-10">{index + 1}</td>
+                                    <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900 sticky left-[45px] bg-white z-10">{aluno.nome_completo}</td>
 
                                     {/* Data for each discipline */}
-                                    {disciplineGroups.map((group, groupIdx) => (
+                                    {disciplineGroups.map((group) => (
                                         <React.Fragment key={`data-${group.disciplina_nome}`}>
                                             {group.componentes.map((comp, compIdx) => {
                                                 // Use component id for grade lookup to avoid conflicts
@@ -213,10 +210,7 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                                                 return (
                                                     <td
                                                         key={`${group.disciplina_nome}-${compIdx}-data`}
-                                                        className={`px-2 py-3 text-center text-sm ${compIdx === group.componentes.length - 1 && groupIdx < disciplineGroups.length - 1
-                                                            ? 'border-r-2 border-slate-300'
-                                                            : 'border-r border-slate-200'
-                                                            }`}
+                                                        className={`border border-slate-300 px-2 py-0.5 text-center text-sm ${comp.is_calculated ? 'bg-blue-50' : ''}`}
                                                     >
                                                         {renderGradeWithColor(nota, comp.is_calculated || false)}
                                                     </td>
@@ -237,17 +231,17 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
     return (
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full border-collapse">
                     <thead className="bg-green-600 text-white">
                         <tr>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Nº</th>
-                            <th className="px-4 py-3 text-left text-sm font-semibold">Nome do Aluno</th>
+                            <th className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold">Nº</th>
+                            <th className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold">Nome do Aluno</th>
                             {data.componentes.map((comp) => (
-                                <th key={comp.codigo_componente} className="px-4 py-3 text-center text-sm font-semibold">
+                                <th key={comp.codigo_componente} className={`border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}>
                                     <div className="flex items-center justify-center gap-1">
                                         <span>{comp.codigo_componente}</span>
                                         {comp.is_calculated && (
-                                            <span className="text-yellow-300" title="Componente Calculado">📊</span>
+                                            <span className="text-yellow-600" title="Componente Calculado">📊</span>
                                         )}
                                     </div>
                                     <div className="text-xs font-normal opacity-90">({comp.peso_percentual}%)</div>
@@ -255,15 +249,15 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                             ))}
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-200">
+                    <tbody>
                         {data.alunos.map((aluno, index) => (
                             <tr key={aluno.numero_processo} className="hover:bg-slate-50">
-                                <td className="px-4 py-3 text-sm text-slate-600">{index + 1}</td>
-                                <td className="px-4 py-3 text-sm text-slate-900">{aluno.nome_completo}</td>
+                                <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600">{index + 1}</td>
+                                <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900">{aluno.nome_completo}</td>
                                 {data.componentes.map((comp) => {
                                     const nota = aluno.notas[comp.codigo_componente]
                                     return (
-                                        <td key={comp.codigo_componente} className="px-4 py-3 text-center text-sm">
+                                        <td key={comp.codigo_componente} className={`border border-slate-300 px-2 py-0.5 text-center text-sm ${comp.is_calculated ? 'bg-blue-50' : ''}`}>
                                             {renderGradeWithColor(nota, comp.is_calculated || false)}
                                         </td>
                                     )

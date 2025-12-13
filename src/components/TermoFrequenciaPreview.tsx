@@ -9,11 +9,13 @@ component-meta:
 
 import React from 'react'
 import { Card, CardHeader, CardBody } from './ui/Card'
+import { GradeColorConfig, getGradeColorFromConfig } from '../utils/gradeColorConfigUtils'
 
 interface ComponenteNota {
     codigo: string
     nome: string
     nota: number | null
+    is_calculated?: boolean
 }
 
 interface DisciplinaTermoFrequencia {
@@ -85,9 +87,40 @@ interface TermoFrequenciaData {
 
 interface TermoFrequenciaPreviewProps {
     data: TermoFrequenciaData
+    colorConfig?: GradeColorConfig | null
+    componentAlignment?: 'left' | 'center' | 'right'
 }
 
-export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ data }) => {
+
+export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ data, colorConfig, componentAlignment = 'center' }) => {
+    // Extract classe from turma name (e.g., "4ª Classe A" -> "4ª Classe")
+    const extractClasse = (turmaName: string): string | undefined => {
+        const match = turmaName.match(/(\d+[ªº]\s*Classe)/i)
+        return match ? match[1] : undefined
+    }
+
+    const classe = extractClasse(data.turma.nome)
+
+    // Helper function to get grade color
+    const getGradeColor = (nota: number, isCalculated: boolean = false): string => {
+        const result = getGradeColorFromConfig(
+            nota,
+            data.turma.nivel_ensino,
+            classe,
+            isCalculated,
+            colorConfig || null
+        )
+        return result.color
+    }
+
+    // Get alignment class based on prop
+    const getAlignmentClass = () => {
+        switch (componentAlignment) {
+            case 'left': return 'text-left'
+            case 'right': return 'text-right'
+            default: return 'text-center'
+        }
+    }
     return (
         <div className="space-y-6">
             {/* Student Information Card */}
@@ -286,38 +319,38 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                             <>
                                                 {/* First header row - Main columns with colSpan */}
                                                 <tr className="bg-blue-600 text-white">
-                                                    <th rowSpan={2} className="border border-slate-300 px-3 py-2 text-center text-sm font-semibold">Nº</th>
-                                                    <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-left text-sm font-semibold">DISCIPLINAS</th>
+                                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">Nº</th>
+                                                    <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold">DISCIPLINAS</th>
                                                     {maxComponentsPerTrimester[1].length > 0 && (
-                                                        <th colSpan={maxComponentsPerTrimester[1].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">1º TRIMESTRE</th>
+                                                        <th colSpan={maxComponentsPerTrimester[1].length} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">1º TRIMESTRE</th>
                                                     )}
                                                     {maxComponentsPerTrimester[2].length > 0 && (
-                                                        <th colSpan={maxComponentsPerTrimester[2].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">2º TRIMESTRE</th>
+                                                        <th colSpan={maxComponentsPerTrimester[2].length} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">2º TRIMESTRE</th>
                                                     )}
                                                     {maxComponentsPerTrimester[3].length > 0 && (
-                                                        <th colSpan={maxComponentsPerTrimester[3].length} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">3º TRIMESTRE</th>
+                                                        <th colSpan={maxComponentsPerTrimester[3].length} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">3º TRIMESTRE</th>
                                                     )}
-                                                    <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">MÉDIA FINAL</th>
-                                                    <th rowSpan={2} className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">OBSERVAÇÃO</th>
+                                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">MÉDIA FINAL</th>
+                                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">OBSERVAÇÃO</th>
                                                 </tr>
 
                                                 {/* Second header row - Component columns for each trimester */}
                                                 <tr className="bg-blue-700 text-white">
                                                     {/* Components for 1st trimester */}
                                                     {maxComponentsPerTrimester[1].map((comp: ComponenteNota, idx: number) => (
-                                                        <th key={`t1-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
+                                                        <th key={`t1-${idx}`} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
                                                             {comp.codigo}
                                                         </th>
                                                     ))}
                                                     {/* Components for 2nd trimester */}
                                                     {maxComponentsPerTrimester[2].map((comp: ComponenteNota, idx: number) => (
-                                                        <th key={`t2-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
+                                                        <th key={`t2-${idx}`} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
                                                             {comp.codigo}
                                                         </th>
                                                     ))}
                                                     {/* Components for 3rd trimester */}
                                                     {maxComponentsPerTrimester[3].map((comp: ComponenteNota, idx: number) => (
-                                                        <th key={`t3-${idx}`} className="border border-slate-300 px-2 py-1 text-center text-xs font-semibold">
+                                                        <th key={`t3-${idx}`} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
                                                             {comp.codigo}
                                                         </th>
                                                     ))}
@@ -326,13 +359,13 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                         ) : (
                                             /* Fallback header when no components */
                                             <tr className="bg-blue-600 text-white">
-                                                <th className="border border-slate-300 px-3 py-2 text-center text-sm font-semibold">Nº</th>
-                                                <th className="border border-slate-300 px-4 py-2 text-left text-sm font-semibold">DISCIPLINAS</th>
-                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">1º TRIM</th>
-                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">2º TRIM</th>
-                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">3º TRIM</th>
-                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">MÉDIA FINAL</th>
-                                                <th className="border border-slate-300 px-4 py-2 text-center text-sm font-semibold">OBSERVAÇÃO</th>
+                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">Nº</th>
+                                                <th className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold">DISCIPLINAS</th>
+                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">1º TRIM</th>
+                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">2º TRIM</th>
+                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">3º TRIM</th>
+                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">MÉDIA FINAL</th>
+                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">OBSERVAÇÃO</th>
                                             </tr>
                                         )}
                                     </thead>
@@ -347,10 +380,10 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
 
                                             return (
                                                 <tr key={disciplina.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                                                    <td className="border border-slate-300 px-3 py-2 text-center text-sm">
+                                                    <td className="border border-slate-300 px-2 py-0.5 text-center text-sm">
                                                         {index + 1}
                                                     </td>
-                                                    <td className="border border-slate-300 px-4 py-2 font-medium text-sm">
+                                                    <td className="border border-slate-300 px-3 py-0.5 font-medium text-sm">
                                                         {disciplina.nome}
                                                     </td>
 
@@ -360,26 +393,30 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                             {/* 1st Trimester components - match header structure */}
                                                             {maxComponentsPerTrimester[1].map((headerComp: ComponenteNota, idx: number) => {
                                                                 const nota = getNotaForComponent(1, headerComp.codigo)
+                                                                const isCalculated = headerComp.is_calculated || false
+                                                                const color = nota !== null ? getGradeColor(nota, isCalculated) : '#000000'
                                                                 return (
-                                                                    <td key={`${disciplina.id}-t1-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
+                                                                    <td key={`${disciplina.id}-t1-${idx}`} className={`border border-slate-300 px-2 py-0.5 ${getAlignmentClass()} text-sm`} style={{ color }}>
                                                                         {nota !== null ? nota.toFixed(1) : '-'}
                                                                     </td>
                                                                 )
                                                             })}
-                                                            {/* 2nd Trimester components - match header structure */}
+                                                            {/* 2nd Trimestre components - match header structure */}
                                                             {maxComponentsPerTrimester[2].map((headerComp: ComponenteNota, idx: number) => {
                                                                 const nota = getNotaForComponent(2, headerComp.codigo)
+                                                                const isCalculated = headerComp.is_calculated || false
                                                                 return (
-                                                                    <td key={`${disciplina.id}-t2-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
+                                                                    <td key={`${disciplina.id}-t2-${idx}`} className={`border border-slate-300 px-2 py-0.5 ${getAlignmentClass()} text-sm`} style={{ color: nota !== null ? getGradeColor(nota, isCalculated) : '#000000' }}>
                                                                         {nota !== null ? nota.toFixed(1) : '-'}
                                                                     </td>
                                                                 )
                                                             })}
-                                                            {/* 3rd Trimester components - match header structure */}
+                                                            {/* 3rd Trimestre components - match header structure */}
                                                             {maxComponentsPerTrimester[3].map((headerComp: ComponenteNota, idx: number) => {
                                                                 const nota = getNotaForComponent(3, headerComp.codigo)
+                                                                const isCalculated = headerComp.is_calculated || false
                                                                 return (
-                                                                    <td key={`${disciplina.id}-t3-${idx}`} className="border border-slate-300 px-2 py-2 text-center text-sm">
+                                                                    <td key={`${disciplina.id}-t3-${idx}`} className={`border border-slate-300 px-2 py-0.5 ${getAlignmentClass()} text-sm`} style={{ color: nota !== null ? getGradeColor(nota, isCalculated) : '#000000' }}>
                                                                         {nota !== null ? nota.toFixed(1) : '-'}
                                                                     </td>
                                                                 )
@@ -387,22 +424,22 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                         </>
                                                     ) : (
                                                         <>
-                                                            <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
+                                                            <td className="border border-slate-300 px-2 py-0.5 text-center font-semibold text-sm" style={{ color: disciplina.notas_trimestrais[1] !== null ? getGradeColor(disciplina.notas_trimestrais[1], false) : '#000000' }}>
                                                                 {disciplina.notas_trimestrais[1] !== null ? disciplina.notas_trimestrais[1].toFixed(1) : '-'}
                                                             </td>
-                                                            <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
+                                                            <td className="border border-slate-300 px-2 py-0.5 text-center font-semibold text-sm" style={{ color: disciplina.notas_trimestrais[2] !== null ? getGradeColor(disciplina.notas_trimestrais[2], false) : '#000000' }}>
                                                                 {disciplina.notas_trimestrais[2] !== null ? disciplina.notas_trimestrais[2].toFixed(1) : '-'}
                                                             </td>
-                                                            <td className="border border-slate-300 px-4 py-2 text-center font-semibold text-sm">
+                                                            <td className="border border-slate-300 px-2 py-0.5 text-center font-semibold text-sm" style={{ color: disciplina.notas_trimestrais[3] !== null ? getGradeColor(disciplina.notas_trimestrais[3], false) : '#000000' }}>
                                                                 {disciplina.notas_trimestrais[3] !== null ? disciplina.notas_trimestrais[3].toFixed(1) : '-'}
                                                             </td>
                                                         </>
                                                     )}
 
-                                                    <td className="border border-slate-300 px-4 py-2 text-center font-bold text-sm">
+                                                    <td className="border border-slate-300 px-2 py-0.5 text-center font-bold text-sm" style={{ color: disciplina.nota_final !== null ? getGradeColor(disciplina.nota_final, true) : '#000000' }}>
                                                         {disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-'}
                                                     </td>
-                                                    <td className={`border border-slate-300 px-4 py-2 text-center font-bold text-sm ${disciplina.transita ? 'text-green-600' : 'text-red-600'}`}>
+                                                    <td className={`border border-slate-300 px-2 py-0.5 text-center font-bold text-sm ${disciplina.transita ? 'text-green-600' : 'text-red-600'}`}>
                                                         {disciplina.transita ? 'Transita' : 'Não Transita'}
                                                     </td>
                                                 </tr>
