@@ -7,9 +7,9 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { ReactNode, useState, useEffect } from 'react'
+import { ReactNode, useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
-import type { User } from '@supabase/supabase-js'
+import { useAuth } from '../contexts/AuthContext'
 
 interface SidebarProps {
     children: ReactNode
@@ -30,13 +30,30 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const [user, setUser] = useState<User | null>(null)
+    const { user, isEscola, isProfessor, escolaProfile, professorProfile } = useAuth()
 
-    useEffect(() => {
-        supabase.auth.getUser().then(({ data: { user } }) => {
-            setUser(user)
-        })
-    }, [])
+    // Helper to get display name
+    const getDisplayName = () => {
+        if (isEscola && escolaProfile) {
+            return escolaProfile.nome || 'Escola'
+        } else if (isProfessor && professorProfile) {
+            return professorProfile.nome_completo || 'Professor'
+        }
+        return user?.email?.split('@')[0] || 'Usuário'
+    }
+
+    // Helper to get initials
+    const getInitials = () => {
+        const name = getDisplayName()
+        return name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
+    }
+
+    // Helper to get role label
+    const getRoleLabel = () => {
+        if (isEscola) return 'Administrador'
+        if (isProfessor) return 'Professor'
+        return 'Usuário'
+    }
 
     const navItems: NavItem[] = [
         {
@@ -57,6 +74,16 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </svg>
             ),
             path: 'classes',
+            showInMobile: true,
+        },
+        {
+            name: 'Professores',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            ),
+            path: 'teachers',
             showInMobile: true,
         },
         {
@@ -100,7 +127,11 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             path: 'settings',
             showInMobile: false,
         },
-    ]
+    ].filter(item => {
+        if (item.path === 'teachers') return isEscola // Only show teachers menu for School Admins
+        if (item.path === 'classes' || item.path === 'students') return isEscola // Hide classes and students for professors
+        return true
+    })
 
     // Items for mobile bottom nav (max 5)
     const mobileNavItems = navItems.filter(item => item.showInMobile)
@@ -189,16 +220,14 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 <div className="p-3 border-t border-slate-200">
                     <div className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer min-h-touch ${!sidebarOpen && 'justify-center'}`}>
                         <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
-                            {user?.user_metadata?.full_name
-                                ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
-                                : user?.email?.substring(0, 2).toUpperCase() || 'U'}
+                            {getInitials()}
                         </div>
                         {sidebarOpen && (
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium text-slate-900 truncate">
-                                    {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário'}
+                                    {getDisplayName()}
                                 </p>
-                                <p className="text-xs text-slate-500 truncate">Professor</p>
+                                <p className="text-xs text-slate-500 truncate">{getRoleLabel()}</p>
                             </div>
                         )}
                     </div>
@@ -286,8 +315,8 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                             key={item.path}
                             onClick={() => handleMobileNav(item.path)}
                             className={`flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-colors ${currentPage === item.path
-                                    ? 'text-primary-600'
-                                    : 'text-slate-500'
+                                ? 'text-primary-600'
+                                : 'text-slate-500'
                                 }`}
                         >
                             {item.icon}
@@ -324,8 +353,8 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                     key={item.path}
                                     onClick={() => handleMobileNav(item.path)}
                                     className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors min-h-touch ${currentPage === item.path
-                                            ? 'bg-primary-50 text-primary-600'
-                                            : 'text-slate-700 hover:bg-slate-100'
+                                        ? 'bg-primary-50 text-primary-600'
+                                        : 'text-slate-700 hover:bg-slate-100'
                                         }`}
                                 >
                                     {item.icon}
@@ -351,15 +380,13 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                         <div className="mt-4 pt-4 border-t border-slate-200">
                             <div className="flex items-center gap-3 px-4">
                                 <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
-                                    {user?.user_metadata?.full_name
-                                        ? user.user_metadata.full_name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
-                                        : user?.email?.substring(0, 2).toUpperCase() || 'U'}
+                                    {getInitials()}
                                 </div>
                                 <div>
                                     <p className="font-medium text-slate-900">
-                                        {user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Usuário'}
+                                        {getDisplayName()}
                                     </p>
-                                    <p className="text-sm text-slate-500">Professor</p>
+                                    <p className="text-sm text-slate-500">{getRoleLabel()}</p>
                                 </div>
                             </div>
                         </div>

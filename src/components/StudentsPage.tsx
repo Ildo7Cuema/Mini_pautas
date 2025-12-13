@@ -103,11 +103,20 @@ export const StudentsPage: React.FC = () => {
     const [formData, setFormData] = useState(initialFormData)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
+    const [generatingNumero, setGeneratingNumero] = useState(false)
+    const [manualNumero, setManualNumero] = useState(false)
 
     useEffect(() => {
         loadTurmas()
         loadAlunos()
     }, [selectedTurma])
+
+    // Auto-generate numero_processo when turma is selected
+    useEffect(() => {
+        if (formData.turma_id && !manualNumero && !formData.numero_processo) {
+            generateNumeroProcesso()
+        }
+    }, [formData.turma_id, manualNumero])
 
     const loadTurmas = async () => {
         try {
@@ -173,6 +182,24 @@ export const StudentsPage: React.FC = () => {
             setError(translateError(errorMessage))
         } finally {
             setLoading(false)
+        }
+    }
+
+    const generateNumeroProcesso = async () => {
+        if (!formData.turma_id) return
+
+        setGeneratingNumero(true)
+        try {
+            const { data, error } = await supabase
+                .rpc('generate_numero_processo', { turma_uuid: formData.turma_id })
+
+            if (error) throw error
+            setFormData(prev => ({ ...prev, numero_processo: data }))
+        } catch (err) {
+            console.error('Error generating numero_processo:', err)
+            setError('Erro ao gerar número de processo automaticamente')
+        } finally {
+            setGeneratingNumero(false)
         }
     }
 
@@ -316,6 +343,8 @@ export const StudentsPage: React.FC = () => {
         setShowModal(false)
         setFormData(initialFormData)
         setActiveTab('pessoal')
+        setGeneratingNumero(false)
+        setManualNumero(false)
     }
 
     const closeEditModal = () => {
@@ -323,6 +352,8 @@ export const StudentsPage: React.FC = () => {
         setSelectedAluno(null)
         setFormData(initialFormData)
         setActiveTab('pessoal')
+        setGeneratingNumero(false)
+        setManualNumero(false)
     }
 
     // Tab component with icons
@@ -331,8 +362,8 @@ export const StudentsPage: React.FC = () => {
             type="button"
             onClick={() => setActiveTab(tab)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === tab
-                    ? 'bg-primary-600 text-white shadow-md'
-                    : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-primary-600 text-white shadow-md'
+                : 'text-slate-600 hover:bg-slate-100'
                 }`}
         >
             {icon}
@@ -356,14 +387,29 @@ export const StudentsPage: React.FC = () => {
                                 required
                                 icon={<Icons.User />}
                             />
-                            <Input
-                                label="Nº de Processo *"
-                                type="text"
-                                value={formData.numero_processo}
-                                onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
-                                placeholder="001"
-                                required
-                            />
+                            <div className="relative">
+                                <Input
+                                    label="Nº de Processo"
+                                    type="text"
+                                    value={formData.numero_processo}
+                                    onChange={(e) => {
+                                        setFormData({ ...formData, numero_processo: e.target.value })
+                                        setManualNumero(true)
+                                    }}
+                                    placeholder={generatingNumero ? "Gerando..." : "Gerado automaticamente"}
+                                    disabled={generatingNumero}
+                                    helpText={
+                                        formData.turma_id
+                                            ? "Gerado automaticamente ao selecionar a turma. Clique para editar manualmente."
+                                            : "Selecione uma turma primeiro"
+                                    }
+                                />
+                                {generatingNumero && (
+                                    <div className="absolute right-3 top-9">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

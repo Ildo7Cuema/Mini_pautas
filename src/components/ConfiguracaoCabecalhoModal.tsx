@@ -13,6 +13,7 @@ interface ConfiguracaoCabecalhoModalProps {
     isOpen: boolean
     onClose: () => void
     onSave: () => void
+    escolaId: string // Required school ID for configuration isolation
     documentType?: 'Mini-Pauta' | 'Pauta-Geral' // Type of document this header is for
 }
 
@@ -20,6 +21,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
     isOpen,
     onClose,
     onSave,
+    escolaId,
     documentType = 'Mini-Pauta' // Default to Mini-Pauta for backward compatibility
 }) => {
     const [config, setConfig] = useState<Partial<HeaderConfig>>(getDefaultHeaderConfig())
@@ -38,12 +40,14 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
     const loadConfig = async () => {
         try {
             setLoading(true)
-            const data = await loadHeaderConfig()
+            const data = await loadHeaderConfig(escolaId)
             if (data) {
                 setConfig(data)
                 setLogoPreview(data.logo_url || null)
             } else {
-                setConfig(getDefaultHeaderConfig())
+                // Set default config with escola_id
+                const defaultConfig = getDefaultHeaderConfig()
+                setConfig({ ...defaultConfig, escola_id: escolaId })
             }
         } catch (err) {
             console.error('Error loading config:', err)
@@ -97,7 +101,13 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
                 return
             }
 
-            await saveHeaderConfig(config as HeaderConfig)
+            // Ensure escola_id is set
+            const configToSave = {
+                ...config,
+                escola_id: escolaId
+            } as HeaderConfig
+
+            await saveHeaderConfig(configToSave)
             setSuccess('Configuração salva com sucesso!')
             setTimeout(() => {
                 setSuccess(null)

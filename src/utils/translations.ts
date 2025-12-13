@@ -38,6 +38,14 @@ export const translateError = (error: string): string => {
         'Service unavailable': 'Serviço temporariamente indisponível',
     }
 
+    // Check for PostgreSQL error codes
+    if (error.includes('23505') || error.includes('duplicate key')) {
+        if (error.includes('alunos_numero_processo_key') || error.includes('numero_processo')) {
+            return 'Este número de processo já está em uso. Por favor, use um número diferente ou deixe o campo vazio para gerar automaticamente.'
+        }
+        return 'Este valor já existe no sistema. Por favor, use um valor único.'
+    }
+
     // Procura por correspondência exata
     if (translations[error]) {
         return translations[error]

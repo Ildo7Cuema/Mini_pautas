@@ -16,6 +16,7 @@ import { Input } from './ui/Input'
 import { translateError } from '../utils/translations'
 import { GradeStatsCard } from './GradeStatsCard'
 import { GradeImportModal } from './GradeImportModal'
+import { useAuth } from '../contexts/AuthContext'
 import {
     calculateGradeStats,
     validateGradeValue,
@@ -36,6 +37,7 @@ interface Turma {
 }
 
 export const GradesPage: React.FC = () => {
+    const { isProfessor, professorProfile } = useAuth()
     // Selection state
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
@@ -120,15 +122,101 @@ export const GradesPage: React.FC = () => {
                 return
             }
 
-            const { data, error } = await supabase
-                .from('turmas')
-                .select('id, nome, codigo_turma, trimestre')
-                .order('nome')
+            if (isProfessor && professorProfile) {
+                console.log('📊 GradesPage: Loading turmas for professor:', professorProfile.id)
 
-            if (error) throw error
-            setTurmas(data || [])
+                // Try NEW MODEL first: Get turmas via turma_professores
+                const { data: turmaProfsData, error: turmaProfsError } = await supabase
+                    .from('turma_professores')
+                    .select(`
+                        turma_id,
+                        turmas!inner (
+                            id,
+                            nome,
+                            codigo_turma,
+                            trimestre
+                        )
+                    `)
+                    .eq('professor_id', professorProfile.id)
+
+                console.log('📊 GradesPage: Turma_professores query result:', {
+                    count: turmaProfsData?.length || 0,
+                    error: turmaProfsError
+                })
+
+                let turmasData: any[] = []
+
+                if (!turmaProfsError && turmaProfsData && turmaProfsData.length > 0) {
+                    // NEW MODEL: Extract unique turmas from turma_professores
+                    console.log('✅ GradesPage: Using NEW model (turma_professores)')
+                    const turmasMap = new Map()
+                    turmaProfsData.forEach(tp => {
+                        const turma = tp.turmas as any
+                        if (!turmasMap.has(turma.id)) {
+                            turmasMap.set(turma.id, {
+                                id: turma.id,
+                                nome: turma.nome,
+                                codigo_turma: turma.codigo_turma,
+                                trimestre: turma.trimestre
+                            })
+                        }
+                    })
+                    turmasData = Array.from(turmasMap.values())
+                } else {
+                    // OLD MODEL fallback: Get turmas via disciplinas
+                    console.log('⚠️ GradesPage: Falling back to OLD model (disciplinas.professor_id)')
+
+                    const { data, error } = await supabase
+                        .from('disciplinas')
+                        .select(`
+                            turma_id,
+                            turmas!inner (
+                                id,
+                                nome,
+                                codigo_turma,
+                                trimestre
+                            )
+                        `)
+                        .eq('professor_id', professorProfile.id)
+
+                    if (error) throw error
+
+                    // Extract unique turmas
+                    const turmasMap = new Map()
+                    data?.forEach(disc => {
+                        const turma = disc.turmas as any
+                        if (!turmasMap.has(turma.id)) {
+                            turmasMap.set(turma.id, {
+                                id: turma.id,
+                                nome: turma.nome,
+                                codigo_turma: turma.codigo_turma,
+                                trimestre: turma.trimestre
+                            })
+                        }
+                    })
+
+                    turmasData = Array.from(turmasMap.values())
+
+                    console.log('📊 GradesPage: Old model query result:', {
+                        count: turmasData.length
+                    })
+                }
+
+                setTurmas(turmasData)
+                console.log('✅ GradesPage: Loaded', turmasData.length, 'turmas')
+            } else {
+                // For escola: load all turmas
+                const { data, error } = await supabase
+                    .from('turmas')
+                    .select('id, nome, codigo_turma, trimestre')
+                    .order('nome')
+
+                if (error) throw error
+                setTurmas(data || [])
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar turmas'
+            console.error('❌ GradesPage: Error loading turmas:', err)
             setError(translateError(errorMessage))
         }
     }
@@ -142,19 +230,80 @@ export const GradesPage: React.FC = () => {
                 return
             }
 
-            const { data, error } = await supabase
-                .from('disciplinas')
-                .select('id, nome, codigo_disciplina, professor_id, turma_id, carga_horaria, descricao, created_at, updated_at')
-                .eq('turma_id', selectedTurma)
-                .order('nome')
+            if (isProfessor && professorProfile) {
+                console.log('📊 GradesPage: Loading disciplinas for professor:', professorProfile.id, 'turma:', selectedTurma)
 
-            if (error) throw error
-            setDisciplinas(data || [])
+                // Try NEW MODEL first: Get disciplinas via turma_professores
+                const { data: turmaProfsData, error: turmaProfsError } = await supabase
+                    .from('turma_professores')
+                    .select(`
+                        disciplina_id,
+                        disciplinas!inner (
+                            id,
+                            nome,
+                            codigo_disciplina,
+                            professor_id,
+                            turma_id,
+                            carga_horaria,
+                            descricao,
+                            created_at,
+                            updated_at
+                        )
+                    `)
+                    .eq('professor_id', professorProfile.id)
+                    .eq('turma_id', selectedTurma)
+
+                console.log('📊 GradesPage: Turma_professores disciplinas query result:', {
+                    count: turmaProfsData?.length || 0,
+                    error: turmaProfsError
+                })
+
+                let disciplinasData: any[] = []
+
+                if (!turmaProfsError && turmaProfsData && turmaProfsData.length > 0) {
+                    // NEW MODEL: Extract disciplinas from turma_professores
+                    console.log('✅ GradesPage: Using NEW model (turma_professores)')
+                    disciplinasData = turmaProfsData.map(tp => tp.disciplinas)
+                } else {
+                    // OLD MODEL fallback: Query disciplinas directly
+                    console.log('⚠️ GradesPage: Falling back to OLD model (disciplinas.professor_id)')
+
+                    const { data, error } = await supabase
+                        .from('disciplinas')
+                        .select('id, nome, codigo_disciplina, professor_id, turma_id, carga_horaria, descricao, created_at, updated_at')
+                        .eq('turma_id', selectedTurma)
+                        .eq('professor_id', professorProfile.id)
+                        .order('nome')
+
+                    if (error) throw error
+                    disciplinasData = data || []
+
+                    console.log('📊 GradesPage: Old model disciplinas query result:', {
+                        count: disciplinasData.length
+                    })
+                }
+
+                setDisciplinas(disciplinasData)
+                console.log('✅ GradesPage: Loaded', disciplinasData.length, 'disciplinas')
+            } else {
+                // For escola: load all disciplinas for the turma
+                let query = supabase
+                    .from('disciplinas')
+                    .select('id, nome, codigo_disciplina, professor_id, turma_id, carga_horaria, descricao, created_at, updated_at')
+                    .eq('turma_id', selectedTurma)
+
+                const { data, error } = await query.order('nome')
+
+                if (error) throw error
+                setDisciplinas(data || [])
+            }
+
             setSelectedDisciplina('')
             setComponentes([])
             setSelectedComponente('')
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar disciplinas'
+            console.error('❌ GradesPage: Error loading disciplinas:', err)
             setError(translateError(errorMessage))
         }
     }
@@ -722,39 +871,43 @@ export const GradesPage: React.FC = () => {
                                 {saving ? 'Salvando...' : 'Salvar Notas'}
                             </Button>
 
-                            <Button
-                                variant="secondary"
-                                onClick={handleExportCSV}
-                                disabled={Object.keys(notas).length === 0}
-                                className="flex-1 sm:flex-none"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                                Exportar CSV
-                            </Button>
+                            {!isProfessor && (
+                                <>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleExportCSV}
+                                        disabled={Object.keys(notas).length === 0}
+                                        className="flex-1 sm:flex-none"
+                                    >
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        Exportar CSV
+                                    </Button>
 
-                            <Button
-                                variant="secondary"
-                                onClick={handleDownloadTemplate}
-                                className="flex-1 sm:flex-none"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                Template
-                            </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={handleDownloadTemplate}
+                                        className="flex-1 sm:flex-none"
+                                    >
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Template
+                                    </Button>
 
-                            <Button
-                                variant="secondary"
-                                onClick={() => setShowImportModal(true)}
-                                className="flex-1 sm:flex-none"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                                </svg>
-                                Importar CSV
-                            </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => setShowImportModal(true)}
+                                        className="flex-1 sm:flex-none"
+                                    >
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                        </svg>
+                                        Importar CSV
+                                    </Button>
+                                </>
+                            )}
 
                             <Button
                                 variant="ghost"

@@ -16,6 +16,7 @@ import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { ProfileSetupModal } from './ProfileSetupModal'
 import { ConfirmModal } from './ui/ConfirmModal'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Turma {
     id: string
@@ -30,6 +31,7 @@ interface ClassesPageProps {
 }
 
 export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
+    const { isProfessor } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
@@ -46,6 +48,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
     })
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
+    const [submitting, setSubmitting] = useState(false)
 
     useEffect(() => {
         loadTurmas()
@@ -88,6 +91,8 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
         e.preventDefault()
         setError(null)
         setSuccess(null)
+        setSubmitting(true)
+        console.log('🔄 Iniciando criação de turma...', formData)
 
         try {
             if (editMode && selectedTurmaId) {
@@ -167,8 +172,11 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
             })
             loadTurmas()
         } catch (err) {
+            console.error('❌ Erro ao criar/atualizar turma:', err)
             const errorMessage = err instanceof Error ? err.message : editMode ? 'Erro ao atualizar turma' : 'Erro ao criar turma'
             setError(translateError(errorMessage))
+        } finally {
+            setSubmitting(false)
         }
     }
 
@@ -323,26 +331,30 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
                                     >
                                         Ver Detalhes
                                     </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleEdit(turma)}
-                                        className="min-h-touch min-w-touch"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                        </svg>
-                                    </Button>
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
-                                        onClick={() => handleDeleteClick(turma.id)}
-                                        className="min-h-touch min-w-touch"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </Button>
+                                    {!isProfessor && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => handleEdit(turma)}
+                                                className="min-h-touch min-w-touch"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                </svg>
+                                            </Button>
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => handleDeleteClick(turma.id)}
+                                                className="min-h-touch min-w-touch"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                </svg>
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </CardBody>
                         </Card>
@@ -406,19 +418,6 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
                                     </select>
                                 </div>
 
-                                <div>
-                                    <label className="form-label">Trimestre</label>
-                                    <select
-                                        value={formData.trimestre}
-                                        onChange={(e) => setFormData({ ...formData, trimestre: parseInt(e.target.value) })}
-                                        className="form-input min-h-touch"
-                                    >
-                                        <option value={1}>1º Trimestre</option>
-                                        <option value={2}>2º Trimestre</option>
-                                        <option value={3}>3º Trimestre</option>
-                                    </select>
-                                </div>
-
                                 <div className="flex gap-3 pt-4">
                                     <Button
                                         type="button"
@@ -432,7 +431,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
                                     >
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" variant="primary" className="flex-1">
+                                    <Button type="submit" variant="primary" loading={submitting} className="flex-1">
                                         {editMode ? 'Atualizar Turma' : 'Criar Turma'}
                                     </Button>
                                 </div>

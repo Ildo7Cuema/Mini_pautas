@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { supabase } from './lib/supabaseClient'
+import { useState } from 'react'
+import { useAuth } from './contexts/AuthContext'
 import { LoginScreen } from './components/LoginScreen'
 import { DashboardLayout } from './components/DashboardLayout'
 import { Dashboard } from './components/Dashboard'
@@ -9,30 +9,14 @@ import { StudentsPage } from './components/StudentsPage'
 import { GradesPage } from './components/GradesPage'
 import { ReportsPage } from './components/ReportsPage'
 import { SettingsPage } from './components/SettingsPage'
-import type { User } from '@supabase/supabase-js'
+import { TeachersPage } from './components/TeachersPage'
+import { ProfessorRegistration } from './components/ProfessorRegistration'
+import { ProfessorDashboard } from './components/ProfessorDashboard'
 
 function App() {
-    const [user, setUser] = useState<User | null>(null)
-    const [loading, setLoading] = useState(true)
+    const { user, loading, isProfessor } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
-
-    useEffect(() => {
-        // Check active sessions and sets the user
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null)
-            setLoading(false)
-        })
-
-        // Listen for changes on auth state (logged in, signed out, etc.)
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null)
-        })
-
-        return () => subscription.unsubscribe()
-    }, [])
 
     if (loading) {
         return (
@@ -43,6 +27,10 @@ function App() {
                 </div>
             </div>
         )
+    }
+
+    if (window.location.pathname === '/register-professor') {
+        return <ProfessorRegistration />
     }
 
     if (!user) {
@@ -61,7 +49,7 @@ function App() {
     const renderPage = () => {
         switch (currentPage) {
             case 'dashboard':
-                return <Dashboard onNavigate={handleNavigate} />
+                return isProfessor ? <ProfessorDashboard /> : <Dashboard onNavigate={handleNavigate} />
             case 'classes':
                 return <ClassesPage onNavigate={handleNavigate} />
             case 'class-details':
@@ -78,6 +66,8 @@ function App() {
                 return <ReportsPage />
             case 'settings':
                 return <SettingsPage />
+            case 'teachers':
+                return <TeachersPage onNavigate={handleNavigate} />
             default:
                 return <Dashboard onNavigate={handleNavigate} />
         }

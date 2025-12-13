@@ -32,23 +32,24 @@ export interface HeaderConfig {
 }
 
 /**
- * Load header configuration for the current user
+ * Load header configuration for a specific school
+ * @param escolaId - Required school ID to load configuration for
  */
-export async function loadHeaderConfig(escolaId?: string): Promise<HeaderConfig | null> {
+export async function loadHeaderConfig(escolaId: string): Promise<HeaderConfig | null> {
     try {
+        if (!escolaId) {
+            throw new Error('escola_id is required to load header configuration')
+        }
+
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
 
-        let query = supabase
+        const { data, error } = await supabase
             .from('configuracao_cabecalho')
             .select('*')
             .eq('user_id', user.id)
-
-        if (escolaId) {
-            query = query.eq('escola_id', escolaId)
-        }
-
-        const { data, error } = await query.single()
+            .eq('escola_id', escolaId)
+            .single()
 
         if (error) {
             // If no config exists, return null (not an error)
@@ -66,10 +67,14 @@ export async function loadHeaderConfig(escolaId?: string): Promise<HeaderConfig 
 }
 
 /**
- * Save or update header configuration
+ * Save or update header configuration for a specific school
  */
 export async function saveHeaderConfig(config: HeaderConfig): Promise<HeaderConfig> {
     try {
+        if (!config.escola_id) {
+            throw new Error('escola_id is required to save header configuration')
+        }
+
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) throw new Error('User not authenticated')
 
@@ -79,6 +84,7 @@ export async function saveHeaderConfig(config: HeaderConfig): Promise<HeaderConf
         const configData = {
             ...config,
             user_id: user.id,
+            escola_id: config.escola_id, // Ensure escola_id is always set
             updated_at: new Date().toISOString()
         }
 
@@ -138,7 +144,7 @@ export async function uploadLogo(file: File): Promise<string> {
         const filePath = `logos/${fileName}`
 
         // Upload to Supabase Storage
-        const { data, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from('mini-pauta-assets')
             .upload(filePath, file, {
                 cacheControl: '3600',

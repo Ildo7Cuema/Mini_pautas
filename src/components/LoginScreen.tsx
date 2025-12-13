@@ -5,62 +5,29 @@ import { Input } from './ui/Input'
 import { Card, CardBody } from './ui/Card'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
+import { SchoolRegistration } from './SchoolRegistration'
 
-type AuthMode = 'login' | 'signup'
+type AuthMode = 'login' | 'signup' | 'school-registration'
 
 export const LoginScreen: React.FC = () => {
     const [mode, setMode] = useState<AuthMode>('login')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [confirmPassword, setConfirmPassword] = useState('')
-    const [fullName, setFullName] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    const [success, setSuccess] = useState<string | null>(null)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
         setLoading(true)
         setError(null)
-        setSuccess(null)
 
         try {
-            if (mode === 'signup') {
-                if (password !== confirmPassword) {
-                    throw new Error('As senhas não coincidem')
-                }
-                if (password.length < 6) {
-                    throw new Error('A senha deve ter pelo menos 6 caracteres')
-                }
-                if (!fullName.trim()) {
-                    throw new Error('Por favor, insira seu nome completo')
-                }
+            const { error: signInError } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            })
 
-                const { error: signUpError } = await supabase.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        data: {
-                            full_name: fullName,
-                        },
-                    },
-                })
-
-                if (signUpError) throw signUpError
-
-                setSuccess('Conta criada com sucesso! Verifique seu email para confirmar.')
-                setMode('login')
-                setPassword('')
-                setConfirmPassword('')
-                setFullName('')
-            } else {
-                const { error: signInError } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                })
-
-                if (signInError) throw signInError
-            }
+            if (signInError) throw signInError
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro'
             setError(translateError(errorMessage))
@@ -69,13 +36,17 @@ export const LoginScreen: React.FC = () => {
         }
     }
 
-    const switchMode = () => {
-        setMode(mode === 'login' ? 'signup' : 'login')
-        setError(null)
-        setSuccess(null)
-        setPassword('')
-        setConfirmPassword('')
-        setFullName('')
+    // If in school registration mode, show the SchoolRegistration component
+    if (mode === 'school-registration') {
+        return (
+            <SchoolRegistration
+                onSuccess={() => {
+                    // After successful registration, user will be logged in automatically
+                    // The AuthContext will handle the redirect
+                }}
+                onCancel={() => setMode('login')}
+            />
+        )
     }
 
     return (
@@ -114,27 +85,19 @@ export const LoginScreen: React.FC = () => {
                                 Entrar
                             </button>
                             <button
-                                onClick={() => setMode('signup')}
-                                className={`flex-1 py-2 px-4 rounded-md font-semibold text-sm transition-all duration-200 ${mode === 'signup'
+                                onClick={() => setMode('school-registration')}
+                                className={`flex-1 py-2 px-3 rounded-md font-semibold text-xs sm:text-sm transition-all duration-200 ${mode === 'school-registration'
                                     ? 'bg-white text-primary-600 shadow-sm'
                                     : 'text-slate-600 hover:text-slate-900'
                                     }`}
                             >
-                                Criar Conta
+                                Cadastrar Escola
                             </button>
                         </div>
 
                         <h2 className="text-lg font-bold text-slate-900 mb-4">
-                            {mode === 'login' ? 'Bem-vindo de volta!' : 'Crie sua conta'}
+                            Bem-vindo de volta!
                         </h2>
-
-                        {/* Success Message */}
-                        {success && (
-                            <div className="alert alert-success mb-4 animate-slide-down" role="alert">
-                                <Icons.Check />
-                                <span className="ml-2 text-sm">{success}</span>
-                            </div>
-                        )}
 
                         {/* Error Message */}
                         {error && (
@@ -147,20 +110,6 @@ export const LoginScreen: React.FC = () => {
                         )}
 
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            {/* Full Name (only for signup) */}
-                            {mode === 'signup' && (
-                                <Input
-                                    label="Nome Completo"
-                                    type="text"
-                                    value={fullName}
-                                    onChange={(e) => setFullName(e.target.value)}
-                                    placeholder="João Silva"
-                                    required
-                                    autoComplete="name"
-                                    icon={<Icons.User />}
-                                />
-                            )}
-
                             {/* Email */}
                             <Input
                                 label="Email"
@@ -181,24 +130,9 @@ export const LoginScreen: React.FC = () => {
                                 onChange={(e) => setPassword(e.target.value)}
                                 placeholder="••••••••"
                                 required
-                                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                                helpText={mode === 'signup' ? 'Mínimo de 6 caracteres' : undefined}
+                                autoComplete="current-password"
                                 icon={<Icons.Lock />}
                             />
-
-                            {/* Confirm Password (only for signup) */}
-                            {mode === 'signup' && (
-                                <Input
-                                    label="Confirmar Senha"
-                                    type="password"
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    required
-                                    autoComplete="new-password"
-                                    icon={<Icons.Lock />}
-                                />
-                            )}
 
                             {/* Submit Button */}
                             <Button
@@ -208,46 +142,29 @@ export const LoginScreen: React.FC = () => {
                                 loading={loading}
                                 fullWidth
                                 className="mt-5"
-                                icon={mode === 'login' ? <Icons.Login /> : <Icons.UserPlus />}
+                                icon={<Icons.Login />}
                             >
-                                {loading ? 'Processando...' : mode === 'login' ? 'Entrar' : 'Criar Conta'}
+                                {loading ? 'Processando...' : 'Entrar'}
                             </Button>
                         </form>
 
-                        {/* Forgot Password (only for login) */}
-                        {mode === 'login' && (
-                            <div className="mt-5 text-center">
-                                <a href="#" className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors">
-                                    Esqueceu a senha?
-                                </a>
-                            </div>
-                        )}
+                        {/* Forgot Password */}
+                        <div className="mt-5 text-center">
+                            <a href="#" className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                                Esqueceu a senha?
+                            </a>
+                        </div>
 
-                        {/* Switch Mode */}
+                        {/* Switch to School Registration */}
                         <div className="mt-5 text-center text-xs text-slate-600">
-                            {mode === 'login' ? (
-                                <>
-                                    Não tem uma conta?{' '}
-                                    <button
-                                        type="button"
-                                        onClick={switchMode}
-                                        className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
-                                    >
-                                        Criar conta grátis
-                                    </button>
-                                </>
-                            ) : (
-                                <>
-                                    Já tem uma conta?{' '}
-                                    <button
-                                        type="button"
-                                        onClick={switchMode}
-                                        className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
-                                    >
-                                        Entrar
-                                    </button>
-                                </>
-                            )}
+                            É uma escola?{' '}
+                            <button
+                                type="button"
+                                onClick={() => setMode('school-registration')}
+                                className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
+                            >
+                                Cadastre-se aqui
+                            </button>
                         </div>
                     </CardBody>
                 </Card>

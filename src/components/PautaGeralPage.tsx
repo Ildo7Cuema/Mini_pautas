@@ -21,6 +21,7 @@ import { HeaderConfig, loadHeaderConfig } from '../utils/headerConfigUtils'
 import { GradeColorConfig, loadGradeColorConfig } from '../utils/gradeColorConfigUtils'
 import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
 import { classifyStudent, DisciplinaGrade } from '../utils/studentClassification'
+import { useAuth } from '../contexts/AuthContext'
 
 interface Turma {
     id: string
@@ -90,6 +91,7 @@ interface FieldSelection {
 }
 
 export const PautaGeralPage: React.FC = () => {
+    const { escolaProfile, professorProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
     const trimestre = 3 // Fixed to 3rd trimester for Pauta-Geral
@@ -431,7 +433,23 @@ export const PautaGeralPage: React.FC = () => {
 
     const loadHeaderConfiguration = async () => {
         try {
-            const config = await loadHeaderConfig()
+            // Get escola_id from auth context
+            let escola_id: string | undefined
+
+            if (escolaProfile) {
+                // For school admins, use their escola_id
+                escola_id = escolaProfile.id
+            } else if (professorProfile) {
+                // For professors, use their escola_id
+                escola_id = professorProfile.escola_id
+            }
+
+            if (!escola_id) {
+                console.error('No escola_id found in auth context')
+                return
+            }
+
+            const config = await loadHeaderConfig(escola_id)
             setHeaderConfig(config)
         } catch (err) {
             console.error('Error loading header config:', err)
@@ -673,6 +691,7 @@ export const PautaGeralPage: React.FC = () => {
                     setShowHeaderConfigModal(false)
                     loadHeaderConfiguration()
                 }}
+                escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
                 documentType="Pauta-Geral"
             />
         </div>

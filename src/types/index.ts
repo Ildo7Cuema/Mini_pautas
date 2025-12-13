@@ -332,18 +332,56 @@ export interface ImportError {
 }
 
 // ============================================
-// FRONTEND STATE TYPES
+// USER ROLES AND PROFILES
 // ============================================
+
+export type UserRole = 'ESCOLA' | 'PROFESSOR';
 
 export interface UserProfile {
     id: string;
-    email: string;
-    role: 'professor' | 'aluno' | 'admin';
-    profile: Professor | Aluno | null;
+    user_id: string;
+    tipo_perfil: UserRole;
+    escola_id: string;
+    ativo: boolean;
+    metadata: Record<string, any>;
+    created_at: string;
+    updated_at: string;
 }
 
+export interface EscolaProfile extends Escola {
+    user_profile: UserProfile;
+}
+
+export interface TurmaProfessor {
+    id: string;
+    turma_id: string;
+    professor_id: string;
+    disciplina_id: string;
+    created_at: string;
+    updated_at: string;
+    turma?: Turma;
+    disciplina?: Disciplina;
+}
+
+export interface ProfessorProfile extends Professor {
+    user_profile: UserProfile;
+    turmas_associadas?: TurmaProfessor[];
+}
+
+export interface AuthUser {
+    id: string;
+    email: string;
+    profile: UserProfile | null;
+    escola?: EscolaProfile;
+    professor?: ProfessorProfile;
+}
+
+// ============================================
+// FRONTEND STATE TYPES
+// ============================================
+
 export interface AppState {
-    user: UserProfile | null;
+    user: AuthUser | null;
     currentTurma: Turma | null;
     currentDisciplina: Disciplina | null;
     loading: boolean;
@@ -432,5 +470,4 @@ export type Trimestre = 1 | 2 | 3;
 export type Genero = 'M' | 'F' | 'Outro';
 export type Turno = 'manhã' | 'tarde' | 'noite';
 export type Classificacao = 'Excelente' | 'Bom' | 'Suficiente' | 'Insuficiente';
-export type UserRole = 'professor' | 'aluno' | 'admin';
 export type OperacaoAuditoria = 'INSERT' | 'UPDATE' | 'DELETE';

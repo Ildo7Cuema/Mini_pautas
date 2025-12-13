@@ -13,7 +13,7 @@ import { Card, CardBody, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { translateError } from '../utils/translations'
-import type { User } from '@supabase/supabase-js'
+import { useAuth } from '../contexts/AuthContext'
 
 interface DashboardStats {
     totalTurmas: number
@@ -34,6 +34,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+    const { user, isEscola, isProfessor, escolaProfile, professorProfile, loading: authLoading } = useAuth()
     const [stats, setStats] = useState<DashboardStats>({
         totalTurmas: 0,
         totalAlunos: 0,
@@ -43,55 +44,131 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
     const [recentClasses, setRecentClasses] = useState<RecentClass[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [user, setUser] = useState<User | null>(null)
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [formData, setFormData] = useState({
         nome: '',
         ano_lectivo: new Date().getFullYear(),
-        trimestre: 1,
         nivel_ensino: 'Ensino Secundário',
     })
 
     useEffect(() => {
-        loadUserData()
-        loadDashboardData()
-    }, [])
-
-    const loadUserData = async () => {
-        const { data: { user } } = await supabase.auth.getUser()
-        setUser(user)
-    }
+        if (!authLoading && user && (escolaProfile || professorProfile)) {
+            loadDashboardData()
+        }
+    }, [authLoading, user, escolaProfile, professorProfile])
 
     const loadDashboardData = async () => {
         try {
             setLoading(true)
+            setError(null)
 
-            // Get total turmas
+            // Debug: Log full profile info
+            console.log('Dashboard: Full debug info:', {
+                isEscola,
+                isProfessor,
+                escolaProfile: escolaProfile ? {
+                    id: escolaProfile.id,
+                    nome: escolaProfile.nome,
+                    user_profile: escolaProfile.user_profile
+                } : null,
+                professorProfile: professorProfile ? {
+                    id: professorProfile.id,
+                    escola_id: professorProfile.escola_id,
+                    user_profile: professorProfile.user_profile
+                } : null,
+                user: user
+            })
+
+            // Determine escola_id based on profile type
+            let escolaId: string | null = null
+
+            if (isEscola && escolaProfile) {
+                // For escola profile, use escolaProfile.id (which is the escola's ID from escolas table)
+                escolaId = escolaProfile.id
+                console.log('Dashboard: Using escola profile, escola_id:', escolaId)
+            } else if (isProfessor && professorProfile) {
+                escolaId = professorProfile.escola_id
+                console.log('Dashboard: Using professor profile, escola_id:', escolaId)
+            }
+
+            if (!escolaId) {
+                console.log('Dashboard: No escola_id found')
+                setError('Perfil não encontrado. Por favor, faça logout e login novamente.')
+                setLoading(false)
+                return
+            }
+
+            // RLS policies automatically filter by escola_id based on user_profiles
+            // We don't need to filter manually - just query and let RLS handle it
+
+            // Get total turmas (RLS will filter automatically)
+            console.log('Dashboard: Querying turmas (RLS will filter)...')
             const { count: turmasCount, error: turmasError } = await supabase
                 .from('turmas')
                 .select('*', { count: 'exact', head: true })
 
-            if (turmasError) throw turmasError
+            console.log('Dashboard: Turmas query result:', {
+                count: turmasCount,
+                error: turmasError,
+                errorDetails: turmasError ? {
+                    message: turmasError.message,
+                    details: turmasError.details,
+                    hint: turmasError.hint,
+                    code: turmasError.code
+                } : null
+            })
 
-            // Get total alunos
-            const { count: alunosCount, error: alunosError } = await supabase
-                .from('alunos')
-                .select('*', { count: 'exact', head: true })
+            if (turmasError) {
+                console.error('Dashboard: Error fetching turmas count:', turmasError)
+                // Handle empty error message (RLS issue)
+                if (!turmasError.message || turmasError.message === '') {
+                    throw new Error('Sem permissão para acessar dados. Verifique se seu perfil está configurado corretamente.')
+                }
+                throw turmasError
+            }
 
-            if (alunosError) throw alunosError
+            // Get turmas IDs first, then count alunos (RLS will filter)
+            const { data: turmasIds, error: turmasIdsError } = await supabase
+                .from('turmas')
+                .select('id')
 
-            // Get recent classes with student count
+            if (turmasIdsError) {
+                console.error('Dashboard: Error fetching turmas ids:', turmasIdsError)
+                throw turmasIdsError
+            }
+
+            // Count alunos for those turmas
+            let alunosCount = 0
+            if (turmasIds && turmasIds.length > 0) {
+                const turmaIdList = turmasIds.map(t => t.id)
+                const { count, error: alunosError } = await supabase
+                    .from('alunos')
+                    .select('*', { count: 'exact', head: true })
+                    .in('turma_id', turmaIdList)
+
+                if (alunosError) {
+                    console.error('Dashboard: Error fetching alunos count:', alunosError)
+                    // Don't throw, just use 0
+                } else {
+                    alunosCount = count || 0
+                }
+            }
+
+            // Get recent classes with student count (RLS will filter)
             const { data: turmasData, error: turmasDataError } = await supabase
                 .from('turmas')
                 .select(`
-          id,
-          nome,
-          alunos(count)
-        `)
+                    id,
+                    nome,
+                    alunos(count)
+                `)
                 .order('created_at', { ascending: false })
                 .limit(4)
 
-            if (turmasDataError) throw turmasDataError
+            if (turmasDataError) {
+                console.error('Dashboard: Error fetching turmas data:', turmasDataError)
+                throw turmasDataError
+            }
 
             const classesWithCount = turmasData?.map(turma => ({
                 id: turma.id,
@@ -102,13 +179,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
 
             setStats({
                 totalTurmas: turmasCount || 0,
-                totalAlunos: alunosCount || 0,
+                totalAlunos: alunosCount,
                 mediaGeral: 0, // Will be calculated from grades
                 taxaAprovacao: 0, // Will be calculated from grades
             })
 
             setRecentClasses(classesWithCount)
+            console.log('Dashboard: Data loaded successfully', { turmasCount, alunosCount, classesWithCount })
         } catch (err) {
+            console.error('Dashboard: Caught error:', err)
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dados'
             setError(translateError(errorMessage))
         } finally {
@@ -138,23 +217,37 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         try {
             setLoading(true)
 
-            // Get current user
-            const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Usuário não autenticado')
 
-            // Get professor profile with escola_id
-            const { data: professor, error: profError } = await supabase
-                .from('professores')
-                .select('id, escola_id')
-                .eq('user_id', user.id)
-                .single()
+            let professorId: string | null = null
+            let escolaId: string | null = null
 
-            if (profError) throw profError
-            if (!professor) throw new Error('Perfil de professor não encontrado')
+            if (isEscola && escolaProfile) {
+                // Escola creating turma - need to get a default professor or handle differently
+                escolaId = escolaProfile.id
+                // For escola, we'll need a professor. Get the first professor of this escola
+                const { data: firstProfessor, error: profError } = await supabase
+                    .from('professores')
+                    .select('id')
+                    .eq('escola_id', escolaId)
+                    .eq('ativo', true)
+                    .limit(1)
+                    .single()
+
+                if (profError || !firstProfessor) {
+                    throw new Error('É necessário cadastrar pelo menos um professor antes de criar turmas.')
+                }
+                professorId = firstProfessor.id
+            } else if (isProfessor && professorProfile) {
+                professorId = professorProfile.id
+                escolaId = professorProfile.escola_id
+            } else {
+                throw new Error('Perfil não encontrado')
+            }
 
             // Auto-generate codigo_turma (e.g., "10A-2025-T1")
             const nomeSimplificado = formData.nome.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)
-            const codigo_turma = `${nomeSimplificado}-${formData.ano_lectivo}-T${formData.trimestre}`
+            const codigo_turma = `${nomeSimplificado}-${formData.ano_lectivo}-T1`
 
             // Create turma
             const { error: insertError } = await supabase
@@ -162,11 +255,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                 .insert({
                     nome: formData.nome,
                     ano_lectivo: formData.ano_lectivo,
-                    trimestre: formData.trimestre,
+                    trimestre: 1,
                     nivel_ensino: formData.nivel_ensino,
                     codigo_turma: codigo_turma,
-                    professor_id: professor.id,
-                    escola_id: professor.escola_id,
+                    professor_id: professorId,
+                    escola_id: escolaId,
                     capacidade_maxima: 40,
                 })
 
@@ -176,7 +269,6 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             setFormData({
                 nome: '',
                 ano_lectivo: new Date().getFullYear(),
-                trimestre: 1,
                 nivel_ensino: 'Ensino Secundário',
             })
             loadDashboardData()
@@ -188,13 +280,32 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
         }
     }
 
-    if (loading) {
+    // Get user display name based on profile type
+    const getUserDisplayName = () => {
+        if (isEscola && escolaProfile) {
+            return escolaProfile.nome?.split(' ')[0] || 'Administrador'
+        } else if (isProfessor && professorProfile) {
+            return professorProfile.nome_completo?.split(' ')[0] || 'Professor'
+        }
+        return user?.email?.split('@')[0] || 'Usuário'
+    }
+
+    if (loading || authLoading) {
         return (
             <div className="flex items-center justify-center py-12">
                 <div className="text-center">
                     <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
                     <p className="mt-4 text-slate-600">Carregando dashboard...</p>
                 </div>
+            </div>
+        )
+    }
+
+    // If auth finished but no profile was loaded, show error
+    if (!authLoading && user && !escolaProfile && !professorProfile) {
+        return (
+            <div className="alert alert-error">
+                <span>Perfil não encontrado. Por favor, faça logout e login novamente.</span>
             </div>
         )
     }
@@ -259,7 +370,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
             {/* Welcome Section */}
             <div>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-1">
-                    Bem-vindo de volta, {user?.user_metadata?.full_name?.split(' ')[0] || user?.email?.split('@')[0] || 'Professor'}!
+                    Bem-vindo de volta, {getUserDisplayName()}!
                 </h2>
                 <p className="text-sm md:text-base text-slate-600">Aqui está um resumo das suas turmas e alunos</p>
             </div>
@@ -482,28 +593,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
                                     </select>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <Input
-                                        label="Ano Lectivo"
-                                        type="number"
-                                        value={formData.ano_lectivo}
-                                        onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
-                                        required
-                                    />
-
-                                    <div>
-                                        <label className="form-label">Trimestre</label>
-                                        <select
-                                            value={formData.trimestre}
-                                            onChange={(e) => setFormData({ ...formData, trimestre: parseInt(e.target.value) })}
-                                            className="form-input"
-                                        >
-                                            <option value={1}>1º Trimestre</option>
-                                            <option value={2}>2º Trimestre</option>
-                                            <option value={3}>3º Trimestre</option>
-                                        </select>
-                                    </div>
-                                </div>
+                                <Input
+                                    label="Ano Lectivo"
+                                    type="number"
+                                    value={formData.ano_lectivo}
+                                    onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
+                                    required
+                                />
 
                                 <div className="flex gap-3 pt-4">
                                     <Button

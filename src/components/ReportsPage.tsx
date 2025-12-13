@@ -26,6 +26,7 @@ import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
 import { GradeColorConfig, loadGradeColorConfig } from '../utils/gradeColorConfigUtils'
 import { ConfiguracaoCoresModal } from './ConfiguracaoCoresModal'
 import { PautaGeralPage } from './PautaGeralPage'
+import { useAuth } from '../contexts/AuthContext'
 import { TermoFrequenciaPreview } from './TermoFrequenciaPreview'
 import { generateTermoFrequenciaPDF, generateBatchTermosFrequenciaZip } from '../utils/pdfGenerator'
 
@@ -104,6 +105,7 @@ interface MiniPautaData {
 }
 
 export const ReportsPage: React.FC = () => {
+    const { isProfessor, professorProfile, escolaProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
@@ -475,27 +477,105 @@ export const ReportsPage: React.FC = () => {
 
     const loadTurmas = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('User not authenticated')
+            if (isProfessor && professorProfile) {
+                console.log('📊 ReportsPage: Loading turmas for professor:', professorProfile.id)
 
-            const { data: professor } = await supabase
-                .from('professores')
-                .select('id')
-                .eq('user_id', user.id)
-                .single()
+                // Try NEW MODEL first: Get turmas via turma_professores
+                const { data: turmaProfsData, error: turmaProfsError } = await supabase
+                    .from('turma_professores')
+                    .select(`
+                        turma_id,
+                        turmas!inner (
+                            id,
+                            nome,
+                            ano_lectivo,
+                            codigo_turma,
+                            nivel_ensino
+                        )
+                    `)
+                    .eq('professor_id', professorProfile.id)
 
-            if (!professor) throw new Error('Professor not found')
+                console.log('📊 ReportsPage: Turma_professores query result:', {
+                    count: turmaProfsData?.length || 0,
+                    error: turmaProfsError
+                })
 
-            const { data, error } = await supabase
-                .from('turmas')
-                .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
-                .eq('professor_id', professor.id)
-                .order('nome')
+                let turmasData: any[] = []
 
-            if (error) throw error
-            setTurmas(data || [])
+                if (!turmaProfsError && turmaProfsData && turmaProfsData.length > 0) {
+                    // NEW MODEL: Extract unique turmas from turma_professores
+                    console.log('✅ ReportsPage: Using NEW model (turma_professores)')
+                    const turmasMap = new Map()
+                    turmaProfsData.forEach(tp => {
+                        const turma = tp.turmas as any
+                        if (!turmasMap.has(turma.id)) {
+                            turmasMap.set(turma.id, {
+                                id: turma.id,
+                                nome: turma.nome,
+                                ano_lectivo: turma.ano_lectivo,
+                                codigo_turma: turma.codigo_turma,
+                                nivel_ensino: turma.nivel_ensino
+                            })
+                        }
+                    })
+                    turmasData = Array.from(turmasMap.values())
+                } else {
+                    // OLD MODEL fallback: Get turmas via disciplinas
+                    console.log('⚠️ ReportsPage: Falling back to OLD model (disciplinas.professor_id)')
+
+                    const { data, error } = await supabase
+                        .from('disciplinas')
+                        .select(`
+                            turma_id,
+                            turmas!inner (
+                                id,
+                                nome,
+                                ano_lectivo,
+                                codigo_turma,
+                                nivel_ensino
+                            )
+                        `)
+                        .eq('professor_id', professorProfile.id)
+
+                    if (error) throw error
+
+                    // Extract unique turmas
+                    const turmasMap = new Map()
+                    data?.forEach(disc => {
+                        const turma = disc.turmas as any
+                        if (!turmasMap.has(turma.id)) {
+                            turmasMap.set(turma.id, {
+                                id: turma.id,
+                                nome: turma.nome,
+                                ano_lectivo: turma.ano_lectivo,
+                                codigo_turma: turma.codigo_turma,
+                                nivel_ensino: turma.nivel_ensino
+                            })
+                        }
+                    })
+
+                    turmasData = Array.from(turmasMap.values())
+
+                    console.log('📊 ReportsPage: Old model query result:', {
+                        count: turmasData.length
+                    })
+                }
+
+                setTurmas(turmasData)
+                console.log('✅ ReportsPage: Loaded', turmasData.length, 'turmas')
+            } else {
+                // For escola: load all turmas
+                const { data, error } = await supabase
+                    .from('turmas')
+                    .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
+                    .order('nome')
+
+                if (error) throw error
+                setTurmas(data || [])
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar turmas'
+            console.error('❌ ReportsPage: Error loading turmas:', err)
             setError(translateError(errorMessage))
         }
     }
@@ -517,21 +597,76 @@ export const ReportsPage: React.FC = () => {
 
     const loadDisciplinas = async () => {
         try {
-            const { data, error } = await supabase
-                .from('disciplinas')
-                .select('id, nome, codigo_disciplina, ordem')
-                .eq('turma_id', selectedTurma)
-                .order('ordem')
+            if (isProfessor && professorProfile) {
+                console.log('📊 ReportsPage: Loading disciplinas for professor:', professorProfile.id, 'turma:', selectedTurma)
 
-            if (error) throw error
-            setDisciplinas(data || [])
+                // Try NEW MODEL first: Get disciplinas via turma_professores
+                const { data: turmaProfsData, error: turmaProfsError } = await supabase
+                    .from('turma_professores')
+                    .select(`
+                        disciplina_id,
+                        disciplinas!inner (
+                            id,
+                            nome,
+                            codigo_disciplina,
+                            ordem
+                        )
+                    `)
+                    .eq('professor_id', professorProfile.id)
+                    .eq('turma_id', selectedTurma)
+
+                console.log('📊 ReportsPage: Turma_professores disciplinas query result:', {
+                    count: turmaProfsData?.length || 0,
+                    error: turmaProfsError
+                })
+
+                let disciplinasData: any[] = []
+
+                if (!turmaProfsError && turmaProfsData && turmaProfsData.length > 0) {
+                    // NEW MODEL: Extract disciplinas from turma_professores
+                    console.log('✅ ReportsPage: Using NEW model (turma_professores)')
+                    disciplinasData = turmaProfsData.map(tp => tp.disciplinas)
+                } else {
+                    // OLD MODEL fallback: Query disciplinas directly
+                    console.log('⚠️ ReportsPage: Falling back to OLD model (disciplinas.professor_id)')
+
+                    const { data, error } = await supabase
+                        .from('disciplinas')
+                        .select('id, nome, codigo_disciplina, ordem')
+                        .eq('turma_id', selectedTurma)
+                        .eq('professor_id', professorProfile.id)
+                        .order('ordem')
+
+                    if (error) throw error
+                    disciplinasData = data || []
+
+                    console.log('📊 ReportsPage: Old model disciplinas query result:', {
+                        count: disciplinasData.length
+                    })
+                }
+
+                setDisciplinas(disciplinasData)
+                console.log('✅ ReportsPage: Loaded', disciplinasData.length, 'disciplinas')
+            } else {
+                // For escola: load all disciplinas for the turma
+                let query = supabase
+                    .from('disciplinas')
+                    .select('id, nome, codigo_disciplina, ordem')
+                    .eq('turma_id', selectedTurma)
+
+                const { data, error } = await query.order('ordem')
+
+                if (error) throw error
+                setDisciplinas(data || [])
+            }
 
             // Auto-select first discipline
-            if (data && data.length > 0 && !selectedDisciplina) {
-                setSelectedDisciplina(data[0].id)
+            if (disciplinasData && disciplinasData.length > 0 && !selectedDisciplina) {
+                setSelectedDisciplina(disciplinasData[0].id)
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar disciplinas'
+            console.error('❌ ReportsPage: Error loading disciplinas:', err)
             setError(translateError(errorMessage))
         }
     }
@@ -1143,7 +1278,23 @@ export const ReportsPage: React.FC = () => {
 
     const loadHeaderConfiguration = async () => {
         try {
-            const config = await loadHeaderConfig()
+            // Get escola_id from auth context
+            let escola_id: string | undefined
+
+            if (escolaProfile) {
+                // For school admins, use their escola_id
+                escola_id = escolaProfile.id
+            } else if (professorProfile) {
+                // For professors, use their escola_id
+                escola_id = professorProfile.escola_id
+            }
+
+            if (!escola_id) {
+                console.error('No escola_id found in auth context')
+                return
+            }
+
+            const config = await loadHeaderConfig(escola_id)
             setHeaderConfig(config)
         } catch (err) {
             console.error('Error loading header config:', err)
@@ -1509,30 +1660,34 @@ export const ReportsPage: React.FC = () => {
                         >
                             Mini-Pauta
                         </button>
-                        <button
-                            onClick={() => setActiveTab('pauta-geral')}
-                            className={`
-                                py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
-                                ${activeTab === 'pauta-geral'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                }
-                            `}
-                        >
-                            Pauta-Geral
-                        </button>
-                        <button
-                            onClick={() => setActiveTab('termo-frequencia')}
-                            className={`
-                                py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
-                                ${activeTab === 'termo-frequencia'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
-                                }
-                            `}
-                        >
-                            Termo de Frequência
-                        </button>
+                        {!isProfessor && (
+                            <>
+                                <button
+                                    onClick={() => setActiveTab('pauta-geral')}
+                                    className={`
+                                        py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
+                                        ${activeTab === 'pauta-geral'
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                        }
+                                    `}
+                                >
+                                    Pauta-Geral
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('termo-frequencia')}
+                                    className={`
+                                        py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
+                                        ${activeTab === 'termo-frequencia'
+                                            ? 'border-blue-500 text-blue-600'
+                                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                        }
+                                    `}
+                                >
+                                    Termo de Frequência
+                                </button>
+                            </>
+                        )}
                     </nav>
                 </div>
             </div>
@@ -1678,39 +1833,43 @@ export const ReportsPage: React.FC = () => {
                                     >
                                         PDF
                                     </Button>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={handleGenerateExcel}
-                                        icon={
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        }
-                                    >
-                                        Excel
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={handleExportCSV}
-                                        icon={
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                            </svg>
-                                        }
-                                    >
-                                        CSV
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={() => setShowHeaderConfigModal(true)}
-                                        icon={
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                            </svg>
-                                        }
-                                    >
-                                        Cabeçalho
-                                    </Button>
+                                    {!isProfessor && (
+                                        <>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={handleGenerateExcel}
+                                                icon={
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                }
+                                            >
+                                                Excel
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={handleExportCSV}
+                                                icon={
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                }
+                                            >
+                                                CSV
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => setShowHeaderConfigModal(true)}
+                                                icon={
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                    </svg>
+                                                }
+                                            >
+                                                Cabeçalho
+                                            </Button>
+                                        </>
+                                    )}
                                 </div>
                             </div>
                             <MiniPautaPreview data={miniPautaData} loading={loadingData} colorConfig={colorConfig} />
@@ -1747,6 +1906,7 @@ export const ReportsPage: React.FC = () => {
                             setShowHeaderConfigModal(false)
                             loadHeaderConfiguration()
                         }}
+                        escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
                     />
 
                     {/* Ordenar Disciplinas Modal */}

@@ -8,6 +8,7 @@ component-meta:
 */
 
 import { useState, useEffect } from 'react'
+import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardBody, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
@@ -81,10 +82,39 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
         nome: '',
         codigo_disciplina: '',
         carga_horaria: '',
-        descricao: ''
+        descricao: '',
+        professor_id: ''
     })
 
-    // Component form state
+    // Professors state
+    const [professores, setProfessores] = useState<{ id: string, nome_completo: string }[]>([])
+
+    // Auth context
+    const { escolaProfile } = useAuth()
+
+    useEffect(() => {
+        loadDisciplinas()
+        loadDisciplinasObrigatorias()
+        if (escolaProfile) {
+            loadProfessores()
+        }
+    }, [turmaId, escolaProfile])
+
+    const loadProfessores = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('professores')
+                .select('id, nome_completo')
+                .eq('escola_id', escolaProfile?.id)
+                .is('ativo', true)
+                .order('nome_completo')
+
+            if (error) throw error
+            setProfessores(data || [])
+        } catch (err) {
+            console.error('Erro ao carregar professores:', err)
+        }
+    }
     const [componenteFormData, setComponenteFormData] = useState({
         nome: '',
         codigo_componente: '',
@@ -203,21 +233,32 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
         setSuccess(null)
 
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('Usuário não autenticado')
+            let professorIdToUse = formData.professor_id
 
-            const { data: professor } = await supabase
-                .from('professores')
-                .select('id')
-                .eq('user_id', user.id)
-                .single()
+            // If no professor selected (maybe not admin?), try to get current user as professor
+            if (!professorIdToUse) {
+                const { data: { user } } = await supabase.auth.getUser()
+                if (user) {
+                    const { data: professor } = await supabase
+                        .from('professores')
+                        .select('id')
+                        .eq('user_id', user.id)
+                        .single()
 
-            if (!professor) throw new Error('Professor não encontrado')
+                    if (professor) {
+                        professorIdToUse = professor.id
+                    }
+                }
+            }
+
+            if (!professorIdToUse) {
+                throw new Error('É necessário selecionar um professor ou estar logado como professor.')
+            }
 
             const { error: insertError } = await supabase
                 .from('disciplinas')
                 .insert({
-                    professor_id: professor.id,
+                    professor_id: professorIdToUse,
                     turma_id: turmaId,
                     nome: formData.nome,
                     codigo_disciplina: formData.codigo_disciplina,
@@ -229,7 +270,7 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
 
             setSuccess('Disciplina adicionada com sucesso!')
             setShowAddModal(false)
-            setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
+            setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '', professor_id: '' })
             loadDisciplinas()
             setTimeout(() => setSuccess(null), 3000)
         } catch (err: any) {
@@ -246,14 +287,20 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
         setSuccess(null)
 
         try {
+            const updatePayload: any = {
+                nome: formData.nome,
+                codigo_disciplina: formData.codigo_disciplina,
+                carga_horaria: formData.carga_horaria ? parseInt(formData.carga_horaria) : null,
+                descricao: formData.descricao || null
+            }
+
+            if (formData.professor_id) {
+                updatePayload.professor_id = formData.professor_id
+            }
+
             const { error: updateError } = await supabase
                 .from('disciplinas')
-                .update({
-                    nome: formData.nome,
-                    codigo_disciplina: formData.codigo_disciplina,
-                    carga_horaria: formData.carga_horaria ? parseInt(formData.carga_horaria) : null,
-                    descricao: formData.descricao || null
-                })
+                .update(updatePayload)
                 .eq('id', selectedDisciplina.id)
 
             if (updateError) throw updateError
@@ -261,7 +308,7 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             setSuccess('Disciplina atualizada com sucesso!')
             setShowEditModal(false)
             setSelectedDisciplina(null)
-            setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '' })
+            setFormData({ nome: '', codigo_disciplina: '', carga_horaria: '', descricao: '', professor_id: '' })
             loadDisciplinas()
             setTimeout(() => setSuccess(null), 3000)
         } catch (err: any) {
@@ -301,7 +348,8 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
             nome: disciplina.nome,
             codigo_disciplina: disciplina.codigo_disciplina,
             carga_horaria: disciplina.carga_horaria?.toString() || '',
-            descricao: disciplina.descricao || ''
+            descricao: disciplina.descricao || '',
+            professor_id: disciplina.professor_id
         })
         setShowEditModal(true)
     }
@@ -749,6 +797,13 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                                             <p className="text-sm text-slate-500">
                                                                 Código: {disciplina.codigo_disciplina}
                                                             </p>
+                                                            {/* Display assigned professor */}
+                                                            {disciplina.professor_id && (
+                                                                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
+                                                                    <Icons.User className="w-3 h-3" />
+                                                                    {professores.find(p => p.id === disciplina.professor_id)?.nome_completo || 'Professor não encontrado'}
+                                                                </p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                     {(disciplina.carga_horaria || disciplina.descricao || true) && (
@@ -1000,6 +1055,26 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                         required
                                     />
 
+                                    {/* Professor Selection */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                            Professor
+                                        </label>
+                                        <select
+                                            value={formData.professor_id}
+                                            onChange={(e) => setFormData({ ...formData, professor_id: e.target.value })}
+                                            className="w-full rounded-lg border-slate-300 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                            required
+                                        >
+                                            <option value="">Selecione um professor</option>
+                                            {professores.map((prof) => (
+                                                <option key={prof.id} value={prof.id}>
+                                                    {prof.nome_completo}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
                                     <Input
                                         label="Código da Disciplina"
                                         type="text"
@@ -1077,6 +1152,26 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                         placeholder="Ex: Matemática"
                                         required
                                     />
+
+                                    {/* Professor Selection */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                            Professor
+                                        </label>
+                                        <select
+                                            value={formData.professor_id}
+                                            onChange={(e) => setFormData({ ...formData, professor_id: e.target.value })}
+                                            className="w-full rounded-lg border-slate-300 focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                                            required
+                                        >
+                                            <option value="">Selecione um professor</option>
+                                            {professores.map((prof) => (
+                                                <option key={prof.id} value={prof.id}>
+                                                    {prof.nome_completo}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
 
                                     <Input
                                         label="Código da Disciplina"
