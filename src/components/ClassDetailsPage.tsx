@@ -83,6 +83,11 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
     // Disciplines management state
     const [showDisciplinesManagement, setShowDisciplinesManagement] = useState(false)
 
+    // Capacity editing state
+    const [isEditingCapacity, setIsEditingCapacity] = useState(false)
+    const [newCapacity, setNewCapacity] = useState<number>(40)
+    const [savingCapacity, setSavingCapacity] = useState(false)
+
     useEffect(() => {
         loadTurmaDetails()
     }, [turmaId])
@@ -309,6 +314,48 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
         return (names[0][0] + names[names.length - 1][0]).toUpperCase()
     }
 
+    const handleUpdateCapacity = async () => {
+        if (!turma || newCapacity < 1) return
+
+        setError(null)
+        setSuccess(null)
+        setSavingCapacity(true)
+
+        try {
+            const { error: updateError } = await supabase
+                .from('turmas')
+                .update({ capacidade_maxima: newCapacity })
+                .eq('id', turmaId)
+
+            if (updateError) throw updateError
+
+            setSuccess('Capacidade da turma atualizada com sucesso!')
+            setIsEditingCapacity(false)
+
+            // Reload turma details to reflect the change
+            await loadTurmaDetails()
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao atualizar capacidade'
+            setError(translateError(errorMessage))
+        } finally {
+            setSavingCapacity(false)
+        }
+    }
+
+    const handleStartEditCapacity = () => {
+        if (turma) {
+            setNewCapacity(turma.capacidade_maxima)
+            setIsEditingCapacity(true)
+        }
+    }
+
+    const handleCancelEditCapacity = () => {
+        setIsEditingCapacity(false)
+        if (turma) {
+            setNewCapacity(turma.capacidade_maxima)
+        }
+    }
+
     // Filter students based on search query
     const filteredStudents = students.filter(student =>
         student.nome_completo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -411,16 +458,95 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
                             </p>
                         </div>
                         <div>
-                            <label className="text-sm font-medium text-slate-500">Capacidade</label>
-                            <div className="mt-2">
-                                <div className="w-full bg-slate-200 rounded-full h-2">
-                                    <div
-                                        className="bg-primary-600 h-2 rounded-full transition-all"
-                                        style={{ width: `${Math.min((turma.total_alunos || 0) / turma.capacidade_maxima * 100, 100)}%` }}
-                                    />
-                                </div>
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="text-sm font-medium text-slate-500">Capacidade Máxima</label>
+                                {!isProfessor && !isEditingCapacity && (
+                                    <button
+                                        onClick={handleStartEditCapacity}
+                                        className="p-1.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
+                                        title="Editar capacidade"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                        </svg>
+                                    </button>
+                                )}
                             </div>
+
+                            {isEditingCapacity && !isProfessor ? (
+                                <div className="space-y-2">
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            max="200"
+                                            value={newCapacity}
+                                            onChange={(e) => setNewCapacity(parseInt(e.target.value) || 1)}
+                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                            disabled={savingCapacity}
+                                        />
+                                        <span className="text-sm text-slate-600">alunos</span>
+                                    </div>
+                                    {newCapacity < (turma.total_alunos || 0) && (
+                                        <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg p-2">
+                                            <svg className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <p className="text-xs text-amber-800">
+                                                A capacidade não pode ser menor que o número atual de alunos ({turma.total_alunos})
+                                            </p>
+                                        </div>
+                                    )}
+                                    <div className="flex gap-2">
+                                        <Button
+                                            type="button"
+                                            variant="primary"
+                                            size="sm"
+                                            onClick={handleUpdateCapacity}
+                                            disabled={savingCapacity || newCapacity < (turma.total_alunos || 0) || newCapacity < 1}
+                                            className="flex-1"
+                                        >
+                                            {savingCapacity ? (
+                                                <>
+                                                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                                    Salvando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                    </svg>
+                                                    Salvar
+                                                </>
+                                            )}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={handleCancelEditCapacity}
+                                            disabled={savingCapacity}
+                                            className="flex-1"
+                                        >
+                                            Cancelar
+                                        </Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="mt-2">
+                                    <div className="w-full bg-slate-200 rounded-full h-2">
+                                        <div
+                                            className="bg-primary-600 h-2 rounded-full transition-all"
+                                            style={{ width: `${Math.min((turma.total_alunos || 0) / turma.capacidade_maxima * 100, 100)}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        {turma.capacidade_maxima} alunos no máximo
+                                    </p>
+                                </div>
+                            )}
                         </div>
+
                     </div>
                 </CardBody>
             </Card>
