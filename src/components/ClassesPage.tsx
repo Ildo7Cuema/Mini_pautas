@@ -28,9 +28,10 @@ interface Turma {
 
 interface ClassesPageProps {
     onNavigate?: (page: string, params?: { turmaId?: string }) => void
+    searchQuery?: string
 }
 
-export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
+export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuery = '' }) => {
     const { isProfessor } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
@@ -238,6 +239,14 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
         setShowModal(true)
     }
 
+    // Filter turmas based on search query
+    const filteredTurmas = turmas.filter(turma =>
+        turma.nome.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        turma.ano_lectivo.toString().includes(searchQuery) ||
+        `${turma.trimestre}º trim`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        `trimestre ${turma.trimestre}`.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -289,22 +298,28 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate }) => {
                         </Button>
                     </CardBody>
                 </Card>
-            ) : turmas.length === 0 ? (
+            ) : filteredTurmas.length === 0 ? (
                 <Card>
                     <CardBody className="text-center py-8 md:py-12">
                         <svg className="w-12 h-12 md:w-16 md:h-16 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
-                        <h3 className="text-base md:text-lg font-semibold text-slate-900 mb-2">Nenhuma turma encontrada</h3>
-                        <p className="text-sm md:text-base text-slate-600 mb-4">Comece criando sua primeira turma</p>
-                        <Button variant="primary" onClick={handleNewTurma} className="w-full sm:w-auto">
-                            Criar Primeira Turma
-                        </Button>
+                        <h3 className="text-base md:text-lg font-semibold text-slate-900 mb-2">
+                            {searchQuery ? 'Nenhuma turma encontrada' : 'Nenhuma turma encontrada'}
+                        </h3>
+                        <p className="text-sm md:text-base text-slate-600 mb-4">
+                            {searchQuery ? 'Tente pesquisar com outros termos' : 'Comece criando sua primeira turma'}
+                        </p>
+                        {!searchQuery && (
+                            <Button variant="primary" onClick={handleNewTurma} className="w-full sm:w-auto">
+                                Criar Primeira Turma
+                            </Button>
+                        )}
                     </CardBody>
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {turmas.map((turma) => (
+                    {filteredTurmas.map((turma) => (
                         <Card key={turma.id} className="hover:shadow-lg transition-shadow">
                             <CardBody className="p-4 md:p-6">
                                 <div className="flex items-start justify-between mb-3 md:mb-4">

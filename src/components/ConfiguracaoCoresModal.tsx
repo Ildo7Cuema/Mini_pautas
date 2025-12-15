@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { GradeColorConfig, GradeColorRule, saveGradeColorConfig, createDefaultConfig } from '../utils/gradeColorConfigUtils'
+import { translateError } from '../utils/translations'
 
 interface ConfiguracaoCoresModalProps {
     isOpen: boolean
@@ -59,14 +60,14 @@ export const ConfiguracaoCoresModal: React.FC<ConfiguracaoCoresModalProps> = ({
             const result = await saveGradeColorConfig(config)
 
             if (!result.success) {
-                setError(result.error || 'Erro ao salvar configuração')
+                setError(translateError(result.error || 'Erro ao salvar configuração'))
                 return
             }
 
             onSave()
             onClose()
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Erro ao salvar')
+            setError(translateError(err instanceof Error ? err.message : 'Erro ao salvar configuração'))
         } finally {
             setSaving(false)
         }

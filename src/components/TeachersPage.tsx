@@ -29,8 +29,9 @@ interface Professor {
 }
 interface TeachersPageProps {
     onNavigate?: (page: string) => void
+    searchQuery?: string
 }
-export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate }) => {
+export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate, searchQuery = '' }) => {
 
     const { escolaProfile } = useAuth()
     const [professores, setProfessores] = useState<Professor[]>([])
@@ -221,6 +222,13 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate }) => {
         }
     }
 
+    // Filter professores based on search query
+    const filteredProfessores = professores.filter(prof =>
+        prof.nome_completo.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prof.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        prof.especialidade?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+
     if (loading) {
         return (
             <div className="flex items-center justify-center py-12">
@@ -268,22 +276,28 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate }) => {
             )}
 
             {/* Empty State */}
-            {!loading && professores.length === 0 && !error ? (
+            {!loading && filteredProfessores.length === 0 && !error ? (
                 <Card>
                     <CardBody className="text-center py-8 md:py-12">
                         <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <Icons.User className="w-8 h-8 text-slate-400" />
                         </div>
-                        <h3 className="text-base md:text-lg font-semibold text-slate-900 mb-2">Nenhum professor cadastrado</h3>
-                        <p className="text-sm md:text-base text-slate-600 mb-4">Cadastre os professores para vinculá-los às turmas</p>
-                        <Button variant="primary" onClick={() => setShowModal(true)} className="w-full sm:w-auto">
-                            Cadastrar Professor
-                        </Button>
+                        <h3 className="text-base md:text-lg font-semibold text-slate-900 mb-2">
+                            {searchQuery ? 'Nenhum professor encontrado' : 'Nenhum professor cadastrado'}
+                        </h3>
+                        <p className="text-sm md:text-base text-slate-600 mb-4">
+                            {searchQuery ? 'Tente pesquisar com outros termos' : 'Cadastre os professores para vinculá-los às turmas'}
+                        </p>
+                        {!searchQuery && (
+                            <Button variant="primary" onClick={() => setShowModal(true)} className="w-full sm:w-auto">
+                                Cadastrar Professor
+                            </Button>
+                        )}
                     </CardBody>
                 </Card>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {professores.map((prof) => (
+                    {filteredProfessores.map((prof) => (
                         <Card key={prof.id} className="hover:shadow-lg transition-shadow">
                             <CardBody className="p-4 md:p-6">
                                 <div className="flex items-start justify-between mb-3 md:mb-4">

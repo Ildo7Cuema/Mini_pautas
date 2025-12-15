@@ -73,6 +73,7 @@ interface MiniPautaData {
     alunos: Array<{
         numero_processo: string
         nome_completo: string
+        genero?: 'M' | 'F'
         notas: Record<string, number>
         nota_final?: number  // Optional - only present if MF component is configured
         media_trimestral?: number | null
@@ -104,7 +105,11 @@ interface MiniPautaData {
     }
 }
 
-export const ReportsPage: React.FC = () => {
+interface ReportsPageProps {
+    searchQuery?: string
+}
+
+export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) => {
     const { isProfessor, professorProfile, escolaProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
@@ -194,7 +199,8 @@ export const ReportsPage: React.FC = () => {
                     nome_pai, nome_mae, nome_encarregado, parentesco_encarregado,
                     telefone_encarregado, email_encarregado, profissao_encarregado,
                     provincia, municipio, bairro, rua, endereco,
-                    ano_ingresso, escola_anterior, classe_anterior, observacoes_academicas
+                    ano_ingresso, escola_anterior, classe_anterior, observacoes_academicas,
+                    frequencia_anual, tipo_exame, observacao_transicao, motivo_retencao, matricula_condicional
                 `)
                 .eq('id', selectedAluno)
                 .single()
@@ -237,7 +243,7 @@ export const ReportsPage: React.FC = () => {
             // Load all components for all disciplines (including calculated ones that are registered)
             const { data: componentesData, error: componentesError } = await supabase
                 .from('componentes_avaliacao')
-                .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
+                .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components, tipo_calculo')
                 .eq('turma_id', selectedTurma)
                 .in('disciplina_id', disciplinasData.map(d => d.id))
 
@@ -287,20 +293,168 @@ export const ReportsPage: React.FC = () => {
                     3: Array<{ codigo: string, nome: string, nota: number | null, is_calculated?: boolean }>
                 } = { 1: [], 2: [], 3: [] }
 
-                // Process each trimester separately - only include components that belong to that trimester
+                // Build a map of all grades for this discipline (by component ID)
+                const notasMapByComponentId: Record<string, number> = {}
+                notasData?.filter(n => componentesDisciplina.some(c => c.id === n.componente_id))
+                    .forEach(n => {
+                        notasMapByComponentId[n.componente_id] = n.valor
+                    })
+
+                // Process each trimester separately
                 for (let t = 1; t <= 3; t++) {
                     const componentesDoTrimestre = componentesDisciplina
                         .filter(comp => comp.trimestre === t)
                         .filter(comp => selectedComponents.length === 0 || selectedComponents.includes(comp.codigo_componente))
 
+                    // Build notas map for this trimester (by component code)
+                    const notasMapTrimestre: Record<string, number> = {}
                     componentesDoTrimestre.forEach(comp => {
-                        const nota = notasData?.find(n => n.componente_id === comp.id && n.trimestre === t)?.valor ?? null
+                        const nota = notasMapByComponentId[comp.id]
+                        if (nota !== undefined) {
+                            notasMapTrimestre[comp.codigo_componente] = nota
+                        }
+                    })
+
+                    // STEP 1: Calculate TRIMESTRAL calculated components (like MT)
+                    componentesDoTrimestre.forEach(comp => {
+                        if (comp.is_calculated && comp.formula_expression && comp.depends_on_components) {
+                            if (comp.tipo_calculo === 'trimestral' || !comp.tipo_calculo) {
+                                const dependencyValues: Record<string, number> = {}
+
+                                comp.depends_on_components.forEach((depId: string) => {
+                                    const depComponent = componentesDisciplina.find(c => c.id === depId && c.trimestre === t)
+                                    if (depComponent) {
+                                        const value = notasMapTrimestre[depComponent.codigo_componente]
+                                        if (value !== undefined) {
+                                            dependencyValues[depComponent.codigo_componente] = value
+                                        } else {
+                                            dependencyValues[depComponent.codigo_componente] = 0
+                                        }
+                                    }
+                                })
+
+                                if (Object.keys(dependencyValues).length > 0) {
+                                    try {
+                                        const calculatedValue = evaluateFormula(comp.formula_expression, dependencyValues)
+                                        notasMapTrimestre[comp.codigo_componente] = Math.round(calculatedValue * 100) / 100
+                                    } catch (error) {
+                                        console.error(`Error calculating trimestral component ${comp.codigo_componente}:`, error)
+                                    }
+                                }
+                            }
+                        }
+                    })
+
+                    // Add components to the trimester array
+                    // IMPORTANT: Skip annual calculated components here - they will be added later after calculation
+                    componentesDoTrimestre.forEach(comp => {
+                        // Skip annual calculated components (like MFD, MF) - they'll be added in the annual calculation block
+                        if (comp.is_calculated && comp.tipo_calculo === 'anual') {
+                            console.log(`[TERMO DEBUG] Skipping annual component ${comp.codigo_componente} in initial loop - will be added after calculation`)
+                            return
+                        }
+
+                        const nota = notasMapTrimestre[comp.codigo_componente] ?? null
                         componentesPorTrimestre[t as 1 | 2 | 3].push({
                             codigo: comp.codigo_componente,
                             nome: comp.nome,
                             nota: nota,
                             is_calculated: comp.is_calculated || false
                         })
+                    })
+                }
+
+                // STEP 2: Calculate ANNUAL calculated components (like MFD, MF)
+                // These need values from all trimesters
+                const annualComponents = componentesDisciplina.filter(c =>
+                    c.is_calculated && c.tipo_calculo === 'anual'
+                )
+
+                console.log(`[TERMO DEBUG] Disciplina: ${disciplina.nome}`)
+                console.log(`[TERMO DEBUG] Total components:`, componentesDisciplina.length)
+                console.log(`[TERMO DEBUG] Annual components found:`, annualComponents.length, annualComponents.map(c => c.codigo_componente))
+                console.log(`[TERMO DEBUG] All components:`, componentesDisciplina.map(c => ({
+                    codigo: c.codigo_componente,
+                    is_calculated: c.is_calculated,
+                    tipo_calculo: c.tipo_calculo
+                })))
+
+                if (annualComponents.length > 0) {
+                    // Build a complete map of all component values across all trimesters
+                    const allNotasMap: Record<string, number> = {}
+
+                    // First, add all raw grades
+                    notasData?.filter(n => componentesDisciplina.some(c => c.id === n.componente_id))
+                        .forEach(n => {
+                            const comp = componentesDisciplina.find(c => c.id === n.componente_id)
+                            if (comp) {
+                                allNotasMap[comp.codigo_componente] = n.valor
+                            }
+                        })
+
+                    // Then, add all calculated trimestral values
+                    for (let t = 1; t <= 3; t++) {
+                        componentesPorTrimestre[t as 1 | 2 | 3].forEach(comp => {
+                            if (comp.nota !== null && comp.is_calculated) {
+                                allNotasMap[comp.codigo] = comp.nota
+                            }
+                        })
+                    }
+
+                    console.log(`[TERMO DEBUG] All notas map before annual calculation:`, allNotasMap)
+
+                    // Now calculate annual components
+                    annualComponents.forEach(comp => {
+                        console.log(`[TERMO DEBUG] ===== Processing ${comp.codigo_componente} =====`)
+                        console.log(`[TERMO DEBUG] Current allNotasMap:`, { ...allNotasMap })
+
+                        if (comp.formula_expression && comp.depends_on_components) {
+                            const dependencyValues: Record<string, number> = {}
+
+                            comp.depends_on_components.forEach((depId: string) => {
+                                const depComponent = componentesDisciplina.find(c => c.id === depId)
+                                if (depComponent) {
+                                    const value = allNotasMap[depComponent.codigo_componente]
+                                    if (value !== undefined) {
+                                        dependencyValues[depComponent.codigo_componente] = value
+                                    } else {
+                                        dependencyValues[depComponent.codigo_componente] = 0
+                                    }
+                                }
+                            })
+
+                            if (Object.keys(dependencyValues).length > 0) {
+                                try {
+                                    console.log(`[TERMO] Calculating annual component ${comp.codigo_componente}:`, dependencyValues)
+                                    const calculatedValue = evaluateFormula(comp.formula_expression, dependencyValues)
+                                    const roundedValue = Math.round(calculatedValue * 100) / 100
+                                    console.log(`[TERMO] Calculated ${comp.codigo_componente}:`, roundedValue)
+
+                                    // CRITICAL: Add to allNotasMap immediately so other annual components can use it
+                                    allNotasMap[comp.codigo_componente] = roundedValue
+                                    console.log(`[TERMO DEBUG] Added ${comp.codigo_componente}=${roundedValue} to allNotasMap. Map now has:`, Object.keys(allNotasMap))
+
+                                    // Add to the trimester where this component belongs
+                                    console.log(`[TERMO DEBUG] Adding ${comp.codigo_componente} to display. selectedComponents:`, selectedComponents.length === 0 ? 'ALL' : selectedComponents)
+                                    const shouldDisplay = selectedComponents.length === 0 || selectedComponents.includes(comp.codigo_componente)
+                                    console.log(`[TERMO DEBUG] Should display ${comp.codigo_componente}:`, shouldDisplay)
+
+                                    if (shouldDisplay) {
+                                        componentesPorTrimestre[comp.trimestre as 1 | 2 | 3].push({
+                                            codigo: comp.codigo_componente,
+                                            nome: comp.nome,
+                                            nota: roundedValue,
+                                            is_calculated: true
+                                        })
+                                        console.log(`[TERMO DEBUG] Added ${comp.codigo_componente} to trimestre ${comp.trimestre}`)
+                                    } else {
+                                        console.log(`[TERMO DEBUG] FILTERED OUT ${comp.codigo_componente} - not in selectedComponents`)
+                                    }
+                                } catch (error) {
+                                    console.error(`Error calculating annual component ${comp.codigo_componente}:`, error)
+                                }
+                            }
+                        }
                     })
                 }
 
@@ -318,14 +472,25 @@ export const ReportsPage: React.FC = () => {
                     }
                 }
 
-                // Calculate final grade (average of available trimester grades)
-                const notasValidas = Object.values(notasTrimestrais).filter(n => n !== null) as number[]
-                const notaFinal = notasValidas.length > 0
-                    ? notasValidas.reduce((sum, n) => sum + n, 0) / notasValidas.length
-                    : null
+                // Calculate final grade: prefer MFD/MF value if available, otherwise average of trimesters
+                let notaFinal: number | null = null
+
+                // Look for MFD or MF in the 3rd trimester components
+                const mfdComponent = componentesPorTrimestre[3].find(c => c.codigo === 'MFD' || c.codigo === 'MF')
+                if (mfdComponent && mfdComponent.nota !== null) {
+                    notaFinal = mfdComponent.nota
+                } else {
+                    // Fallback to average of available trimester grades
+                    const notasValidas = Object.values(notasTrimestrais).filter(n => n !== null) as number[]
+                    notaFinal = notasValidas.length > 0
+                        ? notasValidas.reduce((sum, n) => sum + n, 0) / notasValidas.length
+                        : null
+                }
 
                 // Determine pass/fail (assuming passing grade is 10)
                 const transita = notaFinal !== null && notaFinal >= 10
+
+                console.log(`[TERMO DEBUG] Final componentesPorTrimestre[3] for ${disciplina.nome}:`, componentesPorTrimestre[3].map(c => `${c.codigo}=${c.nota}`))
 
                 return {
                     id: disciplina.id,
@@ -387,6 +552,8 @@ export const ReportsPage: React.FC = () => {
                     escola_anterior: alunoData.escola_anterior,
                     classe_anterior: alunoData.classe_anterior,
                     observacoes_academicas: alunoData.observacoes_academicas,
+                    frequencia_anual: alunoData.frequencia_anual,
+                    tipo_exame: alunoData.tipo_exame,
                 },
                 turma: turmaData,
                 disciplinas: disciplinasProcessadas,
@@ -395,7 +562,10 @@ export const ReportsPage: React.FC = () => {
                     total_disciplinas: disciplinasProcessadas.length,
                     disciplinas_aprovadas: disciplinasAprovadas,
                     disciplinas_reprovadas: disciplinasReprovadas,
-                    transita: transitaGeral
+                    transita: transitaGeral,
+                    observacao_padronizada: alunoData.observacao_transicao,
+                    motivo_retencao: alunoData.motivo_retencao,
+                    matricula_condicional: alunoData.matricula_condicional
                 },
                 escola: escolaData || undefined
             })
@@ -597,6 +767,8 @@ export const ReportsPage: React.FC = () => {
 
     const loadDisciplinas = async () => {
         try {
+            let disciplinasData: any[] = []
+
             if (isProfessor && professorProfile) {
                 console.log('📊 ReportsPage: Loading disciplinas for professor:', professorProfile.id, 'turma:', selectedTurma)
 
@@ -619,8 +791,6 @@ export const ReportsPage: React.FC = () => {
                     count: turmaProfsData?.length || 0,
                     error: turmaProfsError
                 })
-
-                let disciplinasData: any[] = []
 
                 if (!turmaProfsError && turmaProfsData && turmaProfsData.length > 0) {
                     // NEW MODEL: Extract disciplinas from turma_professores
@@ -657,7 +827,8 @@ export const ReportsPage: React.FC = () => {
                 const { data, error } = await query.order('ordem')
 
                 if (error) throw error
-                setDisciplinas(data || [])
+                disciplinasData = data || []
+                setDisciplinas(disciplinasData)
             }
 
             // Auto-select first discipline
@@ -742,12 +913,19 @@ export const ReportsPage: React.FC = () => {
                     .order('ordem')
 
                 if (componentesError) throw componentesError
+
+                console.log('🔍 Dados RAW do Supabase:', data?.slice(0, 2).map(c => ({
+                    codigo: c.codigo_componente,
+                    disciplinas_obj: c.disciplinas
+                })))
+
                 // Map the nested disciplina name and ordem to flat properties
                 componentesData = (data || []).map((comp: any) => ({
                     ...comp,
                     disciplina_nome: comp.disciplinas?.nome,
                     disciplina_ordem: comp.disciplinas?.ordem
                 }))
+                console.log('📊 ReportsPage (All Disciplines): Componentes carregados:', componentesData.map(c => ({ nome: c.disciplina_nome, ordem: c.disciplina_ordem, codigo: c.codigo_componente })))
             } else if (trimestre === 'all') {
                 // Load ALL components from all trimesters (including calculated components for display in reports)
                 const { data, error: componentesError } = await supabase
@@ -762,7 +940,7 @@ export const ReportsPage: React.FC = () => {
                         formula_expression, 
                         depends_on_components,
                         tipo_calculo,
-                        disciplinas!inner(nome)
+                        disciplinas!inner(nome, ordem)
                     `)
                     .eq('disciplina_id', selectedDisciplina)
                     .eq('turma_id', selectedTurma)
@@ -770,11 +948,13 @@ export const ReportsPage: React.FC = () => {
                     .order('ordem')
 
                 if (componentesError) throw componentesError
-                // Map the nested disciplina name to a flat property
+                // Map the nested disciplina name and ordem to flat properties
                 componentesData = (data || []).map((comp: any) => ({
                     ...comp,
-                    disciplina_nome: comp.disciplinas?.nome
+                    disciplina_nome: comp.disciplinas?.nome,
+                    disciplina_ordem: comp.disciplinas?.ordem
                 }))
+                console.log('📊 ReportsPage (trimestre=all): Componentes carregados:', componentesData.map(c => ({ nome: c.disciplina_nome, ordem: c.disciplina_ordem, codigo: c.codigo_componente })))
             } else {
                 // Load components for specific trimestre (including calculated components for display in reports)
                 const { data, error: componentesError } = await supabase
@@ -788,7 +968,8 @@ export const ReportsPage: React.FC = () => {
                         is_calculated, 
                         formula_expression, 
                         depends_on_components,
-                        disciplinas!inner(nome)
+                        tipo_calculo,
+                        disciplinas!inner(nome, ordem)
                     `)
                     .eq('disciplina_id', selectedDisciplina)
                     .eq('turma_id', selectedTurma)
@@ -796,11 +977,13 @@ export const ReportsPage: React.FC = () => {
                     .order('ordem')
 
                 if (componentesError) throw componentesError
-                // Map the nested disciplina name to a flat property
+                // Map the nested disciplina name and ordem to flat properties
                 componentesData = (data || []).map((comp: any) => ({
                     ...comp,
-                    disciplina_nome: comp.disciplinas?.nome
+                    disciplina_nome: comp.disciplinas?.nome,
+                    disciplina_ordem: comp.disciplinas?.ordem
                 }))
+                console.log('📊 ReportsPage (trimestre específico): Componentes carregados:', componentesData.map(c => ({ nome: c.disciplina_nome, ordem: c.disciplina_ordem, codigo: c.codigo_componente })))
             }
 
             if (!componentesData || componentesData.length === 0) {
@@ -813,7 +996,7 @@ export const ReportsPage: React.FC = () => {
             // Load alunos
             const { data: alunosData, error: alunosError } = await supabase
                 .from('alunos')
-                .select('id, numero_processo, nome_completo')
+                .select('id, numero_processo, nome_completo, genero')
                 .eq('turma_id', selectedTurma)
                 .eq('ativo', true)
                 .order('nome_completo')
@@ -894,6 +1077,7 @@ export const ReportsPage: React.FC = () => {
                     return {
                         numero_processo: aluno.numero_processo,
                         nome_completo: aluno.nome_completo,
+                        genero: aluno.genero as 'M' | 'F' | undefined,
                         notas: notasMap,
                         nota_final: undefined,
                         classificacao: 'N/A',
@@ -1096,6 +1280,7 @@ export const ReportsPage: React.FC = () => {
                     return {
                         numero_processo: aluno.numero_processo,
                         nome_completo: aluno.nome_completo,
+                        genero: aluno.genero as 'M' | 'F' | undefined,
                         notas: {}, // Not used in all-trimester mode
                         nota_final: undefined, // Will be calculated if MF component exists
                         media_trimestral: null,
@@ -1146,6 +1331,71 @@ export const ReportsPage: React.FC = () => {
 
             } else {
                 // Handle SINGLE TRIMESTRE mode (existing logic)
+
+                // Check if we have any ANNUAL calculated components that need dependencies from other trimesters
+                const annualComponents = componentesData.filter(c =>
+                    c.is_calculated && c.tipo_calculo === 'anual'
+                )
+
+                // If we have annual components, we need to load their dependencies from ALL trimesters
+                let allDependencyComponents: any[] = []
+                let allDependencyNotas: any[] = []
+
+                if (annualComponents.length > 0) {
+                    console.log('[DEBUG] Found annual components:', annualComponents.map(c => c.codigo_componente))
+
+                    // Get all dependency IDs from annual components
+                    const allDependencyIds = new Set<string>()
+                    annualComponents.forEach(comp => {
+                        if (comp.depends_on_components) {
+                            comp.depends_on_components.forEach((depId: string) => {
+                                allDependencyIds.add(depId)
+                            })
+                        }
+                    })
+
+                    if (allDependencyIds.size > 0) {
+                        console.log('[DEBUG] Loading dependency components:', Array.from(allDependencyIds))
+
+                        // Load all dependency components (from any trimester)
+                        const { data: depComponentsData, error: depError } = await supabase
+                            .from('componentes_avaliacao')
+                            .select(`
+                                id, 
+                                codigo_componente, 
+                                nome, 
+                                peso_percentual, 
+                                trimestre, 
+                                is_calculated, 
+                                formula_expression, 
+                                depends_on_components,
+                                tipo_calculo
+                            `)
+                            .in('id', Array.from(allDependencyIds))
+
+                        if (!depError && depComponentsData) {
+                            allDependencyComponents = depComponentsData
+                            console.log('[DEBUG] Loaded dependency components:', depComponentsData.map(c => ({
+                                code: c.codigo_componente,
+                                trimestre: c.trimestre
+                            })))
+
+                            // Load grades for these dependency components
+                            const { data: depNotasData, error: depNotasError } = await supabase
+                                .from('notas')
+                                .select('aluno_id, componente_id, valor, trimestre')
+                                .eq('turma_id', selectedTurma)
+                                .in('componente_id', depComponentsData.map(c => c.id))
+
+                            if (!depNotasError && depNotasData) {
+                                allDependencyNotas = depNotasData
+                                console.log('[DEBUG] Loaded dependency grades count:', depNotasData.length)
+                            }
+                        }
+                    }
+                }
+
+                // Load grades for the current trimester's components
                 const { data: notasData, error: notasError } = await supabase
                     .from('notas')
                     .select('aluno_id, componente_id, valor')
@@ -1168,41 +1418,99 @@ export const ReportsPage: React.FC = () => {
                         }
                     })
 
-                    // Calculate values for calculated components
+                    // STEP 1: Calculate TRIMESTRAL calculated components first
                     componentesData.forEach(componente => {
                         if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
-                            console.log(`[DEBUG] Processing calculated component: ${componente.codigo_componente}`, {
-                                formula: componente.formula_expression,
-                                dependencies: componente.depends_on_components
-                            })
-                            console.table(componentesData.map(c => ({
-                                ID: c.id,
-                                Código: c.codigo_componente,
-                                Nome: c.nome,
-                                Trimestre: c.trimestre,
-                                Calculado: c.is_calculated ? 'Sim' : 'Não'
-                            })))
-                            console.log(`[DEBUG] Current notasMap:`, notasMap)
+                            // Only process trimestral components (or components without tipo_calculo)
+                            if (componente.tipo_calculo === 'trimestral' || !componente.tipo_calculo) {
+                                console.log(`[DEBUG] Processing TRIMESTRAL calculated component: ${componente.codigo_componente}`)
 
-                            // Build dependency values, using 0 for missing values
+                                // Build dependency values from current trimester
+                                const dependencyValues: Record<string, number> = {}
+
+                                componente.depends_on_components.forEach((depId: string) => {
+                                    const depComponent = componentesData.find(c => c.id === depId)
+                                    if (depComponent) {
+                                        const value = notasMap[depComponent.codigo_componente]
+                                        if (value !== undefined) {
+                                            dependencyValues[depComponent.codigo_componente] = value
+                                        } else {
+                                            dependencyValues[depComponent.codigo_componente] = 0
+                                        }
+                                    }
+                                })
+
+                                if (Object.keys(dependencyValues).length > 0) {
+                                    try {
+                                        const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
+                                        notasMap[componente.codigo_componente] = Math.round(calculatedValue * 100) / 100
+                                        console.log(`[DEBUG] Calculated ${componente.codigo_componente}:`, notasMap[componente.codigo_componente])
+                                    } catch (error) {
+                                        console.error(`Error calculating component ${componente.codigo_componente}:`, error)
+                                    }
+                                }
+                            }
+                        }
+                    })
+
+                    // STEP 2: Calculate ANNUAL calculated components (MFD, MF, etc.)
+                    // These need dependencies from other trimesters
+                    if (annualComponents.length > 0 && allDependencyComponents.length > 0) {
+                        // Build a map of dependency component grades (from all trimesters)
+                        const depNotasAluno = allDependencyNotas.filter(n => n.aluno_id === aluno.id)
+                        const depNotasMap: Record<string, number> = {}
+
+                        // First, add raw grades from dependency components
+                        depNotasAluno.forEach(nota => {
+                            const depComponent = allDependencyComponents.find(c => c.id === nota.componente_id)
+                            if (depComponent) {
+                                depNotasMap[depComponent.codigo_componente] = nota.valor
+                            }
+                        })
+
+                        // Calculate any trimestral calculated dependencies (like MT)
+                        allDependencyComponents.forEach(depComp => {
+                            if (depComp.is_calculated && depComp.formula_expression && depComp.depends_on_components) {
+                                if (depComp.tipo_calculo === 'trimestral' || !depComp.tipo_calculo) {
+                                    const depValues: Record<string, number> = {}
+
+                                    depComp.depends_on_components.forEach((subDepId: string) => {
+                                        const subDepComponent = allDependencyComponents.find(c => c.id === subDepId)
+                                        if (subDepComponent) {
+                                            const value = depNotasMap[subDepComponent.codigo_componente]
+                                            if (value !== undefined) {
+                                                depValues[subDepComponent.codigo_componente] = value
+                                            } else {
+                                                depValues[subDepComponent.codigo_componente] = 0
+                                            }
+                                        }
+                                    })
+
+                                    if (Object.keys(depValues).length > 0) {
+                                        try {
+                                            const calculatedValue = evaluateFormula(depComp.formula_expression, depValues)
+                                            depNotasMap[depComp.codigo_componente] = Math.round(calculatedValue * 100) / 100
+                                        } catch (error) {
+                                            console.error(`Error calculating dependency ${depComp.codigo_componente}:`, error)
+                                        }
+                                    }
+                                }
+                            }
+                        })
+
+                        // Now calculate annual components
+                        annualComponents.forEach(componente => {
+                            console.log(`[DEBUG] Processing ANNUAL calculated component: ${componente.codigo_componente}`)
+
                             const dependencyValues: Record<string, number> = {}
-                            let hasAtLeastOneValue = false
 
                             componente.depends_on_components.forEach((depId: string) => {
-                                const depComponent = componentesData.find(c => c.id === depId)
-                                console.log(`[DEBUG] Looking for dependency ${depId}:`, depComponent ? {
-                                    code: depComponent.codigo_componente,
-                                    trimestre: depComponent.trimestre,
-                                    is_calculated: depComponent.is_calculated
-                                } : 'NOT FOUND')
-
+                                const depComponent = allDependencyComponents.find(c => c.id === depId)
                                 if (depComponent) {
-                                    // Use the value if present, otherwise use 0
-                                    const value = notasMap[depComponent.codigo_componente]
+                                    const value = depNotasMap[depComponent.codigo_componente]
                                     if (value !== undefined) {
                                         dependencyValues[depComponent.codigo_componente] = value
-                                        hasAtLeastOneValue = true
-                                        console.log(`[DEBUG] Found value for ${depComponent.codigo_componente}:`, value)
+                                        console.log(`[DEBUG] Found dependency ${depComponent.codigo_componente}:`, value)
                                     } else {
                                         dependencyValues[depComponent.codigo_componente] = 0
                                         console.log(`[DEBUG] Using 0 for missing dependency ${depComponent.codigo_componente}`)
@@ -1210,21 +1518,25 @@ export const ReportsPage: React.FC = () => {
                                 }
                             })
 
-                            // Calculate if we have the dependency components defined (even if some values are 0)
                             if (Object.keys(dependencyValues).length > 0) {
                                 try {
                                     console.log(`[DEBUG] Calculating ${componente.codigo_componente} with values:`, dependencyValues)
                                     const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
-                                    notasMap[componente.codigo_componente] = Math.round(calculatedValue * 100) / 100
-                                    console.log(`[DEBUG] Calculated value for ${componente.codigo_componente}:`, notasMap[componente.codigo_componente])
+                                    const roundedValue = Math.round(calculatedValue * 100) / 100
+
+                                    // CRITICAL: Add to both maps immediately so other annual components can use it
+                                    notasMap[componente.codigo_componente] = roundedValue
+                                    depNotasMap[componente.codigo_componente] = roundedValue
+
+                                    console.log(`[DEBUG] Calculated ${componente.codigo_componente}:`, roundedValue)
                                 } catch (error) {
-                                    console.error(`Error calculating component ${componente.codigo_componente}:`, error)
+                                    console.error(`Error calculating annual component ${componente.codigo_componente}:`, error)
                                 }
                             } else {
-                                console.log(`[DEBUG] Skipping calculation for ${componente.codigo_componente} - no dependency components found`)
+                                console.log(`[DEBUG] Skipping ${componente.codigo_componente} - no dependencies found`)
                             }
-                        }
-                    })
+                        })
+                    }
 
                     // Calculate final grade
                     const resultado = calculateNotaFinal(notasAluno, componentesData)
@@ -1232,6 +1544,7 @@ export const ReportsPage: React.FC = () => {
                     return {
                         numero_processo: aluno.numero_processo,
                         nome_completo: aluno.nome_completo,
+                        genero: aluno.genero as 'M' | 'F' | undefined,
                         notas: notasMap,
                         nota_final: resultado.nota_final,
                         classificacao: resultado.classificacao,
@@ -1642,7 +1955,7 @@ export const ReportsPage: React.FC = () => {
         <div className="space-y-4 md:space-y-6">
             {/* Header with Tabs */}
             <div>
-                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Relatórios e Mini-Pautas</h2>
+                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Relatórios e Pautas</h2>
                 <p className="text-sm md:text-base text-slate-600 mt-1">Gere relatórios e exporte dados das turmas</p>
 
                 {/* Tab Navigation */}
@@ -1714,7 +2027,7 @@ export const ReportsPage: React.FC = () => {
                             <div className="flex items-center justify-between">
                                 <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
                                 <div className="flex items-center gap-2">
-                                    {selectedTurma && (
+                                    {selectedTurma && !isProfessor && (
                                         <button
                                             onClick={() => setShowOrdenarDisciplinasModal(true)}
                                             className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
@@ -1725,7 +2038,7 @@ export const ReportsPage: React.FC = () => {
                                             Ordenar Disciplinas
                                         </button>
                                     )}
-                                    {selectedTurma && (
+                                    {selectedTurma && !isProfessor && (
                                         <button
                                             onClick={() => setShowColorConfigModal(true)}
                                             className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
@@ -1915,8 +2228,17 @@ export const ReportsPage: React.FC = () => {
                             turmaId={selectedTurma}
                             onClose={() => setShowOrdenarDisciplinasModal(false)}
                             onSave={() => {
+                                console.log('💾 onSave callback: Recarregando dados após salvar ordenação')
+                                console.log('   selectedDisciplina:', selectedDisciplina, 'miniPautaData:', !!miniPautaData)
                                 setShowOrdenarDisciplinasModal(false)
                                 loadDisciplinas()
+                                // Recarregar mini-pauta se estiver sendo exibida
+                                if (miniPautaData) {
+                                    console.log('🔄 Chamando loadMiniPautaData()...')
+                                    loadMiniPautaData()
+                                } else {
+                                    console.log('⚠️ miniPautaData não existe, não recarregando')
+                                }
                             }}
                         />
                     )}

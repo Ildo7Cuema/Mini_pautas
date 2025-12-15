@@ -1,4 +1,4 @@
-# Mini-Pautas - Guia de Início Rápido
+# EduGest Angola - Guia de Início Rápido
 
 ## 🚀 Setup Inicial (15 minutos)
 
@@ -6,7 +6,7 @@
 
 1. **Acesse** [https://supabase.com](https://supabase.com) e faça login
 2. **Crie um novo projeto**:
-   - Nome: `mini-pautas`
+   - Nome: `edugest-angola`
    - Database Password: (escolha uma senha forte)
    - Region: `Europe West (London)` ou mais próxima de Angola
 3. **Aguarde** a criação do projeto (~2 minutos)

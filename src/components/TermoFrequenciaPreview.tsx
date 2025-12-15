@@ -63,6 +63,8 @@ interface TermoFrequenciaData {
         escola_anterior?: string
         classe_anterior?: string
         observacoes_academicas?: string
+        frequencia_anual?: number
+        tipo_exame?: 'Nacional' | 'Extraordinário' | 'Recurso'
     }
     turma: {
         nome: string
@@ -77,6 +79,9 @@ interface TermoFrequenciaData {
         disciplinas_aprovadas: number
         disciplinas_reprovadas: number
         transita: boolean
+        observacao_padronizada?: string
+        motivo_retencao?: string
+        matricula_condicional?: boolean
     }
     escola?: {
         nome: string
@@ -175,6 +180,21 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                             <div>
                                 <p className="text-sm text-slate-500">{data.aluno.tipo_documento}</p>
                                 <p className="font-medium text-slate-900">{data.aluno.numero_documento}</p>
+                            </div>
+                        )}
+                        {data.aluno.frequencia_anual !== undefined && data.aluno.frequencia_anual !== null && (
+                            <div>
+                                <p className="text-sm text-slate-500">Frequência Anual</p>
+                                <p className={`font-bold text-lg ${data.aluno.frequencia_anual < 66.67 ? 'text-red-600' : 'text-green-600'
+                                    }`}>
+                                    {data.aluno.frequencia_anual.toFixed(1)}%
+                                </p>
+                            </div>
+                        )}
+                        {data.aluno.tipo_exame && (
+                            <div>
+                                <p className="text-sm text-slate-500">Tipo de Exame</p>
+                                <p className="font-medium text-orange-600">{data.aluno.tipo_exame}</p>
                             </div>
                         )}
                     </div>
@@ -479,14 +499,38 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                     </div>
 
                     {/* Final Observation */}
-                    <div className={`p-4 rounded-lg text-center ${data.estatisticas.transita
+                    <div className={`p-4 rounded-lg ${data.estatisticas.transita
                         ? 'bg-green-50 border-2 border-green-500'
                         : 'bg-red-50 border-2 border-red-500'
                         }`}>
-                        <p className={`text-xl font-bold ${data.estatisticas.transita ? 'text-green-700' : 'text-red-700'
-                            }`}>
-                            OBSERVAÇÃO FINAL: {data.estatisticas.transita ? 'TRANSITA' : 'NÃO TRANSITA'}
-                        </p>
+                        <div className="text-center mb-3">
+                            <p className={`text-xl font-bold ${data.estatisticas.transita ? 'text-green-700' : 'text-red-700'}`}>
+                                OBSERVAÇÃO FINAL: {data.estatisticas.transita ? 'TRANSITA' : 'NÃO TRANSITA'}
+                            </p>
+                            {data.estatisticas.matricula_condicional && (
+                                <span className="inline-block mt-2 px-3 py-1 bg-orange-100 text-orange-800 rounded-full text-sm font-semibold">
+                                    📝 Matrícula Condicional - Exame Extraordinário Obrigatório
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Observação Padronizada */}
+                        {data.estatisticas.observacao_padronizada && (
+                            <div className="mt-3 p-3 bg-white rounded border border-slate-200">
+                                <p className="text-sm text-slate-700 italic">
+                                    {data.estatisticas.observacao_padronizada}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Motivo de Retenção */}
+                        {data.estatisticas.motivo_retencao && (
+                            <div className="mt-3 p-3 bg-red-50 rounded border border-red-200">
+                                <p className="text-sm text-red-700 font-medium">
+                                    ⚠️ {data.estatisticas.motivo_retencao}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </CardBody>
             </Card>

@@ -609,6 +609,7 @@ interface PautaGeralData {
     alunos: Array<{
         numero_processo: string
         nome_completo: string
+        genero?: 'M' | 'F'
         notas_por_disciplina: Record<string, Record<string, number>>
     }>
     disciplinas: DisciplinaComComponentes[]
@@ -623,8 +624,8 @@ export function generatePautaGeralExcel(data: PautaGeralData): void {
 
     // Build headers - two rows
     // Row 1: Discipline names (merged across their components)
-    const disciplineHeaderRow = ['Nº', 'Nome do Aluno']
-    const componentHeaderRow = ['', ''] // Empty for Nº, Nome
+    const disciplineHeaderRow = ['Nº', 'Nome do Aluno', 'GÊN']
+    const componentHeaderRow = ['', '', ''] // Empty for Nº, Nome, GÊN
 
     data.disciplinas.forEach(disc => {
         // Add discipline name
@@ -643,7 +644,8 @@ export function generatePautaGeralExcel(data: PautaGeralData): void {
     const dataRows = data.alunos.map((aluno, index) => {
         const row: any[] = [
             index + 1,
-            aluno.nome_completo
+            aluno.nome_completo,
+            aluno.genero || '-'
         ]
 
         data.disciplinas.forEach(disc => {
@@ -690,7 +692,7 @@ export function generatePautaGeralExcel(data: PautaGeralData): void {
 
     // Add merges for discipline headers
     const headerRowIndex = 4 // 0-indexed row where discipline headers are
-    const startCol = 2 // After Nº, Nome
+    const startCol = 3 // After Nº, Nome, GÊN
 
     const merges = []
     let currentCol = startCol
@@ -706,10 +708,11 @@ export function generatePautaGeralExcel(data: PautaGeralData): void {
         currentCol += disc.componentes.length
     })
 
-    // Also merge Nº and Nome cells vertically (rows 4 and 5)
+    // Also merge Nº, Nome, and GÊN cells vertically (rows 4 and 5)
     merges.push(
         { s: { r: headerRowIndex, c: 0 }, e: { r: headerRowIndex + 1, c: 0 } }, // Nº
-        { s: { r: headerRowIndex, c: 1 }, e: { r: headerRowIndex + 1, c: 1 } }  // Nome
+        { s: { r: headerRowIndex, c: 1 }, e: { r: headerRowIndex + 1, c: 1 } }, // Nome
+        { s: { r: headerRowIndex, c: 2 }, e: { r: headerRowIndex + 1, c: 2 } }  // GÊN
     )
 
     worksheet['!merges'] = merges
@@ -718,6 +721,7 @@ export function generatePautaGeralExcel(data: PautaGeralData): void {
     const columnWidths = [
         { wch: 5 },  // Nº
         { wch: 30 }, // Nome
+        { wch: 5 },  // GÊN
         ...data.disciplinas.flatMap(disc => disc.componentes.map(() => ({ wch: 10 })))
     ]
     worksheet['!cols'] = columnWidths
@@ -732,7 +736,7 @@ export function generatePautaGeralExcel(data: PautaGeralData): void {
 
 export function generatePautaGeralCSV(data: PautaGeralData): void {
     // Build headers
-    const headers = ['Nº', 'Nome do Aluno']
+    const headers = ['Nº', 'Nome do Aluno', 'GÊN']
 
     data.disciplinas.forEach(disc => {
         disc.componentes.forEach(comp => {
@@ -744,7 +748,8 @@ export function generatePautaGeralCSV(data: PautaGeralData): void {
     const rows = data.alunos.map((aluno, index) => {
         const row: any[] = [
             index + 1,
-            aluno.nome_completo
+            aluno.nome_completo,
+            aluno.genero || '-'
         ]
 
         data.disciplinas.forEach(disc => {

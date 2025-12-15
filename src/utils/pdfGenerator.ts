@@ -854,6 +854,7 @@ interface PautaGeralData {
     alunos: Array<{
         numero_processo: string
         nome_completo: string
+        genero?: 'M' | 'F'
         notas_por_disciplina: Record<string, Record<string, number>>
     }>
     disciplinas: DisciplinaComComponentes[]
@@ -898,7 +899,8 @@ export async function generatePautaGeralPDF(
     // Row 1: Nº (rowSpan 2), Nome (rowSpan 2), Discipline names (colSpan = num components)
     const headerRow1: any[] = [
         { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
+        { content: 'GÊN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
     ]
 
     data.disciplinas.forEach((disciplina) => {
@@ -929,7 +931,8 @@ export async function generatePautaGeralPDF(
     const tableData = data.alunos.map((aluno, index) => {
         const row: any[] = [
             (index + 1).toString(),
-            aluno.nome_completo
+            aluno.nome_completo,
+            aluno.genero || '-'
         ]
 
         data.disciplinas.forEach(disciplina => {
@@ -963,17 +966,18 @@ export async function generatePautaGeralPDF(
         },
         columnStyles: {
             0: { halign: 'center', cellWidth: 8 },
-            1: { halign: 'left', cellWidth: 40 }
+            1: { halign: 'left', cellWidth: 40 },
+            2: { halign: 'center', cellWidth: 8 }
         },
         didParseCell: (hookData: any) => {
-            if (hookData.section === 'body' && hookData.column.index >= 2) {
+            if (hookData.section === 'body' && hookData.column.index >= 3) {
                 hookData.cell.styles.halign = 'center'
 
                 const cellValue = hookData.cell.raw
                 if (cellValue && cellValue !== '-') {
                     const nota = parseFloat(cellValue)
                     if (!isNaN(nota)) {
-                        const colIndex = hookData.column.index - 2
+                        const colIndex = hookData.column.index - 3
                         let currentIndex = 0
                         let component: any = null
 

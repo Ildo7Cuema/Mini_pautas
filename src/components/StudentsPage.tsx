@@ -43,6 +43,8 @@ interface Aluno {
     escola_anterior?: string
     classe_anterior?: string
     observacoes_academicas?: string
+    frequencia_anual?: number
+    tipo_exame?: 'Nacional' | 'Extraordinário' | 'Recurso'
     turma?: {
         nome: string
     }
@@ -86,9 +88,15 @@ const initialFormData = {
     escola_anterior: '',
     classe_anterior: '',
     observacoes_academicas: '',
+    frequencia_anual: '',
+    tipo_exame: '',
 }
 
-export const StudentsPage: React.FC = () => {
+interface StudentsPageProps {
+    searchQuery?: string
+}
+
+export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) => {
     const [alunos, setAlunos] = useState<Aluno[]>([])
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
@@ -98,7 +106,6 @@ export const StudentsPage: React.FC = () => {
     const [selectedTurma, setSelectedTurma] = useState<string>('all')
     const [selectedAluno, setSelectedAluno] = useState<Aluno | null>(null)
     const [alunoToDelete, setAlunoToDelete] = useState<string | null>(null)
-    const [searchQuery, setSearchQuery] = useState('')
     const [activeTab, setActiveTab] = useState<TabType>('pessoal')
     const [formData, setFormData] = useState(initialFormData)
     const [error, setError] = useState<string | null>(null)
@@ -165,6 +172,8 @@ export const StudentsPage: React.FC = () => {
                     escola_anterior,
                     classe_anterior,
                     observacoes_academicas,
+                    frequencia_anual,
+                    tipo_exame,
                     turmas(nome)
                 `)
                 .order('nome_completo')
@@ -213,6 +222,8 @@ export const StudentsPage: React.FC = () => {
                 ...formData,
                 genero: formData.genero || null,
                 ano_ingresso: formData.ano_ingresso ? parseInt(formData.ano_ingresso) : null,
+                frequencia_anual: formData.frequencia_anual ? parseFloat(formData.frequencia_anual) : null,
+                tipo_exame: formData.tipo_exame || null,
             }
 
             const { error: insertError } = await supabase
@@ -288,6 +299,8 @@ export const StudentsPage: React.FC = () => {
             escola_anterior: aluno.escola_anterior || '',
             classe_anterior: aluno.classe_anterior || '',
             observacoes_academicas: aluno.observacoes_academicas || '',
+            frequencia_anual: aluno.frequencia_anual?.toString() || '',
+            tipo_exame: aluno.tipo_exame || '',
         })
         setActiveTab('pessoal')
         setShowEditModal(true)
@@ -305,6 +318,8 @@ export const StudentsPage: React.FC = () => {
                 ...formData,
                 genero: formData.genero || null,
                 ano_ingresso: formData.ano_ingresso ? parseInt(formData.ano_ingresso) : null,
+                frequencia_anual: formData.frequencia_anual ? parseFloat(formData.frequencia_anual) : null,
+                tipo_exame: formData.tipo_exame || null,
             }
 
             const { error: updateError } = await supabase
@@ -659,6 +674,64 @@ export const StudentsPage: React.FC = () => {
                                 rows={4}
                             />
                         </div>
+
+                        {/* Frequência e Avaliação */}
+                        <div className="border-t border-slate-200 pt-4 mt-4">
+                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Frequência e Avaliação</h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="form-label">Frequência Anual (%)</label>
+                                    <Input
+                                        type="number"
+                                        value={formData.frequencia_anual}
+                                        onChange={(e) => {
+                                            const value = e.target.value
+                                            if (value === '' || (parseFloat(value) >= 0 && parseFloat(value) <= 100)) {
+                                                setFormData({ ...formData, frequencia_anual: value })
+                                            }
+                                        }}
+                                        placeholder="0-100"
+                                        min="0"
+                                        max="100"
+                                        step="0.1"
+                                        helpText={formData.frequencia_anual && parseFloat(formData.frequencia_anual) < 66.67
+                                            ? "⚠️ Frequência abaixo do mínimo (66.67%)"
+                                            : formData.frequencia_anual
+                                                ? "✓ Frequência adequada"
+                                                : "Percentual de presença do aluno"}
+                                    />
+                                    {formData.frequencia_anual && (
+                                        <div className="mt-2">
+                                            <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full transition-all ${parseFloat(formData.frequencia_anual) < 66.67
+                                                        ? 'bg-red-500'
+                                                        : 'bg-green-500'
+                                                        }`}
+                                                    style={{ width: `${Math.min(parseFloat(formData.frequencia_anual), 100)}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div>
+                                    <label className="form-label">Tipo de Exame</label>
+                                    <select
+                                        value={formData.tipo_exame}
+                                        onChange={(e) => setFormData({ ...formData, tipo_exame: e.target.value })}
+                                        className="form-input min-h-touch"
+                                    >
+                                        <option value="">Selecione</option>
+                                        <option value="Nacional">Nacional</option>
+                                        <option value="Extraordinário">Extraordinário</option>
+                                        <option value="Recurso">Recurso</option>
+                                    </select>
+                                    <p className="text-xs text-slate-500 mt-1">
+                                        Tipo de exame que o aluno deve realizar
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )
         }
@@ -747,23 +820,7 @@ export const StudentsPage: React.FC = () => {
             ) : (
                 <Card>
                     <CardHeader>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <h3 className="text-lg font-semibold text-slate-900">Lista de Alunos</h3>
-                            {alunos.length > 0 && (
-                                <div className="relative flex-1 sm:max-w-xs">
-                                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                    <input
-                                        type="text"
-                                        placeholder="Pesquisar aluno..."
-                                        value={searchQuery}
-                                        onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
-                                    />
-                                </div>
-                            )}
-                        </div>
+                        <h3 className="text-lg font-semibold text-slate-900">Lista de Alunos</h3>
                     </CardHeader>
                     <CardBody>
                         {filteredAlunos.length === 0 ? (

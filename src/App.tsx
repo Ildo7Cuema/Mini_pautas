@@ -12,11 +12,13 @@ import { SettingsPage } from './components/SettingsPage'
 import { TeachersPage } from './components/TeachersPage'
 import { ProfessorRegistration } from './components/ProfessorRegistration'
 import { ProfessorDashboard } from './components/ProfessorDashboard'
+import { ResetPasswordPage } from './components/ResetPasswordPage'
 
 function App() {
     const { user, loading, isProfessor } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
+    const [searchQuery, setSearchQuery] = useState('')
 
     if (loading) {
         return (
@@ -33,12 +35,17 @@ function App() {
         return <ProfessorRegistration />
     }
 
+    if (window.location.pathname === '/reset-password') {
+        return <ResetPasswordPage />
+    }
+
     if (!user) {
         return <LoginScreen />
     }
 
     const handleNavigate = (page: string, params?: { turmaId?: string }) => {
         setCurrentPage(page)
+        setSearchQuery('') // Clear search when navigating
         if (params) {
             setNavigationParams(params)
         } else {
@@ -49,33 +56,32 @@ function App() {
     const renderPage = () => {
         switch (currentPage) {
             case 'dashboard':
-                return isProfessor ? <ProfessorDashboard /> : <Dashboard onNavigate={handleNavigate} />
+                return isProfessor ? <ProfessorDashboard /> : <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
             case 'classes':
-                return <ClassesPage onNavigate={handleNavigate} />
+                return <ClassesPage onNavigate={handleNavigate} searchQuery={searchQuery} />
             case 'class-details':
                 return navigationParams.turmaId ? (
                     <ClassDetailsPage turmaId={navigationParams.turmaId} onNavigate={handleNavigate} />
                 ) : (
-                    <ClassesPage onNavigate={handleNavigate} />
+                    <ClassesPage onNavigate={handleNavigate} searchQuery={searchQuery} />
                 )
             case 'students':
-                return <StudentsPage />
+                return <StudentsPage searchQuery={searchQuery} />
             case 'grades':
-                return <GradesPage />
+                return <GradesPage searchQuery={searchQuery} />
             case 'reports':
-                return <ReportsPage />
+                return <ReportsPage searchQuery={searchQuery} />
             case 'settings':
                 return <SettingsPage />
             case 'teachers':
-                return <TeachersPage onNavigate={handleNavigate} />
+                return <TeachersPage onNavigate={handleNavigate} searchQuery={searchQuery} />
             default:
-                return <Dashboard onNavigate={handleNavigate} />
+                return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
         }
     }
 
     const handleSearch = (query: string) => {
-        console.log('Searching for:', query)
-        // TODO: Implement search functionality
+        setSearchQuery(query)
     }
 
     return (

@@ -1,5 +1,5 @@
 /**
- * Formula Parser and Evaluator for Mini-Pautas System
+ * Formula Parser and Evaluator for EduGest Angola System
  * 
  * This module provides safe parsing and evaluation of custom grade calculation formulas.
  * It supports:

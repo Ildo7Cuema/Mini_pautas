@@ -51,22 +51,34 @@ export const OrdenarDisciplinasModal: React.FC<OrdenarDisciplinasModalProps> = (
     }
 
     const moveUp = (index: number) => {
-        if (index === 0) return
+        console.log('⬆️ moveUp clicked, index:', index)
+        if (index === 0) {
+            console.log('⬆️ Already at top, cannot move up')
+            return
+        }
 
         const newDisciplinas = [...disciplinas]
-            ;[newDisciplinas[index], newDisciplinas[index - 1]] =
-                [newDisciplinas[index - 1], newDisciplinas[index]]
+        const temp = newDisciplinas[index]
+        newDisciplinas[index] = newDisciplinas[index - 1]
+        newDisciplinas[index - 1] = temp
 
+        console.log('⬆️ New order:', newDisciplinas.map(d => d.nome))
         setDisciplinas(newDisciplinas)
     }
 
     const moveDown = (index: number) => {
-        if (index === disciplinas.length - 1) return
+        console.log('⬇️ moveDown clicked, index:', index)
+        if (index === disciplinas.length - 1) {
+            console.log('⬇️ Already at bottom, cannot move down')
+            return
+        }
 
         const newDisciplinas = [...disciplinas]
-            ;[newDisciplinas[index], newDisciplinas[index + 1]] =
-                [newDisciplinas[index + 1], newDisciplinas[index]]
+        const temp = newDisciplinas[index]
+        newDisciplinas[index] = newDisciplinas[index + 1]
+        newDisciplinas[index + 1] = temp
 
+        console.log('⬇️ New order:', newDisciplinas.map(d => d.nome))
         setDisciplinas(newDisciplinas)
     }
 
@@ -75,20 +87,45 @@ export const OrdenarDisciplinasModal: React.FC<OrdenarDisciplinasModalProps> = (
             setSaving(true)
             setError(null)
 
-            // Update ordem for each disciplina
-            for (let i = 0; i < disciplinas.length; i++) {
-                const { error: updateError } = await supabase
-                    .from('disciplinas')
-                    .update({ ordem: i + 1 })
-                    .eq('id', disciplinas[i].id)
+            console.log('🔄 OrdenarDisciplinasModal: Salvando ordenação...')
+            console.log('📋 Disciplinas a salvar:', disciplinas.map((d, i) => ({ id: d.id, nome: d.nome, ordem_nova: i + 1, ordem_antiga: d.ordem })))
 
-                if (updateError) throw updateError
+            // Update each discipline using RPC function that bypasses RLS
+            const results = []
+            for (let i = 0; i < disciplinas.length; i++) {
+                const disciplina = disciplinas[i]
+                const newOrdem = i + 1
+
+                console.log(`📝 Updating ${disciplina.nome} (${disciplina.id}) to ordem ${newOrdem}`)
+
+                const result = await supabase
+                    .rpc('update_disciplina_ordem', {
+                        p_disciplina_id: disciplina.id,
+                        p_nova_ordem: newOrdem
+                    })
+
+                console.log(`   Result for ${disciplina.nome}:`, {
+                    data: result.data,
+                    error: result.error
+                })
+
+                if (result.error) {
+                    throw new Error(`Falha ao atualizar ${disciplina.nome}: ${result.error.message}`)
+                }
+
+                results.push(result)
             }
 
-            onSave()
+            console.log('✅ OrdenarDisciplinasModal: Ordenação salva com sucesso!')
+
+            // Call onSave callback to refresh parent data
+            await onSave()
+
+            // Close modal
             onClose()
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar ordenação'
+            console.error('❌ OrdenarDisciplinasModal: Erro ao salvar:', err)
             setError(errorMessage)
         } finally {
             setSaving(false)

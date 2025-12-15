@@ -40,6 +40,7 @@ interface ComponenteAvaliacao {
     is_calculated?: boolean
     formula_expression?: string
     depends_on_components?: string[]
+    tipo_calculo?: 'trimestral' | 'anual'
 }
 
 interface DisciplinaComComponentes {
@@ -58,12 +59,17 @@ interface PautaGeralData {
     alunos: Array<{
         numero_processo: string
         nome_completo: string
+        genero?: 'M' | 'F'
+        frequencia_anual?: number
         notas_por_disciplina: Record<string, Record<string, number>> // disciplinaId -> componenteId -> nota
         media_geral: number // Average across all disciplines
         observacao: 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas'
         motivos: string[]
         disciplinas_em_risco: string[]
         acoes_recomendadas: string[]
+        observacao_padronizada: string
+        motivo_retencao?: string
+        matricula_condicional: boolean
     }>
     disciplinas: DisciplinaComComponentes[]
     estatisticas?: {
@@ -225,7 +231,7 @@ export const PautaGeralPage: React.FC = () => {
             // (Pauta Geral can include calculated components from T1, T2, T3)
             const { data: componentesData, error: componentesError } = await supabase
                 .from('componentes_avaliacao')
-                .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components')
+                .select('id, codigo_componente, nome, peso_percentual, trimestre, disciplina_id, is_calculated, formula_expression, depends_on_components, tipo_calculo')
                 .eq('turma_id', selectedTurma)
                 .order('trimestre')
                 .order('ordem')
@@ -249,7 +255,7 @@ export const PautaGeralPage: React.FC = () => {
             // Load alunos
             const { data: alunosData, error: alunosError } = await supabase
                 .from('alunos')
-                .select('id, numero_processo, nome_completo')
+                .select('id, numero_processo, nome_completo, genero, frequencia_anual')
                 .eq('turma_id', selectedTurma)
                 .eq('ativo', true)
                 .order('nome_completo')
@@ -282,7 +288,7 @@ export const PautaGeralPage: React.FC = () => {
                 disciplinasComComponentes.forEach(disc => {
                     const notasMap: Record<string, number> = {}
 
-                    // Build notas map by component ID
+                    // Build notas map by component ID (raw grades from database)
                     notasAluno.forEach(nota => {
                         const componente = disc.componentes.find(c => c.id === nota.componente_id)
                         if (componente) {
@@ -290,29 +296,67 @@ export const PautaGeralPage: React.FC = () => {
                         }
                     })
 
-                    // Calculate values for calculated components
+                    // STEP 1: Calculate TRIMESTRAL calculated components first
+                    // These are components like MT (Média Trimestral) that depend only on grades within their own trimester
                     disc.componentes.forEach(componente => {
                         if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
-                            const dependencyValues: Record<string, number> = {}
+                            // Only process trimestral components (or components without tipo_calculo - defaults to trimestral)
+                            if (componente.tipo_calculo === 'trimestral' || !componente.tipo_calculo) {
+                                const dependencyValues: Record<string, number> = {}
 
-                            componente.depends_on_components.forEach((depId: string) => {
-                                const depComponent = disc.componentes.find(c => c.id === depId)
-                                if (depComponent) {
-                                    const value = notasMap[depComponent.id]
-                                    if (value !== undefined) {
-                                        dependencyValues[depComponent.codigo_componente] = value
-                                    } else {
-                                        dependencyValues[depComponent.codigo_componente] = 0
+                                componente.depends_on_components.forEach((depId: string) => {
+                                    // Find dependency from same discipline AND same trimester
+                                    const depComponent = disc.componentes.find(c => c.id === depId && c.trimestre === componente.trimestre)
+                                    if (depComponent) {
+                                        const value = notasMap[depComponent.id]
+                                        if (value !== undefined) {
+                                            dependencyValues[depComponent.codigo_componente] = value
+                                        } else {
+                                            dependencyValues[depComponent.codigo_componente] = 0
+                                        }
+                                    }
+                                })
+
+                                if (Object.keys(dependencyValues).length > 0) {
+                                    try {
+                                        const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
+                                        notasMap[componente.id] = Math.round(calculatedValue * 100) / 100
+                                    } catch (error) {
+                                        console.error(`Error calculating trimestral component ${componente.codigo_componente}:`, error)
                                     }
                                 }
-                            })
+                            }
+                        }
+                    })
 
-                            if (Object.keys(dependencyValues).length > 0) {
-                                try {
-                                    const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
-                                    notasMap[componente.id] = Math.round(calculatedValue * 100) / 100
-                                } catch (error) {
-                                    console.error(`Error calculating component ${componente.codigo_componente}:`, error)
+                    // STEP 2: Calculate ANNUAL calculated components
+                    // These are components like MFD that depend on values from multiple trimesters (e.g., MT1, MT2, MT3)
+                    disc.componentes.forEach(componente => {
+                        if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
+                            if (componente.tipo_calculo === 'anual') {
+                                const dependencyValues: Record<string, number> = {}
+
+                                componente.depends_on_components.forEach((depId: string) => {
+                                    // Find dependency from same discipline (can be from any trimester)
+                                    const depComponent = disc.componentes.find(c => c.id === depId)
+                                    if (depComponent) {
+                                        // Get the value - could be a calculated trimestral component (like MT)
+                                        const value = notasMap[depComponent.id]
+                                        if (value !== undefined) {
+                                            dependencyValues[depComponent.codigo_componente] = value
+                                        } else {
+                                            dependencyValues[depComponent.codigo_componente] = 0
+                                        }
+                                    }
+                                })
+
+                                if (Object.keys(dependencyValues).length > 0) {
+                                    try {
+                                        const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
+                                        notasMap[componente.id] = Math.round(calculatedValue * 100) / 100
+                                    } catch (error) {
+                                        console.error(`Error calculating annual component ${componente.codigo_componente}:`, error)
+                                    }
                                 }
                             }
                         }
@@ -324,12 +368,16 @@ export const PautaGeralPage: React.FC = () => {
                 return {
                     numero_processo: aluno.numero_processo,
                     nome_completo: aluno.nome_completo,
+                    genero: aluno.genero as 'M' | 'F' | undefined,
+                    frequencia_anual: aluno.frequencia_anual,
                     notas_por_disciplina: notasPorDisciplina,
                     media_geral: 0,
                     observacao: 'AguardandoNotas' as any,
                     motivos: [] as string[],
                     disciplinas_em_risco: [] as string[],
-                    acoes_recomendadas: [] as string[]
+                    acoes_recomendadas: [] as string[],
+                    observacao_padronizada: '',
+                    matricula_condicional: false
                 }
             })
 
@@ -377,7 +425,8 @@ export const PautaGeralPage: React.FC = () => {
                     disciplinaGrades,
                     turmaData.nivel_ensino,
                     classe,
-                    disciplinasObrigatorias
+                    disciplinasObrigatorias,
+                    aluno.frequencia_anual
                 )
 
                 // Update aluno with média_geral and classification results
@@ -387,7 +436,10 @@ export const PautaGeralPage: React.FC = () => {
                     observacao: classification.status,
                     motivos: classification.motivos,
                     disciplinas_em_risco: classification.disciplinas_em_risco,
-                    acoes_recomendadas: classification.acoes_recomendadas
+                    acoes_recomendadas: classification.acoes_recomendadas,
+                    observacao_padronizada: classification.observacao_padronizada,
+                    motivo_retencao: classification.motivo_retencao,
+                    matricula_condicional: classification.matricula_condicional
                 }
             })
 

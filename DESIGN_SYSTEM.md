@@ -1,4 +1,4 @@
-# Design System - Mini-Pautas
+# Design System - EduGest Angola
 
 Guia de design system mobile-first para garantir consistência, acessibilidade e performance em todos os dispositivos.
 

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
 import type {
@@ -44,7 +44,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [escolaProfile, setEscolaProfile] = useState<EscolaProfile | null>(null)
     const [professorProfile, setProfessorProfile] = useState<ProfessorProfile | null>(null)
 
+    // Flag to prevent race conditions between getSession and onAuthStateChange
+    // Using useRef instead of useState for synchronous check
+    const isLoadingProfileRef = useRef(false)
+
     const loadUserProfile = async (authUser: User) => {
+        // Prevent multiple simultaneous calls (synchronous check)
+        if (isLoadingProfileRef.current) {
+            console.log('⏳ AuthContext: Profile already loading, skipping duplicate call')
+            return
+        }
+        isLoadingProfileRef.current = true
         console.log('🔍 AuthContext: Loading user profile for:', authUser.id)
         console.log('🔍 AuthContext: Current loading state:', loading)
         try {
@@ -76,6 +86,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     email: authUser.email || '',
                     profile: null
                 })
+                isLoadingProfileRef.current = false
                 setLoading(false)
                 return
             }
@@ -116,6 +127,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                         profile: null,
                         professor: professorProfile
                     })
+                    isLoadingProfileRef.current = false
                     setLoading(false)
                     return
                 }
@@ -166,6 +178,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                         profile: null,
                         professor: professorProfile
                     })
+                    isLoadingProfileRef.current = false
                     setLoading(false)
                     return
                 }
@@ -178,6 +191,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 await supabase.auth.signOut()
 
                 setUser(null)
+                isLoadingProfileRef.current = false
                 setLoading(false)
                 return
             }
@@ -200,6 +214,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             // CRITICAL: Always set loading to false, even if profile loading fails
             console.log('✅ AuthContext: Profile loading complete, setting loading=false')
+            isLoadingProfileRef.current = false
             setLoading(false)
 
         } catch (error) {
@@ -210,6 +225,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 profile: null
             })
             // CRITICAL: Always set loading to false
+            isLoadingProfileRef.current = false
             setLoading(false)
         }
     }
@@ -307,6 +323,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log('✅ AuthContext: Professor data loaded:', professorData)
             const professor = professorData as Professor
 
+            // Get escola data
+            console.log('🏫 AuthContext: Fetching escola data for escola_id:', professor.escola_id)
+            const { data: escolaData, error: escolaError } = await supabase
+                .from('escolas')
+                .select('*')
+                .eq('id', professor.escola_id)
+                .maybeSingle()
+
+            if (escolaError) {
+                console.warn('⚠️ AuthContext: Error loading escola for professor:', escolaError)
+            }
+
+            const escola = escolaData ? (escolaData as Escola) : undefined
+            if (escola) {
+                console.log('✅ AuthContext: Escola data loaded:', escola.nome)
+            }
+
             // Get turmas associadas (may fail due to RLS, that's OK)
             console.log('📚 AuthContext: Fetching turmas associadas...')
             console.log('📚 AuthContext: Professor ID:', professor.id)
@@ -347,7 +380,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             const professorProfile: ProfessorProfile = {
                 ...professor,
                 user_profile: profile,
-                turmas_associadas: turmasAssociadas
+                turmas_associadas: turmasAssociadas,
+                escola
             }
 
             setProfessorProfile(professorProfile)
@@ -387,32 +421,74 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
 
     useEffect(() => {
-        // Check active session
+        // Flag to track if initial auth check is complete
+        let initialAuthChecked = false
+
+        // Safety timeout: never let loading stay true for more than 5 seconds
+        const safetyTimeout = setTimeout(() => {
+            setLoading(prevLoading => {
+                if (prevLoading) {
+                    console.error('⏰ AuthContext: Safety timeout triggered! Setting loading=false after 5 seconds')
+                    isLoadingProfileRef.current = false
+                    return false
+                }
+                return prevLoading
+            })
+        }, 5000)
+
+        console.log('🚀 AuthContext: Starting initial auth check...')
+
+        // Check active session (this handles the initial load)
         supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('📋 AuthContext: getSession result:', session ? 'Session found' : 'No session')
+            initialAuthChecked = true
+
             if (session?.user) {
                 loadUserProfile(session.user)
             } else {
+                console.log('✅ AuthContext: No session, setting loading=false immediately')
                 setLoading(false)
             }
+        }).catch((error) => {
+            console.error('❌ AuthContext: Error getting session:', error)
+            initialAuthChecked = true
+            setLoading(false)
         })
 
-        // Listen for auth changes
+        // Listen for auth changes (only for CHANGES after initial load)
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (_event, session) => {
-                if (session?.user) {
-                    await loadUserProfile(session.user)
-                } else {
+            async (event, session) => {
+                console.log('🔔 AuthContext: onAuthStateChange event:', event, 'initialAuthChecked:', initialAuthChecked)
+
+                // Skip the initial event since getSession already handles it
+                if (!initialAuthChecked) {
+                    console.log('⏭️ AuthContext: Skipping initial auth event (handled by getSession)')
+                    return
+                }
+
+                // Only process actual changes (sign in/out)
+                if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+                    if (session?.user) {
+                        // Reset the loading flag so we can reload profile
+                        isLoadingProfileRef.current = false
+                        await loadUserProfile(session.user)
+                    }
+                } else if (event === 'SIGNED_OUT') {
                     setUser(null)
                     setIsEscola(false)
                     setIsProfessor(false)
                     setEscolaProfile(null)
                     setProfessorProfile(null)
+                    isLoadingProfileRef.current = false
                     setLoading(false)
                 }
             }
         )
 
-        return () => subscription.unsubscribe()
+        return () => {
+            clearTimeout(safetyTimeout)
+            subscription.unsubscribe()
+        }
     }, [])
 
     const value: AuthContextType = {

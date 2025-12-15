@@ -18,6 +18,7 @@ interface MiniPautaPreviewPrimarioProps {
         alunos: Array<{
             numero_processo: string
             nome_completo: string
+            genero?: 'M' | 'F'
             notas: Record<string, number>
             nota_final?: number
             media_trimestral?: number | null
@@ -72,12 +73,15 @@ const groupComponentsByDiscipline = (componentes: MiniPautaPreviewPrimarioProps[
     })
 
     // Sort by ordem if available, otherwise fall back to alphabetical sorting
-    return Array.from(disciplineMap.values()).sort((a, b) => {
+    const sorted = Array.from(disciplineMap.values()).sort((a, b) => {
         if (a.ordem !== undefined && b.ordem !== undefined) {
             return a.ordem - b.ordem
         }
         return a.disciplina_nome.localeCompare(b.disciplina_nome)
     })
+
+    console.log('🔢 MiniPautaPreviewPrimario: Disciplinas ordenadas:', sorted.map(d => ({ nome: d.disciplina_nome, ordem: d.ordem })))
+    return sorted
 }
 
 /**
@@ -160,8 +164,9 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                     <table className="w-full border-collapse">
                         <thead className="bg-green-600 text-white">
                             <tr>
-                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold sticky left-0 bg-green-600 z-10">Nº</th>
-                                <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold sticky left-[45px] bg-green-600 z-10">Nome do Aluno</th>
+                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold bg-green-600">Nº</th>
+                                <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold bg-green-600">Nome do Aluno</th>
+                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold bg-green-600">GÊN</th>
 
                                 {/* Discipline headers */}
                                 {disciplineGroups.map((group) => (
@@ -198,8 +203,9 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                         <tbody>
                             {data.alunos.map((aluno, index) => (
                                 <tr key={aluno.numero_processo} className="hover:bg-slate-50">
-                                    <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600 sticky left-0 bg-white z-10">{index + 1}</td>
-                                    <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900 sticky left-[45px] bg-white z-10">{aluno.nome_completo}</td>
+                                    <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600 bg-white">{index + 1}</td>
+                                    <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900 bg-white">{aluno.nome_completo}</td>
+                                    <td className="border border-slate-300 px-2 py-0.5 text-center text-sm text-slate-900 bg-white">{aluno.genero || '-'}</td>
 
                                     {/* Data for each discipline */}
                                     {disciplineGroups.map((group) => (
@@ -236,6 +242,7 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                         <tr>
                             <th className="border border-slate-300 px-2 py-0.5 text-left text-sm font-semibold">Nº</th>
                             <th className="border border-slate-300 px-3 py-0.5 text-left text-sm font-semibold">Nome do Aluno</th>
+                            <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">GÊN</th>
                             {data.componentes.map((comp) => (
                                 <th key={comp.codigo_componente} className={`border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold ${comp.is_calculated ? 'bg-blue-100' : ''}`}>
                                     <div className="flex items-center justify-center gap-1">
@@ -254,6 +261,7 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                             <tr key={aluno.numero_processo} className="hover:bg-slate-50">
                                 <td className="border border-slate-300 px-2 py-0.5 text-sm text-slate-600">{index + 1}</td>
                                 <td className="border border-slate-300 px-3 py-0.5 text-sm text-slate-900">{aluno.nome_completo}</td>
+                                <td className="border border-slate-300 px-2 py-0.5 text-center text-sm text-slate-900">{aluno.genero || '-'}</td>
                                 {data.componentes.map((comp) => {
                                     const nota = aluno.notas[comp.codigo_componente]
                                     return (

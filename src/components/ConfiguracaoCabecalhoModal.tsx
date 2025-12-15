@@ -8,6 +8,7 @@ import {
     getDefaultHeaderConfig,
     getOrgaoEducacao
 } from '../utils/headerConfigUtils'
+import { translateError } from '../utils/translations'
 
 interface ConfiguracaoCabecalhoModalProps {
     isOpen: boolean
@@ -51,7 +52,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
             }
         } catch (err) {
             console.error('Error loading config:', err)
-            setError('Erro ao carregar configuração')
+            setError(translateError(err instanceof Error ? err.message : 'Erro ao carregar configuração'))
         } finally {
             setLoading(false)
         }
@@ -77,7 +78,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
             setTimeout(() => setSuccess(null), 3000)
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao fazer upload do logo'
-            setError(errorMessage)
+            setError(translateError(errorMessage))
         } finally {
             setUploading(false)
         }
@@ -116,7 +117,7 @@ export const ConfiguracaoCabecalhoModal: React.FC<ConfiguracaoCabecalhoModalProp
             }, 1500)
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao salvar configuração'
-            setError(errorMessage)
+            setError(translateError(errorMessage))
         } finally {
             setLoading(false)
         }

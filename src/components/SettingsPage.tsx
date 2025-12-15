@@ -258,12 +258,12 @@ export const SettingsPage: React.FC = () => {
             {/* App Info */}
             <Card>
                 <CardBody className="text-center py-6">
-                    <p className="text-sm text-slate-600 mb-2">Mini-Pautas v1.0.0</p>
+                    <p className="text-sm text-slate-600 mb-2">EduGest Angola v1.0.0</p>
                     <p className="text-xs text-slate-500">
                         Sistema de Gestão de Notas para Professores Angolanos
                     </p>
                     <p className="text-xs text-slate-500 mt-2">
-                        © 2025 Mini-Pautas. Todos os direitos reservados.
+                        © 2025 EduGest Angola. Todos os direitos reservados.
                     </p>
                 </CardBody>
             </Card>

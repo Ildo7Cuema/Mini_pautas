@@ -1,4 +1,4 @@
-# Mini-Pautas - API Documentation
+# EduGest Angola - API Documentation
 
 ## Base URL
 
@@ -407,6 +407,6 @@ curl -X POST https://afueujnyeglgnaylaxmp.supabase.co/functions/v1/import-csv \
 ## Support
 
 For API issues or questions:
-- **Email**: api@mini-pautas.ao
+- **Email**: api@edugest.ao
 - **Documentation**: See QUICKSTART.md
 - **GitHub**: (repository URL)

@@ -31,9 +31,10 @@ interface RecentClass {
 
 interface DashboardProps {
     onNavigate?: (page: string) => void
+    searchQuery?: string
 }
 
-export const Dashboard: React.FC<DashboardProps> = ({ onNavigate }) => {
+export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = '' }) => {
     const { user, isEscola, isProfessor, escolaProfile, professorProfile, loading: authLoading } = useAuth()
     const [stats, setStats] = useState<DashboardStats>({
         totalTurmas: 0,

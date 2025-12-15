@@ -8,7 +8,7 @@ As notas não estão sendo salvas porque a coluna `trimestre` não existe na tab
 ### Passo 1: Acessar o Supabase Dashboard
 1. Abra seu navegador e vá para [https://app.supabase.com](https://app.supabase.com)
 2. Faça login na sua conta
-3. Selecione o projeto **Mini-Pautas**
+3. Selecione o projeto **EduGest Angola**
 
 ### Passo 2: Abrir o SQL Editor
 1. No menu lateral esquerdo, clique em **SQL Editor**

@@ -106,7 +106,7 @@ export const ProfileSetupModal: React.FC<ProfileSetupModalProps> = ({ onComplete
                 <CardHeader>
                     <div className="text-center">
                         <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-2">
-                            Bem-vindo ao Mini-Pautas! 🎓
+                            Bem-vindo ao EduGest Angola! 🎓
                         </h2>
                         <p className="text-sm md:text-base text-slate-600">
                             Complete seu perfil para começar a usar o sistema

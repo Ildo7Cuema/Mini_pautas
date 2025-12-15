@@ -15,6 +15,10 @@ export const LoginScreen: React.FC = () => {
     const [password, setPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false)
+    const [resetEmail, setResetEmail] = useState('')
+    const [resetLoading, setResetLoading] = useState(false)
+    const [resetSuccess, setResetSuccess] = useState(false)
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -33,6 +37,32 @@ export const LoginScreen: React.FC = () => {
             setError(translateError(errorMessage))
         } finally {
             setLoading(false)
+        }
+    }
+
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setResetLoading(true)
+        setError(null)
+
+        try {
+            const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+                redirectTo: `${window.location.origin}/reset-password`,
+            })
+
+            if (resetError) throw resetError
+
+            setResetSuccess(true)
+            setTimeout(() => {
+                setShowForgotPasswordModal(false)
+                setResetSuccess(false)
+                setResetEmail('')
+            }, 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro'
+            setError(translateError(errorMessage))
+        } finally {
+            setResetLoading(false)
         }
     }
 
@@ -66,7 +96,7 @@ export const LoginScreen: React.FC = () => {
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-800 mb-1 tracking-tight">Mini-Pautas</h1>
+                    <h1 className="text-3xl font-bold text-slate-800 mb-1 tracking-tight">EduGest Angola</h1>
                     <p className="text-slate-600 text-sm font-medium">Sistema de Gestão de Notas</p>
                 </div>
 
@@ -150,9 +180,17 @@ export const LoginScreen: React.FC = () => {
 
                         {/* Forgot Password */}
                         <div className="mt-5 text-center">
-                            <a href="#" className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setShowForgotPasswordModal(true)
+                                    setError(null)
+                                    setResetSuccess(false)
+                                }}
+                                className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
+                            >
                                 Esqueceu a senha?
-                            </a>
+                            </button>
                         </div>
 
                         {/* Switch to School Registration */}
@@ -171,10 +209,109 @@ export const LoginScreen: React.FC = () => {
 
                 {/* Footer */}
                 <div className="mt-6 text-center text-slate-600 text-xs space-y-1">
-                    <p>© 2025 Mini-Pautas · Sistema para professores angolanos</p>
+                    <p>© 2025 EduGest Angola · Sistema de Gestão Educacional</p>
                     <p className="text-slate-500">Desenvolvido com ❤️ para a educação</p>
                 </div>
             </div>
+
+            {/* Forgot Password Modal */}
+            {showForgotPasswordModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <Card className="w-full max-w-md animate-slide-up shadow-2xl">
+                        <CardBody className="p-6">
+                            {resetSuccess ? (
+                                <>
+                                    <div className="text-center">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+                                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                        <h3 className="text-xl font-bold text-slate-900 mb-2">Email Enviado!</h3>
+                                        <p className="text-slate-600 text-sm mb-4">
+                                            Enviamos um link de recuperação para <strong>{resetEmail}</strong>.
+                                            Verifique sua caixa de entrada e spam.
+                                        </p>
+                                        <p className="text-slate-500 text-xs">
+                                            Esta janela será fechada automaticamente...
+                                        </p>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-slate-900">Recuperar Senha</h3>
+                                        <button
+                                            onClick={() => {
+                                                setShowForgotPasswordModal(false)
+                                                setError(null)
+                                                setResetEmail('')
+                                            }}
+                                            className="text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                    </div>
+
+                                    <p className="text-slate-600 text-sm mb-4">
+                                        Digite seu email e enviaremos um link para redefinir sua senha.
+                                    </p>
+
+                                    {error && (
+                                        <div className="alert alert-error mb-4 animate-slide-down" role="alert">
+                                            <svg className="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                            </svg>
+                                            <span className="text-sm">{error}</span>
+                                        </div>
+                                    )}
+
+                                    <form onSubmit={handleForgotPassword} className="space-y-4">
+                                        <Input
+                                            label="Email"
+                                            type="email"
+                                            value={resetEmail}
+                                            onChange={(e) => setResetEmail(e.target.value)}
+                                            placeholder="seu.email@exemplo.com"
+                                            required
+                                            autoComplete="email"
+                                            icon={<Icons.Email />}
+                                        />
+
+                                        <div className="flex gap-3 mt-5">
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="md"
+                                                onClick={() => {
+                                                    setShowForgotPasswordModal(false)
+                                                    setError(null)
+                                                    setResetEmail('')
+                                                }}
+                                                fullWidth
+                                            >
+                                                Cancelar
+                                            </Button>
+                                            <Button
+                                                type="submit"
+                                                variant="primary"
+                                                size="md"
+                                                loading={resetLoading}
+                                                fullWidth
+                                                icon={<Icons.Send />}
+                                            >
+                                                {resetLoading ? 'Enviando...' : 'Enviar Link'}
+                                            </Button>
+                                        </div>
+                                    </form>
+                                </>
+                            )}
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
 
             <style>{`
         @keyframes blob {

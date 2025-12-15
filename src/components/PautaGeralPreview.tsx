@@ -40,12 +40,17 @@ interface PautaGeralData {
     alunos: Array<{
         numero_processo: string
         nome_completo: string
+        genero?: 'M' | 'F'
+        frequencia_anual?: number
         notas_por_disciplina: Record<string, Record<string, number>>
         media_geral: number
         observacao: 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas'
         motivos: string[]
         disciplinas_em_risco: string[]
         acoes_recomendadas: string[]
+        observacao_padronizada: string
+        motivo_retencao?: string
+        matricula_condicional: boolean
     }>
     disciplinas: DisciplinaComComponentes[]
     estatisticas?: {
@@ -182,15 +187,18 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                             {/* First row: Discipline headers */}
                             <tr>
                                 {fieldSelection.showNumeroProcesso && (
-                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-xs font-medium text-slate-700 uppercase tracking-wider sticky left-0 bg-slate-50 z-10">
+                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-left text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50">
                                         Nº
                                     </th>
                                 )}
                                 {fieldSelection.showNomeCompleto && (
-                                    <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-xs font-medium text-slate-700 uppercase tracking-wider sticky bg-slate-50 z-10" style={{ left: fieldSelection.showNumeroProcesso ? '45px' : '0' }}>
+                                    <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-left text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50">
                                         Nome do Aluno
                                     </th>
                                 )}
+                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50">
+                                    GÊN
+                                </th>
                                 {visibleDisciplinas.map((disciplina) => {
                                     const visibleComponentes = disciplina.componentes.filter(c =>
                                         fieldSelection.componentes.includes(c.id)
@@ -212,8 +220,11 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                         Média Geral
                                     </th>
                                 )}
+                                <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-green-100">
+                                    Freq. %
+                                </th>
                                 {fieldSelection.showObservacao && (
-                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50">
+                                    <th rowSpan={2} className="border border-slate-300 px-3 py-0.5 text-center text-xs font-medium text-slate-700 uppercase tracking-wider bg-slate-50">
                                         Observação
                                     </th>
                                 )}
@@ -246,15 +257,18 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                 return (
                                     <tr key={index} className="hover:bg-slate-50">
                                         {fieldSelection.showNumeroProcesso && (
-                                            <td className="border border-slate-300 px-2 py-0.5 whitespace-nowrap text-xs text-slate-900 sticky left-0 bg-white">
+                                            <td className="border border-slate-300 px-2 py-0.5 whitespace-nowrap text-xs text-slate-900 bg-white">
                                                 {index + 1}
                                             </td>
                                         )}
                                         {fieldSelection.showNomeCompleto && (
-                                            <td className="border border-slate-300 px-3 py-0.5 whitespace-nowrap text-xs text-slate-900 sticky bg-white" style={{ left: fieldSelection.showNumeroProcesso ? '45px' : '0' }}>
+                                            <td className="border border-slate-300 px-3 py-0.5 whitespace-nowrap text-xs text-slate-900 bg-white">
                                                 {aluno.nome_completo}
                                             </td>
                                         )}
+                                        <td className="border border-slate-300 px-2 py-0.5 whitespace-nowrap text-center text-xs text-slate-900 bg-white">
+                                            {aluno.genero || '-'}
+                                        </td>
                                         {visibleDisciplinas.map((disciplina) => {
                                             const notasDisciplina = aluno.notas_por_disciplina[disciplina.id] || {}
                                             const visibleComponentes = disciplina.componentes.filter(c =>
@@ -282,16 +296,32 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                                 {mediaGeralDinamica.toFixed(2)}
                                             </td>
                                         )}
+                                        {/* Frequência */}
+                                        <td className={`border border-slate-300 px-2 py-0.5 whitespace-nowrap text-center text-xs font-semibold ${aluno.frequencia_anual !== undefined && aluno.frequencia_anual !== null && aluno.frequencia_anual < 66.67
+                                            ? 'bg-red-100 text-red-800'
+                                            : 'bg-green-50 text-green-800'
+                                            }`}>
+                                            {aluno.frequencia_anual !== undefined && aluno.frequencia_anual !== null ? `${aluno.frequencia_anual.toFixed(1)}%` : 'N/A'}
+                                        </td>
                                         {fieldSelection.showObservacao && (
-                                            <td className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
-                                                <span className={
-                                                    observacaoDinamica === 'Transita' ? 'text-blue-600' :
-                                                        observacaoDinamica === 'Condicional' ? 'text-yellow-600' :
-                                                            observacaoDinamica === 'AguardandoNotas' ? 'text-gray-500' :
-                                                                'text-red-600'
-                                                }>
-                                                    {observacaoDinamica}
-                                                </span>
+                                            <td className="border border-slate-300 px-3 py-0.5 text-center text-xs">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    {/* Status Badge */}
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold ${aluno.observacao === 'Transita' ? 'bg-blue-100 text-blue-800' :
+                                                            aluno.observacao === 'Condicional' ? 'bg-yellow-100 text-yellow-800' :
+                                                                aluno.observacao === 'AguardandoNotas' ? 'bg-gray-100 text-gray-600' :
+                                                                    'bg-red-100 text-red-800'
+                                                        }`}>
+                                                        {aluno.observacao}
+                                                    </span>
+
+                                                    {/* Matrícula Condicional Badge */}
+                                                    {aluno.matricula_condicional && (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-orange-100 text-orange-800" title="Exame Extraordinário">
+                                                            📝 Cond.
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                         )}
                                     </tr>

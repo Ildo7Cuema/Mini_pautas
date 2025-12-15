@@ -1,5 +1,5 @@
 /**
- * TypeScript Type Definitions for Mini-Pautas System
+ * TypeScript Type Definitions for EduGest Angola System
  */
 
 // ============================================
@@ -366,6 +366,7 @@ export interface TurmaProfessor {
 export interface ProfessorProfile extends Professor {
     user_profile: UserProfile;
     turmas_associadas?: TurmaProfessor[];
+    escola?: Escola;
 }
 
 export interface AuthUser {

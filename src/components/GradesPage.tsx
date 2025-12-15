@@ -36,7 +36,11 @@ interface Turma {
     trimestre: number
 }
 
-export const GradesPage: React.FC = () => {
+interface GradesPageProps {
+    searchQuery?: string
+}
+
+export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearchQuery = '' }) => {
     const { isProfessor, professorProfile } = useAuth()
     // Selection state
     const [turmas, setTurmas] = useState<Turma[]>([])
@@ -58,7 +62,8 @@ export const GradesPage: React.FC = () => {
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
-    const [searchQuery, setSearchQuery] = useState('')
+    // Use topbar search if provided, otherwise use local state
+    const searchQuery = topbarSearchQuery
     const [sortBy, setSortBy] = useState<'nome' | 'numero' | 'nota'>('numero')
     const [filterStatus, setFilterStatus] = useState<'all' | 'filled' | 'pending'>('all')
     const [showImportModal, setShowImportModal] = useState(false)
@@ -247,7 +252,10 @@ export const GradesPage: React.FC = () => {
                             carga_horaria,
                             descricao,
                             created_at,
-                            updated_at
+                            updated_at,
+                            professores!inner (
+                                nome_completo
+                            )
                         )
                     `)
                     .eq('professor_id', professorProfile.id)
@@ -270,7 +278,20 @@ export const GradesPage: React.FC = () => {
 
                     const { data, error } = await supabase
                         .from('disciplinas')
-                        .select('id, nome, codigo_disciplina, professor_id, turma_id, carga_horaria, descricao, created_at, updated_at')
+                        .select(`
+                            id,
+                            nome,
+                            codigo_disciplina,
+                            professor_id,
+                            turma_id,
+                            carga_horaria,
+                            descricao,
+                            created_at,
+                            updated_at,
+                            professores!inner (
+                                nome_completo
+                            )
+                        `)
                         .eq('turma_id', selectedTurma)
                         .eq('professor_id', professorProfile.id)
                         .order('nome')
@@ -289,7 +310,20 @@ export const GradesPage: React.FC = () => {
                 // For escola: load all disciplinas for the turma
                 let query = supabase
                     .from('disciplinas')
-                    .select('id, nome, codigo_disciplina, professor_id, turma_id, carga_horaria, descricao, created_at, updated_at')
+                    .select(`
+                        id,
+                        nome,
+                        codigo_disciplina,
+                        professor_id,
+                        turma_id,
+                        carga_horaria,
+                        descricao,
+                        created_at,
+                        updated_at,
+                        professores!inner (
+                            nome_completo
+                        )
+                    `)
                     .eq('turma_id', selectedTurma)
 
                 const { data, error } = await query.order('nome')
@@ -645,11 +679,14 @@ export const GradesPage: React.FC = () => {
                                 disabled={!selectedTurma}
                             >
                                 <option value="">Selecione uma disciplina</option>
-                                {disciplinas.map((disciplina) => (
-                                    <option key={disciplina.id} value={disciplina.id}>
-                                        {disciplina.nome}
-                                    </option>
-                                ))}
+                                {disciplinas.map((disciplina) => {
+                                    const professorName = (disciplina as any).professores?.nome_completo
+                                    return (
+                                        <option key={disciplina.id} value={disciplina.id}>
+                                            {disciplina.nome}{professorName ? ` (Prof. ${professorName})` : ''}
+                                        </option>
+                                    )
+                                })}
                             </select>
                             {selectedTurma && disciplinas.length === 0 && (
                                 <div className="mt-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">

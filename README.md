@@ -1,6 +1,6 @@
-# Mini-Pautas System
+# EduGest Angola
 
-Sistema de Mini-Pautas para professores angolanos - Gestão completa de notas com cálculo automático baseado em fórmulas personalizáveis.
+Sistema Integrado de Gestão Educacional para professores angolanos - Gestão completa de notas, turmas, avaliações e relatórios com cálculo automático baseado em fórmulas personalizáveis.
 
 ## 🎯 Características Principais
 
@@ -9,7 +9,7 @@ Sistema de Mini-Pautas para professores angolanos - Gestão completa de notas co
 - ✅ **Sistema de Trimestres**: Suporte completo ao sistema angolano
 - ✅ **Multi-Escola**: Suporte para múltiplas escolas e professores
 - ✅ **Segurança**: Row Level Security (RLS) para proteção de dados
-- ✅ **Relatórios**: Geração automática de mini-pautas em PDF
+- ✅ **Relatórios**: Geração automática de pautas e relatórios em PDF
 - ✅ **Auditoria**: Rastreamento completo de todas as alterações
 - ✅ **Notificações**: Alertas automáticos para alunos e encarregados
 
@@ -135,7 +135,7 @@ supabase functions deploy generate-report
 
 ## 📝 Licença
 
-Copyright © 2025 Mini-Pautas. Todos os direitos reservados.
+Copyright © 2025 EduGest Angola. Todos os direitos reservados.
 
 ## 🤝 Contribuindo
 
@@ -143,8 +143,8 @@ Este é um projeto proprietário. Para contribuições, entre em contato com a e
 
 ## 📧 Suporte
 
-- Email: support@mini-pautas.ao
-- Documentação: https://docs.mini-pautas.ao
+- Email: support@edugest.ao
+- Documentação: https://docs.edugest.ao
 - WhatsApp: +244 XXX XXX XXX
 
 ## 🙏 Agradecimentos

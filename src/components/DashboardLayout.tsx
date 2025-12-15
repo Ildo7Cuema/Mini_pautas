@@ -7,9 +7,12 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../contexts/AuthContext'
+import { NotificationPanel } from './NotificationPanel'
+import { Notification, formatNotificationCount } from '../utils/notificationUtils'
+import { fetchNotifications, markAsRead, markAllAsRead } from '../utils/notificationApi'
 
 interface SidebarProps {
     children: ReactNode
@@ -32,6 +35,11 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     const [searchQuery, setSearchQuery] = useState('')
     const { user, isEscola, isProfessor, escolaProfile, professorProfile } = useAuth()
 
+    // Notification state
+    const [notificationPanelOpen, setNotificationPanelOpen] = useState(false)
+    const [notifications, setNotifications] = useState<Notification[]>([])
+    const [loadingNotifications, setLoadingNotifications] = useState(false)
+
     // Helper to get display name
     const getDisplayName = () => {
         if (isEscola && escolaProfile) {
@@ -47,6 +55,50 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         const name = getDisplayName()
         return name.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
     }
+
+    // Load notifications on mount and when user changes
+    useEffect(() => {
+        if (user) {
+            loadNotifications()
+        }
+    }, [user])
+
+    const loadNotifications = async () => {
+        if (!user) return
+
+        setLoadingNotifications(true)
+        const { data } = await fetchNotifications(user.id)
+        setNotifications(data)
+        setLoadingNotifications(false)
+    }
+
+    const handleMarkAsRead = async (id: string) => {
+        await markAsRead(id)
+        setNotifications(prev =>
+            prev.map(n => n.id === id ? { ...n, lida: true } : n)
+        )
+    }
+
+    const handleMarkAllAsRead = async () => {
+        if (!user) return
+
+        await markAllAsRead(user.id)
+        setNotifications(prev =>
+            prev.map(n => ({ ...n, lida: true }))
+        )
+    }
+
+    const handleNotificationClick = (notification: Notification) => {
+        // Close panel
+        setNotificationPanelOpen(false)
+
+        // Navigate if link is provided
+        if (notification.link) {
+            onNavigate(notification.link)
+        }
+    }
+
+    const unreadCount = notifications.filter(n => !n.lida).length
 
     // Helper to get role label
     const getRoleLabel = () => {
@@ -179,7 +231,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
                             </div>
-                            <span className="font-bold text-slate-900">Mini-Pautas</span>
+                            <span className="font-bold text-slate-900">EduGest Angola</span>
                         </div>
                     ) : (
                         <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center mx-auto">
@@ -228,6 +280,11 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                     {getDisplayName()}
                                 </p>
                                 <p className="text-xs text-slate-500 truncate">{getRoleLabel()}</p>
+                                {isProfessor && professorProfile?.escola && (
+                                    <p className="text-xs text-slate-400 truncate mt-0.5">
+                                        {professorProfile.escola.nome}
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>
@@ -279,12 +336,31 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                         </form>
 
                         {/* Notifications */}
-                        <button className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-h-touch min-w-touch flex items-center justify-center">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                            </svg>
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setNotificationPanelOpen(!notificationPanelOpen)}
+                                className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-h-touch min-w-touch flex items-center justify-center"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                                </svg>
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center px-1">
+                                        {formatNotificationCount(unreadCount)}
+                                    </span>
+                                )}
+                            </button>
+
+                            <NotificationPanel
+                                isOpen={notificationPanelOpen}
+                                onClose={() => setNotificationPanelOpen(false)}
+                                notifications={notifications}
+                                onMarkAsRead={handleMarkAsRead}
+                                onMarkAllAsRead={handleMarkAllAsRead}
+                                onNotificationClick={handleNotificationClick}
+                                loading={loadingNotifications}
+                            />
+                        </div>
 
                         {/* Logout - Hidden on mobile */}
                         <button
@@ -387,6 +463,11 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                         {getDisplayName()}
                                     </p>
                                     <p className="text-sm text-slate-500">{getRoleLabel()}</p>
+                                    {isProfessor && professorProfile?.escola && (
+                                        <p className="text-xs text-slate-400 mt-0.5">
+                                            {professorProfile.escola.nome}
+                                        </p>
+                                    )}
                                 </div>
                             </div>
                         </div>

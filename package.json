@@ -1,7 +1,7 @@
 {
-    "name": "mini-pautas",
+    "name": "edugest-angola",
     "version": "1.0.0",
-    "description": "Sistema de Mini-Pautas para professores angolanos",
+    "description": "EduGest Angola - Sistema Integrado de Gestão Educacional",
     "type": "module",
     "scripts": {
         "dev": "vite",
