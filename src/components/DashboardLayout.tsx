@@ -266,49 +266,61 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     }
 
     return (
-        <div className="flex flex-col md:flex-row h-screen bg-slate-50">
+        <div className="flex flex-col md:flex-row h-screen bg-slate-50 relative overflow-hidden">
+            {/* Background Pattern - Subtle */}
+            <div className="absolute inset-0 opacity-[0.015] pointer-events-none z-0"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                }}
+            />
+
             {/* Desktop Sidebar - Hidden on mobile */}
             <aside
-                className={`hidden md:flex ${sidebarOpen ? 'w-64' : 'w-20'
-                    } bg-white border-r border-slate-200 transition-all duration-300 ease-in-out flex-col relative`}
+                className={`hidden md:flex ${sidebarOpen ? 'w-72' : 'w-20'
+                    } bg-white/90 backdrop-blur-xl border-r border-slate-200/60 transition-all duration-300 ease-in-out flex-col relative z-20 shadow-sm`}
             >
                 {/* Logo */}
-                <div className="h-16 flex items-center justify-between px-4 border-b border-slate-200">
+                <div className="h-20 flex items-center justify-between px-6 border-b border-slate-100">
                     {sidebarOpen ? (
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
+                        <div className="flex items-center gap-3 animate-fade-in">
+                            <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-xl shadow-lg shadow-primary-500/20 flex items-center justify-center transform hover:scale-105 transition-transform duration-200">
                                 <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                                 </svg>
                             </div>
-                            <span className="font-bold text-slate-900">EduGest Angola</span>
+                            <div className="flex flex-col">
+                                <span className="font-bold text-slate-900 leading-tight">EduGest</span>
+                                <span className="text-[10px] font-bold tracking-widest text-primary-600 uppercase">Angola</span>
+                            </div>
                         </div>
                     ) : (
-                        <div className="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center mx-auto">
+                        <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-xl shadow-md flex items-center justify-center mx-auto">
                             <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </div>
                     )}
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+                <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
                     {navItems.map((item) => (
                         <button
                             key={item.path}
                             onClick={() => onNavigate(item.path)}
-                            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 min-h-touch ${currentPage === item.path
-                                ? 'bg-primary-50 text-primary-600'
-                                : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                            className={`w-full flex items-center gap-3.5 px-3.5 py-3 rounded-xl transition-all duration-200 group ${currentPage === item.path
+                                ? 'bg-primary-50/80 text-primary-700 shadow-sm ring-1 ring-primary-100'
+                                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
                                 }`}
                         >
-                            {item.icon}
+                            <div className={`transition-colors duration-200 ${currentPage === item.path ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`}>
+                                {item.icon}
+                            </div>
                             {sidebarOpen && (
                                 <>
-                                    <span className="flex-1 text-left text-sm font-medium">{item.name}</span>
+                                    <span className="flex-1 text-left text-sm font-semibold tracking-wide">{item.name}</span>
                                     {item.badge && (
-                                        <span className="bg-primary-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">
+                                        <span className="bg-primary-100 text-primary-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-primary-200">
                                             {item.badge}
                                         </span>
                                     )}
@@ -319,22 +331,17 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 </nav>
 
                 {/* User Profile */}
-                <div className="p-3 border-t border-slate-200">
-                    <div className={`flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer min-h-touch ${!sidebarOpen && 'justify-center'}`}>
-                        <div className="w-9 h-9 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+                <div className="p-4 border-t border-slate-100 bg-slate-50/50">
+                    <div className={`flex items-center gap-3 px-2 py-2 rounded-xl transition-colors cursor-pointer hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-100 ${!sidebarOpen && 'justify-center'}`}>
+                        <div className="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-800 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-md ring-2 ring-white">
                             {getInitials()}
                         </div>
                         {sidebarOpen && (
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-slate-900 truncate">
+                                <p className="text-sm font-bold text-slate-800 truncate">
                                     {getDisplayName()}
                                 </p>
-                                <p className="text-xs text-slate-500 truncate">{getRoleLabel()}</p>
-                                {isProfessor && professorProfile?.escola && (
-                                    <p className="text-xs text-slate-400 truncate mt-0.5">
-                                        {professorProfile.escola.nome}
-                                    </p>
-                                )}
+                                <p className="text-xs text-slate-500 truncate font-medium">{getRoleLabel()}</p>
                             </div>
                         )}
                     </div>
@@ -343,61 +350,59 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                 {/* Toggle Button */}
                 <button
                     onClick={() => setSidebarOpen(!sidebarOpen)}
-                    className="absolute -right-3 top-20 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-all shadow-sm"
+                    className="absolute -right-3 top-24 w-6 h-6 bg-white border border-slate-200 rounded-full flex items-center justify-center text-slate-400 hover:text-primary-600 hover:border-primary-100 transition-all shadow-sm z-30 ring-2 ring-slate-50"
                 >
                     <svg
-                        className={`w-4 h-4 transition-transform ${!sidebarOpen && 'rotate-180'}`}
+                        className={`w-3.5 h-3.5 transition-transform duration-300 ${!sidebarOpen && 'rotate-180'}`}
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
                     >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
                     </svg>
                 </button>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 flex flex-col overflow-hidden pb-16 md:pb-0">
+            <main className="flex-1 flex flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom)+60px)] md:pb-0 z-10">
                 {/* Header - Responsive */}
-                <header className="h-14 md:h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-6">
-                    <div className="flex items-center gap-3">
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-4 md:px-8 z-20 sticky top-0">
+                    <div className="flex items-center gap-4">
                         {/* Mobile Logo */}
-                        <div className="md:hidden w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
+                        <div className="md:hidden w-9 h-9 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/20">
                             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
                         </div>
-                        <h1 className="text-lg md:text-xl font-bold text-slate-900">{getPageTitle()}</h1>
+                        <h1 className="text-xl font-bold text-slate-800 tracking-tight">{getPageTitle()}</h1>
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-3 md:gap-6">
                         {/* Search - Hidden on mobile, shown on desktop */}
-                        <form onSubmit={handleSearch} className="relative hidden md:block">
+                        <form onSubmit={handleSearch} className="relative hidden md:block group">
                             <input
                                 type="search"
-                                placeholder="Buscar turmas, alunos..."
+                                placeholder="Buscar..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-64 pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                className="w-64 pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 focus:bg-white transition-all duration-200"
                             />
-                            <svg className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 transform -translate-y-1/2 group-focus-within:text-primary-500 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                             </svg>
                         </form>
 
-                        {/* Notifications */}
-                        <div className="relative">
+                        {/* Actions */}
+                        <div className="flex items-center gap-1.5">
                             <button
                                 onClick={() => setNotificationPanelOpen(!notificationPanelOpen)}
-                                className="relative p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-h-touch min-w-touch flex items-center justify-center"
+                                className="relative p-2.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all duration-200 active:scale-95"
                             >
                                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                                 </svg>
                                 {unreadCount > 0 && (
-                                    <span className="absolute top-1 right-1 min-w-[18px] h-[18px] bg-red-500 text-white text-xs font-semibold rounded-full flex items-center justify-center px-1">
-                                        {formatNotificationCount(unreadCount)}
-                                    </span>
+                                    <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full animate-pulse" />
                                 )}
                             </button>
 
@@ -410,51 +415,61 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                 onNotificationClick={handleNotificationClick}
                                 loading={loadingNotifications}
                             />
-                        </div>
 
-                        {/* Logout - Hidden on mobile */}
-                        <button
-                            onClick={async () => {
-                                const { supabase } = await import('../lib/supabaseClient')
-                                await supabase.auth.signOut()
-                            }}
-                            className="hidden md:flex p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors min-h-touch min-w-touch items-center justify-center"
-                        >
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                            </svg>
-                        </button>
+                            <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block" />
+
+                            <button
+                                onClick={async () => {
+                                    const { supabase } = await import('../lib/supabaseClient')
+                                    await supabase.auth.signOut()
+                                }}
+                                className="hidden md:flex p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 active:scale-95 tooltip-trigger"
+                                title="Sair"
+                            >
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </header>
 
                 {/* Content Area with Page Transition */}
-                <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                    <div className="page-enter">
+                <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 scroll-smooth">
+                    <div className="page-enter max-w-7xl mx-auto w-full">
                         {children}
                     </div>
                 </div>
             </main>
 
-            {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200/80 px-2 pt-1 pb-safe z-50" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
-                <div className="flex items-center justify-around">
+            {/* Mobile Bottom Navigation - Glassmorphism */}
+            <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-xl border border-white/20 shadow-lg shadow-black/5 rounded-2xl z-50 overflow-hidden isolate"
+                style={{
+                    paddingBottom: 'max(env(safe-area-inset-bottom), 0px)',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)'
+                }}
+            >
+                {/* Active Indicator Background */}
+                <div className="absolute inset-0 z-0 pointer-events-none">
+                    {/* We could add a sliding pill here if we calculated position, but simpler to style the buttons */}
+                </div>
+
+                <div className="grid grid-cols-5 items-center relative z-10">
                     {mobileNavItems.map((item) => (
                         <button
                             key={item.path}
                             onClick={() => handleMobileNav(item.path)}
-                            className={`relative flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-all duration-200 touch-scale ${currentPage === item.path
-                                    ? 'text-primary-600'
-                                    : 'text-slate-400 active:text-slate-600'
+                            className={`relative flex flex-col items-center justify-center py-3 px-1 transition-all duration-300 ${currentPage === item.path
+                                ? 'text-primary-600'
+                                : 'text-slate-400 hover:text-slate-600'
                                 }`}
                         >
-                            {/* Active Indicator */}
-                            {currentPage === item.path && (
-                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-600 rounded-full animate-scale-in" />
-                            )}
-                            <div className={`transition-transform duration-200 ${currentPage === item.path ? 'scale-110' : ''}`}>
+                            <span className={`absolute -top-[1px] left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-500 rounded-b-lg transition-transform duration-300 ${currentPage === item.path ? 'translate-y-0' : '-translate-y-full'}`} />
+
+                            <div className={`transition-transform duration-200 ${currentPage === item.path ? 'scale-110 -translate-y-0.5' : ''}`}>
                                 {item.icon}
                             </div>
-                            <span className={`text-xs mt-1 font-medium transition-all duration-200 ${currentPage === item.path ? 'font-semibold' : ''}`}>
+                            <span className={`text-[10px] mt-1 font-medium leading-none transition-all duration-200 ${currentPage === item.path ? 'opacity-100 font-bold' : 'opacity-70'}`}>
                                 {item.name}
                             </span>
                         </button>
@@ -462,72 +477,73 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                     {/* More Button */}
                     <button
                         onClick={() => handleMobileNav('more')}
-                        className="relative flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-all duration-200 touch-scale text-slate-400 active:text-slate-600"
+                        className="relative flex flex-col items-center justify-center py-3 px-1 transition-all duration-200 text-slate-400 active:text-slate-600"
                     >
-                        {moreIcon}
-                        <span className="text-xs mt-1 font-medium">Mais</span>
+                        <div className="transition-transform active:scale-95">
+                            {moreIcon}
+                        </div>
+                        <span className="text-[10px] mt-1 font-medium leading-none opacity-70">Mais</span>
                     </button>
                 </div>
             </nav>
 
             {/* Mobile More Menu Overlay */}
             {mobileMenuOpen && (
-                <div className="md:hidden fixed inset-0 z-50 animate-fade-in">
+                <div className="md:hidden fixed inset-0 z-[60]">
                     {/* Backdrop */}
                     <div
-                        className="absolute inset-0 bg-black/50"
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm animate-fade-in"
                         onClick={() => setMobileMenuOpen(false)}
                     />
 
                     {/* Menu Panel */}
-                    <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-2xl p-4 pb-8 animate-slide-up safe-area-inset-bottom">
-                        <div className="w-12 h-1 bg-slate-300 rounded-full mx-auto mb-4" />
+                    <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl p-2 pb-6 animate-slide-up shadow-2xl safe-area-inset-bottom ring-1 ring-slate-200">
+                        <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 mt-2" />
 
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             {navItems.filter(item => !item.showInMobile).map((item) => (
                                 <button
                                     key={item.path}
                                     onClick={() => handleMobileNav(item.path)}
-                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-colors min-h-touch ${currentPage === item.path
-                                        ? 'bg-primary-50 text-primary-600'
-                                        : 'text-slate-700 hover:bg-slate-100'
+                                    className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all ${currentPage === item.path
+                                        ? 'bg-primary-50 text-primary-600 font-semibold'
+                                        : 'text-slate-700 hover:bg-slate-50'
                                         }`}
                                 >
-                                    {item.icon}
-                                    <span className="font-medium">{item.name}</span>
+                                    <div className={currentPage === item.path ? 'text-primary-600' : 'text-slate-400'}>
+                                        {item.icon}
+                                    </div>
+                                    <span className="text-sm">{item.name}</span>
                                 </button>
                             ))}
+
+                            <div className="h-px bg-slate-100 my-2 mx-4" />
 
                             {/* Logout */}
                             <button
                                 onClick={async () => {
                                     await supabase.auth.signOut()
                                 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors min-h-touch"
+                                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-red-600 hover:bg-red-50 transition-all active:scale-[0.98]"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                                 </svg>
-                                <span className="font-medium">Terminar Sessão</span>
+                                <span className="font-semibold text-sm">Terminar Sessão</span>
                             </button>
                         </div>
 
                         {/* User Info */}
-                        <div className="mt-4 pt-4 border-t border-slate-200">
-                            <div className="flex items-center gap-3 px-4">
-                                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-semibold">
+                        <div className="mt-4 pt-4 border-t border-slate-100 px-2">
+                            <div className="flex items-center gap-3.5 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white">
                                     {getInitials()}
                                 </div>
-                                <div>
-                                    <p className="font-medium text-slate-900">
+                                <div className="flex-1 min-w-0">
+                                    <p className="font-bold text-slate-900 truncate text-sm">
                                         {getDisplayName()}
                                     </p>
-                                    <p className="text-sm text-slate-500">{getRoleLabel()}</p>
-                                    {isProfessor && professorProfile?.escola && (
-                                        <p className="text-xs text-slate-400 mt-0.5">
-                                            {professorProfile.escola.nome}
-                                        </p>
-                                    )}
+                                    <p className="text-xs text-slate-500 font-medium">{getRoleLabel()}</p>
                                 </div>
                             </div>
                         </div>

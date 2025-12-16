@@ -367,251 +367,349 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
     ]
 
     return (
-        <div className="space-y-4 md:space-y-6">
+        <div className="space-y-6 md:space-y-8 pb-8">
             {/* Welcome Section */}
-            <div>
-                <h2 className="text-xl md:text-2xl font-bold text-slate-900 mb-1">
-                    Bem-vindo de volta, {getUserDisplayName()}!
-                </h2>
-                <p className="text-sm md:text-base text-slate-600">Aqui está um resumo das suas turmas e alunos</p>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
+                <div>
+                    <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                        Olá, {getUserDisplayName()}! 👋
+                    </h2>
+                    <p className="text-slate-500 mt-1">Aqui está o resumo das suas atividades hoje.</p>
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => loadDashboardData()}
+                        className="p-2.5 text-slate-400 hover:text-primary-600 hover:bg-white bg-white/50 border border-slate-200/60 rounded-xl transition-all shadow-sm active:scale-95"
+                        title="Atualizar dados"
+                    >
+                        <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </button>
+                    <button
+                        onClick={() => handleQuickAction('new-class')}
+                        className="btn-premium flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold shadow-lg shadow-primary-500/20 active:scale-95"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        <span className="hidden sm:inline">Nova Turma</span>
+                    </button>
+                </div>
             </div>
 
-            {/* Stats Grid - 2 columns on mobile, 4 on desktop */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6 animate-slide-up">
                 {statsData.map((stat, index) => (
-                    <Card key={index} className="hover:shadow-lg transition-shadow">
-                        <CardBody className="p-3 md:p-5">
-                            <div className="flex items-center justify-between gap-2">
-                                <div className="flex-1 min-w-0">
-                                    <p className="text-xs md:text-sm font-medium text-slate-600 mb-1 truncate">{stat.title}</p>
-                                    <p className="text-xl md:text-3xl font-bold text-slate-900">{stat.value}</p>
-                                    {stat.change !== '--' && (
-                                        <div className="flex items-center gap-1 mt-2">
-                                            <span className={`text-sm font-medium ${stat.changeType === 'positive' ? 'text-green-600' : 'text-red-600'
-                                                }`}>
-                                                {stat.change}
-                                            </span>
-                                            <span className="text-xs text-slate-500">este mês</span>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-100 rounded-lg flex items-center justify-center text-primary-600 flex-shrink-0">
+                    <Card key={index} className="border-0 shadow-md shadow-slate-200/50 hover:shadow-xl hover:shadow-slate-300/40 transition-all duration-300 group overflow-hidden relative">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-white/0 to-slate-100/50 rounded-bl-[100px] -mr-4 -mt-4 transition-transform group-hover:scale-110" />
+
+                        <CardBody className="p-4 md:p-6 relative z-10">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/10 ${index === 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' :
+                                        index === 1 ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white' :
+                                            index === 2 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' :
+                                                'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
+                                    }`}>
                                     {stat.icon}
                                 </div>
+                                {stat.change !== '--' && (
+                                    <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${stat.changeType === 'positive'
+                                            ? 'bg-green-50 text-green-700'
+                                            : 'bg-red-50 text-red-700'
+                                        }`}>
+                                        {stat.changeType === 'positive' ? '↑' : '↓'} {stat.change}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div>
+                                <p className="text-sm font-medium text-slate-500 mb-1">{stat.title}</p>
+                                <h3 className="text-2xl md:text-3xl font-bold text-slate-800 tracking-tight">{stat.value}</h3>
                             </div>
                         </CardBody>
                     </Card>
                 ))}
             </div>
 
-            {/* Recent Classes */}
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-semibold text-slate-900">Turmas Recentes</h3>
-                        <button
-                            onClick={() => onNavigate?.('classes')}
-                            className="text-sm text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                            Ver todas
-                        </button>
-                    </div>
-                </CardHeader>
-                <CardBody className="p-0">
-                    {recentClasses.length === 0 ? (
-                        <div className="text-center py-8 md:py-12">
-                            <p className="text-slate-600">Nenhuma turma encontrada</p>
-                            <button
-                                onClick={() => handleQuickAction('new-class')}
-                                className="mt-4 text-primary-600 hover:text-primary-700 font-medium min-h-touch inline-flex items-center"
-                            >
-                                Criar sua primeira turma
-                            </button>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Mobile Card View */}
-                            <div className="md:hidden divide-y divide-slate-100">
-                                {recentClasses.map((cls) => (
-                                    <div key={cls.id} className="p-4 flex items-center justify-between gap-3">
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-slate-900 truncate">{cls.nome}</p>
-                                            <p className="text-sm text-slate-500">{cls.total_alunos} alunos</p>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            {cls.media > 0 ? (
-                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${cls.media >= 14 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                                                    }`}>
-                                                    {cls.media.toFixed(1)}
-                                                </span>
-                                            ) : (
-                                                <span className="text-slate-400 text-sm">--</span>
-                                            )}
-                                            <button
-                                                onClick={() => onNavigate?.('classes')}
-                                                className="text-primary-600 p-2 min-h-touch min-w-touch flex items-center justify-center"
-                                            >
-                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
+            <div className="grid lg:grid-cols-3 gap-6">
+                {/* Recent Classes */}
+                <div className="lg:col-span-2 animate-slide-up" style={{ animationDelay: '100ms' }}>
+                    <Card className="h-full border-0 shadow-md shadow-slate-200/50">
+                        <CardHeader className="border-b border-slate-100 bg-white/50 backdrop-blur-sm p-5 md:p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-800">Turmas Recentes</h3>
+                                    <p className="text-sm text-slate-400">Visão geral das últimas turmas</p>
+                                </div>
+                                <button
+                                    onClick={() => onNavigate?.('classes')}
+                                    className="text-sm text-primary-600 hover:text-primary-700 font-semibold hover:bg-primary-50 px-3 py-1.5 rounded-lg transition-colors"
+                                >
+                                    Ver todas
+                                </button>
                             </div>
-
-                            {/* Desktop Table View */}
-                            <div className="hidden md:block overflow-x-auto">
-                                <table className="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Turma</th>
-                                            <th>Alunos</th>
-                                            <th>Média</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                        </CardHeader>
+                        <CardBody className="p-0">
+                            {recentClasses.length === 0 ? (
+                                <div className="text-center py-16 px-6">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="text-slate-900 font-semibold mb-1">Nenhuma turma encontrada</h4>
+                                    <p className="text-slate-500 text-sm mb-4 max-w-xs mx-auto">Comece criando sua primeira turma para gerenciar alunos e notas.</p>
+                                    <button
+                                        onClick={() => handleQuickAction('new-class')}
+                                        className="text-primary-600 hover:text-primary-700 font-medium text-sm hover:underline"
+                                    >
+                                        + Criar turma agora
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Mobile List View */}
+                                    <div className="md:hidden divide-y divide-slate-50">
                                         {recentClasses.map((cls) => (
-                                            <tr key={cls.id}>
-                                                <td className="font-medium text-slate-900">{cls.nome}</td>
-                                                <td className="text-slate-600">{cls.total_alunos} alunos</td>
-                                                <td>
+                                            <div key={cls.id} className="p-4 flex items-center gap-4 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => onNavigate?.('classes')}>
+                                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs shadow-inner">
+                                                    {cls.nome.substring(0, 2).toUpperCase()}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-bold text-slate-800 truncate">{cls.nome}</p>
+                                                    <p className="text-xs text-slate-500 font-medium">{cls.total_alunos} alunos</p>
+                                                </div>
+                                                <div className="flex items-center gap-3">
                                                     {cls.media > 0 ? (
-                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${cls.media >= 14 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${cls.media >= 14 ? 'bg-green-100 text-green-700' :
+                                                                cls.media >= 10 ? 'bg-yellow-100 text-yellow-700' :
+                                                                    'bg-red-100 text-red-700'
                                                             }`}>
                                                             {cls.media.toFixed(1)}
                                                         </span>
                                                     ) : (
-                                                        <span className="text-slate-400 text-sm">--</span>
+                                                        <span className="text-slate-300 text-xs font-medium bg-slate-50 px-2 py-1 rounded-lg">--</span>
                                                     )}
-                                                </td>
-                                                <td>
-                                                    <button
-                                                        onClick={() => onNavigate?.('classes')}
-                                                        className="text-primary-600 hover:text-primary-700 text-sm font-medium min-h-touch inline-flex items-center"
-                                                    >
-                                                        Ver detalhes
-                                                    </button>
-                                                </td>
-                                            </tr>
+                                                    <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
                                         ))}
-                                    </tbody>
-                                </table>
+                                    </div>
+
+                                    {/* Desktop Table View */}
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="w-full text-left border-collapse">
+                                            <thead>
+                                                <tr className="border-b border-slate-100 text-xs uppercase tracking-wider text-slate-400 font-semibold bg-slate-50/50">
+                                                    <th className="px-6 py-4 pl-8">Turma</th>
+                                                    <th className="px-6 py-4">Total Alunos</th>
+                                                    <th className="px-6 py-4">Média Geral</th>
+                                                    <th className="px-6 py-4 text-right pr-8">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-50">
+                                                {recentClasses.map((cls) => (
+                                                    <tr key={cls.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                        <td className="px-6 py-4 pl-8">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs font-bold">
+                                                                    {cls.nome.substring(0, 1)}
+                                                                </div>
+                                                                <span className="font-semibold text-slate-700">{cls.nome}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                                                                {cls.total_alunos}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4">
+                                                            {cls.media > 0 ? (
+                                                                <div className="flex items-center gap-2">
+                                                                    <div className="flex-1 w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                                        <div
+                                                                            className={`h-full rounded-full ${cls.media >= 14 ? 'bg-green-500' : 'bg-yellow-500'
+                                                                                }`}
+                                                                            style={{ width: `${(cls.media / 20) * 100}%` }}
+                                                                        />
+                                                                    </div>
+                                                                    <span className="text-xs font-bold text-slate-600">{cls.media.toFixed(1)}</span>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-400 text-sm">--</span>
+                                                            )}
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right pr-8">
+                                                            <button
+                                                                onClick={() => onNavigate?.('classes')}
+                                                                className="text-slate-400 hover:text-primary-600 hover:bg-primary-50 p-2 rounded-lg transition-all transform hover:scale-110 active:scale-95"
+                                                                title="Ver detalhes"
+                                                            >
+                                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                                                </svg>
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
+                        </CardBody>
+                    </Card>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="space-y-6 animate-slide-up" style={{ animationDelay: '200ms' }}>
+                    <div className="flex items-center justify-between px-1">
+                        <h3 className="font-bold text-slate-800">Acesso Rápido</h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 lg:grid-cols-1 gap-4">
+                        <button
+                            onClick={() => handleQuickAction('new-class')}
+                            className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-primary-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative z-10">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-indigo-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-primary-500/30 group-hover:scale-110 transition-transform">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                    </svg>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm group-hover:text-primary-700 transition-colors">Nova Turma</h4>
+                                <p className="text-xs text-slate-500 mt-1">Crie uma nova turma para começar</p>
                             </div>
-                        </>
-                    )}
-                </CardBody>
-            </Card>
+                        </button>
 
-            {/* Quick Actions - Horizontal scroll on mobile, grid on desktop */}
-            <div className="flex md:grid md:grid-cols-3 gap-3 md:gap-6 overflow-x-auto pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0">
-                <Card
-                    className="hover:shadow-lg transition-shadow cursor-pointer flex-shrink-0 w-40 md:w-auto"
-                    onClick={() => handleQuickAction('new-class')}
-                >
-                    <CardBody className="p-4 md:p-6 text-center">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-primary-100 rounded-lg flex items-center justify-center text-primary-600 mx-auto mb-2 md:mb-3">
-                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                            </svg>
-                        </div>
-                        <h4 className="font-semibold text-slate-900 mb-1 text-sm md:text-base">Nova Turma</h4>
-                        <p className="text-xs md:text-sm text-slate-600 hidden md:block">Criar uma nova turma</p>
-                    </CardBody>
-                </Card>
+                        <button
+                            onClick={() => handleQuickAction('grades')}
+                            className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-green-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-green-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative z-10">
+                                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                    </svg>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm group-hover:text-green-700 transition-colors">Lançar Notas</h4>
+                                <p className="text-xs text-slate-500 mt-1">Registre as avaliações dos alunos</p>
+                            </div>
+                        </button>
 
-                <Card
-                    className="hover:shadow-lg transition-shadow cursor-pointer flex-shrink-0 w-40 md:w-auto"
-                    onClick={() => handleQuickAction('grades')}
-                >
-                    <CardBody className="p-4 md:p-6 text-center">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600 mx-auto mb-2 md:mb-3">
-                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                        </div>
-                        <h4 className="font-semibold text-slate-900 mb-1 text-sm md:text-base">Lançar Notas</h4>
-                        <p className="text-xs md:text-sm text-slate-600 hidden md:block">Registrar notas dos alunos</p>
-                    </CardBody>
-                </Card>
+                        <button
+                            onClick={() => handleQuickAction('reports')}
+                            className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-purple-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                        >
+                            <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                            <div className="relative z-10">
+                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <h4 className="font-bold text-slate-900 text-sm group-hover:text-purple-700 transition-colors">Relatórios</h4>
+                                <p className="text-xs text-slate-500 mt-1">Gere pautas e estatísticas</p>
+                            </div>
+                        </button>
+                    </div>
 
-                <Card
-                    className="hover:shadow-lg transition-shadow cursor-pointer flex-shrink-0 w-40 md:w-auto"
-                    onClick={() => handleQuickAction('reports')}
-                >
-                    <CardBody className="p-4 md:p-6 text-center">
-                        <div className="w-10 h-10 md:w-12 md:h-12 bg-purple-100 rounded-lg flex items-center justify-center text-purple-600 mx-auto mb-2 md:mb-3">
-                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
+                    <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white relative overflow-hidden">
+                        <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-2xl" />
+                        <div className="absolute bottom-0 left-0 -ml-8 -mb-8 w-24 h-24 bg-black/10 rounded-full blur-2xl" />
+
+                        <div className="relative z-10">
+                            <h4 className="font-bold text-lg mb-1">Precisa de ajuda?</h4>
+                            <p className="text-indigo-100 text-xs mb-3">Consulte nossos tutoriais ou entre em contato com o suporte.</p>
+                            <button className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors w-full text-center backdrop-blur-sm">
+                                Central de Ajuda
+                            </button>
                         </div>
-                        <h4 className="font-semibold text-slate-900 mb-1 text-sm md:text-base">Gerar Relatório</h4>
-                        <p className="text-xs md:text-sm text-slate-600 hidden md:block">Criar mini-pauta</p>
-                    </CardBody>
-                </Card>
+                    </div>
+                </div>
             </div>
+
             {/* Create Class Modal */}
             {showCreateModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <Card className="w-full max-w-md animate-slide-up">
-                        <CardHeader>
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <Card className="w-full max-w-md animate-slide-up shadow-2xl ring-1 ring-black/5">
+                        <CardHeader className="border-b border-slate-100 p-5 bg-slate-50/50">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-slate-900">Nova Turma</h3>
+                                <h3 className="text-lg font-bold text-slate-900">Nova Turma</h3>
                                 <button
                                     onClick={() => setShowCreateModal(false)}
-                                    className="text-slate-400 hover:text-slate-600"
+                                    className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                                     </svg>
                                 </button>
                             </div>
                         </CardHeader>
-                        <CardBody>
-                            <form onSubmit={handleCreateTurma} className="space-y-4">
-                                <Input
-                                    label="Nome da Turma"
-                                    type="text"
-                                    value={formData.nome}
-                                    onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
-                                    placeholder="Ex: 10ª A"
-                                    required
-                                />
+                        <CardBody className="p-5 md:p-6">
+                            <form onSubmit={handleCreateTurma} className="space-y-5">
+                                <div className="space-y-4">
+                                    <div className="input-glow rounded-xl">
+                                        <Input
+                                            label="Nome da Turma"
+                                            type="text"
+                                            value={formData.nome}
+                                            onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                                            placeholder="Ex: 10ª A"
+                                            required
+                                        />
+                                    </div>
 
-                                <div>
-                                    <label className="form-label">Nível de Ensino</label>
-                                    <select
-                                        value={formData.nivel_ensino}
-                                        onChange={(e) => setFormData({ ...formData, nivel_ensino: e.target.value })}
-                                        className="form-input min-h-touch"
-                                        required
-                                    >
-                                        <option value="Ensino Primário">Ensino Primário</option>
-                                        <option value="Ensino Secundário">Ensino Secundário</option>
-                                        <option value="Ensino Médio">Ensino Médio</option>
-                                        <option value="Ensino Técnico">Ensino Técnico</option>
-                                    </select>
+                                    <div>
+                                        <label className="form-label block text-sm font-medium text-slate-700 mb-1.5">Nível de Ensino</label>
+                                        <div className="relative">
+                                            <select
+                                                value={formData.nivel_ensino}
+                                                onChange={(e) => setFormData({ ...formData, nivel_ensino: e.target.value })}
+                                                className="w-full appearance-none bg-white border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 block p-3 pr-10 shadow-sm transition-all hover:border-slate-400"
+                                                required
+                                            >
+                                                <option value="Ensino Primário">Ensino Primário</option>
+                                                <option value="Ensino Secundário">Ensino Secundário</option>
+                                                <option value="Ensino Médio">Ensino Médio</option>
+                                                <option value="Ensino Técnico">Ensino Técnico</option>
+                                            </select>
+                                            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="input-glow rounded-xl">
+                                        <Input
+                                            label="Ano Lectivo"
+                                            type="number"
+                                            value={formData.ano_lectivo}
+                                            onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
+                                            required
+                                        />
+                                    </div>
                                 </div>
 
-                                <Input
-                                    label="Ano Lectivo"
-                                    type="number"
-                                    value={formData.ano_lectivo}
-                                    onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
-                                    required
-                                />
-
-                                <div className="flex gap-3 pt-4">
+                                <div className="flex gap-3 pt-2">
                                     <Button
                                         type="button"
                                         variant="ghost"
+                                        size="lg"
                                         onClick={() => setShowCreateModal(false)}
                                         className="flex-1"
                                     >
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" variant="primary" loading={loading} className="flex-1">
+                                    <Button type="submit" variant="primary" size="lg" loading={loading} className="flex-1 btn-premium font-semibold shadow-lg shadow-primary-500/20">
                                         Criar Turma
                                     </Button>
                                 </div>
