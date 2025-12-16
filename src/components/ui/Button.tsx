@@ -22,13 +22,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled,
         ...props
     }, ref) => {
-        const baseClasses = 'btn'
+        const baseClasses = 'btn touch-scale'
 
         const variantClasses = {
-            primary: 'btn-primary',
-            secondary: 'btn-secondary',
-            ghost: 'btn-ghost',
-            danger: 'btn-danger',
+            primary: 'btn-primary active:bg-primary-800',
+            secondary: 'btn-secondary active:bg-secondary-800',
+            ghost: 'btn-ghost active:bg-neutral-200',
+            danger: 'btn-danger active:bg-red-700',
         }
 
         const sizeClasses = {
@@ -42,6 +42,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             variantClasses[variant],
             sizeClasses[size],
             fullWidth ? 'w-full' : '',
+            'transition-all duration-150',
             className,
         ].filter(Boolean).join(' ')
 
@@ -77,3 +78,4 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 )
 
 Button.displayName = 'Button'
+

@@ -427,32 +427,42 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                     </div>
                 </header>
 
-                {/* Content Area */}
+                {/* Content Area with Page Transition */}
                 <div className="flex-1 overflow-y-auto p-4 md:p-6">
-                    {children}
+                    <div className="page-enter">
+                        {children}
+                    </div>
                 </div>
             </main>
 
             {/* Mobile Bottom Navigation */}
-            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-1 safe-area-inset-bottom z-50">
+            <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-lg border-t border-slate-200/80 px-2 pt-1 pb-safe z-50" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 8px)' }}>
                 <div className="flex items-center justify-around">
                     {mobileNavItems.map((item) => (
                         <button
                             key={item.path}
                             onClick={() => handleMobileNav(item.path)}
-                            className={`flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-colors ${currentPage === item.path
-                                ? 'text-primary-600'
-                                : 'text-slate-500'
+                            className={`relative flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-all duration-200 touch-scale ${currentPage === item.path
+                                    ? 'text-primary-600'
+                                    : 'text-slate-400 active:text-slate-600'
                                 }`}
                         >
-                            {item.icon}
-                            <span className="text-xs mt-1 font-medium">{item.name}</span>
+                            {/* Active Indicator */}
+                            {currentPage === item.path && (
+                                <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-8 h-1 bg-primary-600 rounded-full animate-scale-in" />
+                            )}
+                            <div className={`transition-transform duration-200 ${currentPage === item.path ? 'scale-110' : ''}`}>
+                                {item.icon}
+                            </div>
+                            <span className={`text-xs mt-1 font-medium transition-all duration-200 ${currentPage === item.path ? 'font-semibold' : ''}`}>
+                                {item.name}
+                            </span>
                         </button>
                     ))}
                     {/* More Button */}
                     <button
                         onClick={() => handleMobileNav('more')}
-                        className="flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-colors text-slate-500"
+                        className="relative flex flex-col items-center justify-center py-2 px-3 min-h-touch min-w-touch transition-all duration-200 touch-scale text-slate-400 active:text-slate-600"
                     >
                         {moreIcon}
                         <span className="text-xs mt-1 font-medium">Mais</span>

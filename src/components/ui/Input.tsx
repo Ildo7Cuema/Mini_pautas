@@ -6,26 +6,34 @@ export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
     helpText?: string
     icon?: ReactNode
     iconPosition?: 'left' | 'right'
+    inputSize?: 'sm' | 'md' | 'lg'
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-    ({ label, error, helpText, icon, iconPosition = 'left', className = '', id, type, ...props }, ref) => {
+    ({ label, error, helpText, icon, iconPosition = 'left', inputSize = 'md', className = '', id, type, ...props }, ref) => {
         const inputId = id || `input-${Math.random().toString(36).substr(2, 9)}`
         const [showPassword, setShowPassword] = useState(false)
+        const [isFocused, setIsFocused] = useState(false)
         const isPassword = type === 'password'
         const inputType = isPassword && showPassword ? 'text' : type
+
+        const sizeClasses = {
+            sm: 'min-h-[40px] text-sm py-2',
+            md: 'min-h-[48px] text-base py-3',
+            lg: 'min-h-[56px] text-lg py-4',
+        }
 
         return (
             <div className="w-full">
                 {label && (
-                    <label htmlFor={inputId} className="form-label">
+                    <label htmlFor={inputId} className="form-label mb-2 block text-sm font-medium text-slate-700">
                         {label}
                         {props.required && <span className="text-error ml-1">*</span>}
                     </label>
                 )}
                 <div className="relative">
                     {icon && iconPosition === 'left' && (
-                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400">
+                        <div className={`absolute left-4 top-1/2 transform -translate-y-1/2 transition-colors duration-200 ${isFocused ? 'text-primary-500' : 'text-neutral-400'}`}>
                             {icon}
                         </div>
                     )}
@@ -33,8 +41,31 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         ref={ref}
                         id={inputId}
                         type={inputType}
-                        className={`form-input ${error ? 'form-input-error' : ''} ${icon && iconPosition === 'left' ? 'pl-10' : ''
-                            } ${isPassword ? 'pr-10' : icon && iconPosition === 'right' ? 'pr-10' : ''} ${className}`}
+                        onFocus={(e) => {
+                            setIsFocused(true)
+                            props.onFocus?.(e)
+                        }}
+                        onBlur={(e) => {
+                            setIsFocused(false)
+                            props.onBlur?.(e)
+                        }}
+                        className={`
+                            w-full px-4 border rounded-xl
+                            ${sizeClasses[inputSize]}
+                            ${error
+                                ? 'border-error ring-2 ring-error/20'
+                                : isFocused
+                                    ? 'border-primary-500 ring-2 ring-primary-500/20'
+                                    : 'border-neutral-300'
+                            }
+                            focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20
+                            transition-all duration-200 ease-out
+                            disabled:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-60
+                            placeholder:text-neutral-400
+                            ${icon && iconPosition === 'left' ? 'pl-12' : ''}
+                            ${isPassword ? 'pr-12' : icon && iconPosition === 'right' ? 'pr-12' : ''}
+                            ${className}
+                        `}
                         aria-invalid={error ? 'true' : 'false'}
                         aria-describedby={error ? `${inputId}-error` : helpText ? `${inputId}-help` : undefined}
                         {...props}
@@ -43,7 +74,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors"
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-neutral-400 hover:text-neutral-600 transition-colors p-1 touch-feedback min-w-touch min-h-touch flex items-center justify-center -mr-1"
                             tabIndex={-1}
                         >
                             {showPassword ? (
@@ -59,18 +90,21 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
                         </button>
                     )}
                     {!isPassword && icon && iconPosition === 'right' && (
-                        <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-neutral-400">
+                        <div className={`absolute right-4 top-1/2 transform -translate-y-1/2 transition-colors duration-200 ${isFocused ? 'text-primary-500' : 'text-neutral-400'}`}>
                             {icon}
                         </div>
                     )}
                 </div>
                 {error && (
-                    <p id={`${inputId}-error`} className="form-error" role="alert">
+                    <p id={`${inputId}-error`} className="mt-2 text-sm text-error flex items-center gap-1" role="alert">
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
                         {error}
                     </p>
                 )}
                 {helpText && !error && (
-                    <p id={`${inputId}-help`} className="form-help">
+                    <p id={`${inputId}-help`} className="mt-2 text-sm text-neutral-500">
                         {helpText}
                     </p>
                 )}
@@ -80,3 +114,4 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 )
 
 Input.displayName = 'Input'
+
