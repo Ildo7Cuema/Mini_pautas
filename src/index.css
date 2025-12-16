@@ -798,3 +798,309 @@
     @apply shadow-none border border-black;
   }
 }
+
+/* ============================================
+   MODERN LOGIN & AUTH STYLES
+   ============================================ */
+
+/* Premium Logo Animation */
+.logo-container {
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease;
+}
+
+.logo-container:hover {
+  transform: scale(1.08) rotate(3deg);
+  box-shadow: 0 20px 40px -12px rgba(59, 130, 246, 0.35);
+}
+
+/* Auth Card Premium */
+.auth-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow:
+    0 4px 6px -1px rgba(0, 0, 0, 0.05),
+    0 10px 20px -5px rgba(0, 0, 0, 0.1),
+    0 25px 50px -12px rgba(59, 130, 246, 0.15);
+}
+
+/* Tab Button Active */
+.tab-active {
+  background: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+/* Input Focus Glow */
+.input-glow:focus-within {
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+}
+
+/* ============================================
+   MOBILE FULLSCREEN MODAL
+   ============================================ */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 50;
+  animation: fadeIn var(--duration-fast) ease-out;
+}
+
+.modal-content {
+  width: 100%;
+  max-width: 28rem;
+  animation: modalSlideUp var(--duration-normal) cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Mobile Fullscreen Modal */
+@media (max-width: 640px) {
+  .modal-mobile-fullscreen .modal-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .modal-mobile-fullscreen .modal-content {
+    max-width: 100%;
+    min-height: 50vh;
+    max-height: 90vh;
+    border-radius: 1.5rem 1.5rem 0 0;
+    animation: modalSlideUpMobile var(--duration-normal) cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .modal-mobile-fullscreen .modal-content.fullscreen {
+    min-height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+  }
+}
+
+@keyframes modalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes modalSlideUpMobile {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ============================================
+   PREMIUM BUTTON EFFECTS
+   ============================================ */
+
+.btn-premium {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg,
+      rgba(255, 255, 255, 0.15) 0%,
+      rgba(255, 255, 255, 0) 50%);
+  pointer-events: none;
+}
+
+.btn-premium::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.btn-premium:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* ============================================
+   SUCCESS ANIMATION
+   ============================================ */
+
+.success-checkmark {
+  animation: checkmarkPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes checkmarkPop {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+
+  50% {
+    transform: scale(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.success-ring {
+  animation: ringExpand 0.6s ease-out;
+}
+
+@keyframes ringExpand {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* ============================================
+   ENHANCED BLOB ANIMATIONS
+   ============================================ */
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: multiply;
+  filter: blur(60px);
+  opacity: 0.35;
+  animation: blobFloat 10s ease-in-out infinite;
+}
+
+.blob-1 {
+  background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+  animation-delay: 0s;
+}
+
+.blob-2 {
+  background: linear-gradient(135deg, #8b5cf6 0%, #a78bfa 100%);
+  animation-delay: 2s;
+}
+
+.blob-3 {
+  background: linear-gradient(135deg, #06b6d4 0%, #22d3ee 100%);
+  animation-delay: 4s;
+}
+
+@keyframes blobFloat {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+
+  25% {
+    transform: translate(30px, -50px) scale(1.1) rotate(90deg);
+  }
+
+  50% {
+    transform: translate(-20px, 20px) scale(0.95) rotate(180deg);
+  }
+
+  75% {
+    transform: translate(40px, 30px) scale(1.05) rotate(270deg);
+  }
+}
+
+/* ============================================
+   FORM FEEDBACK STATES
+   ============================================ */
+
+.form-success {
+  border-color: var(--color-success) !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15) !important;
+}
+
+.form-error-shake {
+  animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+@keyframes shake {
+
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  10%,
+  30%,
+  50%,
+  70%,
+  90% {
+    transform: translateX(-4px);
+  }
+
+  20%,
+  40%,
+  60%,
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+
+.loading-pulse {
+  animation: loadingPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes loadingPulse {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.spinner-gradient {
+  background: conic-gradient(from 0deg,
+      transparent 0deg,
+      var(--color-primary-500) 360deg);
+  animation: spinGradient 1s linear infinite;
+}
+
+@keyframes spinGradient {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}

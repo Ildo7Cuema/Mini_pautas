@@ -1,15 +1,23 @@
+/*
+component-meta:
+  name: ProfessorRegistration
+  description: Premium professor invite acceptance page
+  tokens: [--color-primary, --fs-md, min-h-touch]
+  responsive: true
+*/
 
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
-import { Card, CardBody } from './ui/Card'
+import { CardBody } from './ui/Card'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 
 export const ProfessorRegistration: React.FC = () => {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
+    const [confirmPassword, setConfirmPassword] = useState('')
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
@@ -27,6 +35,16 @@ export const ProfessorRegistration: React.FC = () => {
         e.preventDefault()
         setLoading(true)
         setError(null)
+
+        if (password !== confirmPassword) {
+            setError('As senhas não coincidem')
+            return
+        }
+
+        if (password.length < 6) {
+            setError('A senha deve ter pelo menos 6 caracteres')
+            return
+        }
 
         try {
             const { error: signUpError } = await supabase.auth.signUp({
@@ -47,88 +65,132 @@ export const ProfessorRegistration: React.FC = () => {
 
     if (success) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
-                <Card className="max-w-md w-full animate-slide-up shadow-xl">
+            <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-100 flex items-center justify-center p-4">
+                {/* Animated Background Blobs */}
+                <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                    <div className="blob blob-1 w-[500px] h-[500px] -top-32 -right-32" />
+                    <div className="blob blob-2 w-[400px] h-[400px] -bottom-24 -left-24" />
+                </div>
+
+                <div className="auth-card w-full max-w-md rounded-2xl animate-fade-in shadow-xl bg-white/95">
                     <CardBody className="p-8 text-center">
-                        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Icons.Check className="w-8 h-8 text-green-600" />
+                        <div className="success-ring inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
+                            <svg className="success-checkmark w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
                         </div>
-                        <h2 className="text-2xl font-bold text-slate-800 mb-2">Cadastro Realizado!</h2>
-                        <p className="text-slate-600 mb-6">
-                            Sua conta foi criada com sucesso. Verifique seu email para confirmar o cadastro (se necessário) ou faça login.
+                        <h2 className="text-2xl font-bold text-slate-900 mb-3 tracking-tight">Cadastro Realizado!</h2>
+                        <p className="text-slate-600 mb-6 leading-relaxed">
+                            Sua conta foi criada com sucesso. Verifique seu email para confirmar o cadastro ou faça login.
                         </p>
                         <Button
                             variant="primary"
+                            className="btn-premium"
                             onClick={() => window.location.href = '/'}
+                            fullWidth
                         >
                             Ir para Login
                         </Button>
                     </CardBody>
-                </Card>
+                </div>
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Background Blob Animation */}
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
+            {/* Animated Background Blobs */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+                <div className="blob blob-1 w-[600px] h-[600px] -top-40 -right-40 opacity-30" />
+                <div className="blob blob-2 w-[500px] h-[500px] -bottom-32 -left-32 opacity-30" />
+                <div className="blob blob-3 w-[400px] h-[400px] top-1/2 left-1/2 opacity-20" />
             </div>
 
             <div className="w-full max-w-md relative z-10">
-                <div className="text-center mb-6 animate-fade-in">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
+                <div className="text-center mb-8 animate-fade-in">
+                    <div className="logo-container inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4">
                         <Icons.UserPlus className="w-8 h-8 text-primary-600" />
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-800 mb-1">Convite de Professor</h1>
-                    <p className="text-slate-600 text-sm font-medium">Crie sua senha para acessar o sistema</p>
+                    <h1 className="text-3xl font-bold text-slate-800 mb-2 tracking-tight">Bem-vindo Professor</h1>
+                    <p className="text-slate-500 font-medium">Finalize seu cadastro para acessar o EduGest</p>
                 </div>
 
-                <Card className="animate-slide-up shadow-xl backdrop-blur-sm bg-white/90 border border-white/20">
-                    <CardBody className="p-6">
+                <div className="auth-card rounded-2xl animate-slide-up shadow-xl backdrop-blur-sm bg-white/90">
+                    <CardBody className="p-6 sm:p-8">
                         {error && (
-                            <div className="alert alert-error mb-4 animate-slide-down">
-                                <span className="text-sm">{error}</span>
+                            <div className="flex items-start gap-3 p-4 mb-6 bg-red-50 border border-red-100 rounded-xl animate-slide-down form-error-shake" role="alert">
+                                <div className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-500">
+                                    <svg className="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <p className="text-sm text-red-700 font-medium">{error}</p>
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <Input
-                                label="Email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="seu.email@exemplo.com"
-                                required
-                                disabled={true} // Email should be fixed from invite
-                                icon={<Icons.Email />}
-                            />
+                        <form onSubmit={handleSubmit} className="space-y-5">
+                            <div className="input-glow rounded-xl">
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="seu.email@exemplo.com"
+                                    required
+                                    disabled={true} // Email should be fixed from invite
+                                    icon={<Icons.Email />}
+                                    className="bg-slate-50 text-slate-500"
+                                    inputSize="md"
+                                />
+                            </div>
 
-                            <Input
-                                label="Crie sua Senha"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                required
-                                minLength={6}
-                                icon={<Icons.Lock />}
-                            />
+                            <div className="input-glow rounded-xl">
+                                <Input
+                                    label="Crie sua Senha"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    helpText="Mínimo de 6 caracteres"
+                                    icon={<Icons.Lock />}
+                                    inputSize="md"
+                                />
+                            </div>
+
+                            <div className="input-glow rounded-xl">
+                                <Input
+                                    label="Confirmar Senha"
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    icon={<Icons.Check />}
+                                    inputSize="md"
+                                />
+                            </div>
 
                             <Button
                                 type="submit"
                                 variant="primary"
                                 loading={loading}
                                 fullWidth
-                                className="mt-4"
+                                className="btn-premium mt-4"
+                                icon={<Icons.Login />}
                             >
-                                Criar Conta e Acessar
+                                {loading ? 'Criando Conta...' : 'Completar Cadastro'}
                             </Button>
                         </form>
                     </CardBody>
-                </Card>
+                </div>
+
+                {/* Footer */}
+                <div className="mt-8 text-center space-y-2">
+                    <p className="text-slate-500 text-sm">
+                        © 2025 EduGest Angola
+                    </p>
+                </div>
             </div>
         </div>
     )

@@ -1,3 +1,12 @@
+/*
+component-meta:
+  name: LoginScreen
+  description: Premium login screen with modern UI, mobile-first design, and native-like experience
+  tokens: [--color-primary, --fs-md, min-h-touch]
+  responsive: true
+  tested-on: [360x800, 375x812, 768x1024, 1440x900]
+*/
+
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Button } from './ui/Button'
@@ -80,264 +89,318 @@ export const LoginScreen: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Animated Background Elements */}
-            <div className="absolute inset-0 overflow-hidden">
-                <div className="absolute -top-40 -right-40 w-96 h-96 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/80 to-indigo-100 flex items-center justify-center p-4 sm:p-6 relative overflow-hidden">
+            {/* Animated Background Blobs */}
+            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <div className="blob blob-1 w-[500px] h-[500px] -top-32 -right-32" />
+                <div className="blob blob-2 w-[400px] h-[400px] -bottom-24 -left-24" />
+                <div className="blob blob-3 w-[350px] h-[350px] top-1/3 left-1/4 opacity-25" />
             </div>
+
+            {/* Subtle Grid Pattern Overlay */}
+            <div
+                className="absolute inset-0 opacity-[0.015] pointer-events-none"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+                }}
+            />
 
             <div className="w-full max-w-md relative z-10">
                 {/* Logo and Title */}
-                <div className="text-center mb-6 animate-fade-in">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-white rounded-2xl shadow-lg mb-4 transform transition-all duration-300 hover:scale-110 hover:rotate-6 hover:shadow-xl">
-                        <svg className="w-9 h-9 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                <div className="text-center mb-8 animate-fade-in">
+                    <div className="logo-container inline-flex items-center justify-center w-20 h-20 bg-white rounded-2xl shadow-lg mb-5">
+                        <svg className="w-11 h-11 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-800 mb-1 tracking-tight">EduGest Angola</h1>
-                    <p className="text-slate-600 text-sm font-medium">Sistema de Gestão de Notas</p>
+                    <h1 className="text-3xl sm:text-4xl font-bold text-slate-800 mb-2 tracking-tight">
+                        EduGest Angola
+                    </h1>
+                    <p className="text-slate-500 text-sm sm:text-base font-medium">
+                        Sistema de Gestão de Notas
+                    </p>
                 </div>
 
                 {/* Auth Card */}
-                <Card className="animate-slide-up shadow-xl backdrop-blur-sm bg-white/90 border border-white/20">
-                    <CardBody className="p-6">
+                <div className="auth-card rounded-2xl animate-slide-up">
+                    <CardBody className="p-6 sm:p-8">
                         {/* Mode Tabs */}
-                        <div className="flex gap-2 mb-5 p-1 bg-slate-100 rounded-lg">
+                        <div className="flex gap-2 mb-6 p-1.5 bg-slate-100/80 rounded-xl">
                             <button
                                 onClick={() => setMode('login')}
-                                className={`flex-1 py-2 px-4 rounded-md font-semibold text-sm transition-all duration-200 ${mode === 'login'
-                                    ? 'bg-white text-primary-600 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                className={`flex-1 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${mode === 'login'
+                                        ? 'bg-white text-primary-600 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 Entrar
                             </button>
                             <button
                                 onClick={() => setMode('school-registration')}
-                                className={`flex-1 py-2 px-3 rounded-md font-semibold text-xs sm:text-sm transition-all duration-200 ${mode === 'school-registration'
-                                    ? 'bg-white text-primary-600 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                className={`flex-1 py-2.5 px-3 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 ${mode === 'school-registration'
+                                        ? 'bg-white text-primary-600 shadow-sm'
+                                        : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 Cadastrar Escola
                             </button>
                         </div>
 
-                        <h2 className="text-lg font-bold text-slate-900 mb-4">
-                            Bem-vindo de volta!
-                        </h2>
+                        {/* Welcome Text */}
+                        <div className="mb-6">
+                            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">
+                                Bem-vindo de volta!
+                            </h2>
+                            <p className="text-slate-500 text-sm">
+                                Entre com as suas credenciais para continuar
+                            </p>
+                        </div>
 
                         {/* Error Message */}
                         {error && (
-                            <div className="alert alert-error mb-4 animate-slide-down" role="alert">
-                                <svg className="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                </svg>
-                                <span className="text-sm">{error}</span>
+                            <div
+                                className="flex items-start gap-3 p-4 mb-5 bg-red-50 border border-red-100 rounded-xl animate-slide-down form-error-shake"
+                                role="alert"
+                            >
+                                <div className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-500">
+                                    <svg className="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                    </svg>
+                                </div>
+                                <p className="text-sm text-red-700 font-medium">{error}</p>
                             </div>
                         )}
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-5">
                             {/* Email */}
-                            <Input
-                                label="Email"
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                placeholder="seu.email@exemplo.com"
-                                required
-                                autoComplete="email"
-                                icon={<Icons.Email />}
-                            />
+                            <div className="input-glow rounded-xl">
+                                <Input
+                                    label="Email"
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    placeholder="seu.email@exemplo.com"
+                                    required
+                                    autoComplete="email"
+                                    icon={<Icons.Email />}
+                                    inputSize="md"
+                                />
+                            </div>
 
                             {/* Password */}
-                            <Input
-                                label="Senha"
-                                type="password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                placeholder="••••••••"
-                                required
-                                autoComplete="current-password"
-                                icon={<Icons.Lock />}
-                            />
+                            <div className="input-glow rounded-xl">
+                                <Input
+                                    label="Senha"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="••••••••"
+                                    required
+                                    autoComplete="current-password"
+                                    icon={<Icons.Lock />}
+                                    inputSize="md"
+                                />
+                            </div>
+
+                            {/* Forgot Password Link */}
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setShowForgotPasswordModal(true)
+                                        setError(null)
+                                        setResetSuccess(false)
+                                    }}
+                                    className="text-sm text-primary-600 hover:text-primary-700 font-medium transition-colors hover:underline underline-offset-2"
+                                >
+                                    Esqueceu a senha?
+                                </button>
+                            </div>
 
                             {/* Submit Button */}
                             <Button
                                 type="submit"
                                 variant="primary"
-                                size="md"
+                                size="lg"
                                 loading={loading}
                                 fullWidth
-                                className="mt-5"
+                                className="btn-premium mt-2 !py-3.5 !text-base font-semibold"
                                 icon={<Icons.Login />}
                             >
                                 {loading ? 'Processando...' : 'Entrar'}
                             </Button>
                         </form>
 
-                        {/* Forgot Password */}
-                        <div className="mt-5 text-center">
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    setShowForgotPasswordModal(true)
-                                    setError(null)
-                                    setResetSuccess(false)
-                                }}
-                                className="text-xs text-primary-600 hover:text-primary-700 font-medium transition-colors"
-                            >
-                                Esqueceu a senha?
-                            </button>
+                        {/* Divider */}
+                        <div className="relative my-6">
+                            <div className="absolute inset-0 flex items-center">
+                                <div className="w-full border-t border-slate-200" />
+                            </div>
+                            <div className="relative flex justify-center text-sm">
+                                <span className="px-3 bg-white text-slate-400">ou</span>
+                            </div>
                         </div>
 
                         {/* Switch to School Registration */}
-                        <div className="mt-5 text-center text-xs text-slate-600">
-                            É uma escola?{' '}
-                            <button
-                                type="button"
-                                onClick={() => setMode('school-registration')}
-                                className="text-primary-600 hover:text-primary-700 font-semibold transition-colors"
-                            >
-                                Cadastre-se aqui
-                            </button>
+                        <div className="text-center">
+                            <p className="text-sm text-slate-500">
+                                É uma escola?{' '}
+                                <button
+                                    type="button"
+                                    onClick={() => setMode('school-registration')}
+                                    className="text-primary-600 hover:text-primary-700 font-semibold transition-colors hover:underline underline-offset-2"
+                                >
+                                    Cadastre-se aqui
+                                </button>
+                            </p>
                         </div>
                     </CardBody>
-                </Card>
+                </div>
 
                 {/* Footer */}
-                <div className="mt-6 text-center text-slate-600 text-xs space-y-1">
-                    <p>© 2025 EduGest Angola · Sistema de Gestão Educacional</p>
-                    <p className="text-slate-500">Desenvolvido com ❤️ para a educação</p>
+                <div className="mt-8 text-center space-y-2">
+                    <p className="text-slate-500 text-sm">
+                        © 2025 EduGest Angola · Sistema de Gestão Educacional
+                    </p>
+                    <p className="text-slate-400 text-xs flex items-center justify-center gap-1">
+                        Desenvolvido com
+                        <span className="text-red-400 animate-pulse">❤</span>
+                        para a educação
+                    </p>
                 </div>
             </div>
 
             {/* Forgot Password Modal */}
             {showForgotPasswordModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
-                    <Card className="w-full max-w-md animate-slide-up shadow-2xl">
-                        <CardBody className="p-6">
-                            {resetSuccess ? (
-                                <>
-                                    <div className="text-center">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
-                                            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                            </svg>
+                <div className="modal-mobile-fullscreen">
+                    <div className="modal-overlay" onClick={() => {
+                        setShowForgotPasswordModal(false)
+                        setError(null)
+                        setResetEmail('')
+                    }}>
+                        <div
+                            className="modal-content"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Card className="rounded-2xl shadow-2xl">
+                                <CardBody className="p-6 sm:p-8">
+                                    {resetSuccess ? (
+                                        <div className="text-center py-4">
+                                            <div className="success-ring inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-5">
+                                                <svg className="success-checkmark w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-3">
+                                                Email Enviado!
+                                            </h3>
+                                            <p className="text-slate-600 text-sm sm:text-base mb-2">
+                                                Enviamos um link de recuperação para
+                                            </p>
+                                            <p className="text-primary-600 font-semibold mb-4">
+                                                {resetEmail}
+                                            </p>
+                                            <p className="text-slate-400 text-sm">
+                                                Verifique sua caixa de entrada e spam.
+                                            </p>
+                                            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
+                                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                                Fechando automaticamente...
+                                            </div>
                                         </div>
-                                        <h3 className="text-xl font-bold text-slate-900 mb-2">Email Enviado!</h3>
-                                        <p className="text-slate-600 text-sm mb-4">
-                                            Enviamos um link de recuperação para <strong>{resetEmail}</strong>.
-                                            Verifique sua caixa de entrada e spam.
-                                        </p>
-                                        <p className="text-slate-500 text-xs">
-                                            Esta janela será fechada automaticamente...
-                                        </p>
-                                    </div>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-lg font-bold text-slate-900">Recuperar Senha</h3>
-                                        <button
-                                            onClick={() => {
-                                                setShowForgotPasswordModal(false)
-                                                setError(null)
-                                                setResetEmail('')
-                                            }}
-                                            className="text-slate-400 hover:text-slate-600 transition-colors"
-                                        >
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                            </svg>
-                                        </button>
-                                    </div>
+                                    ) : (
+                                        <>
+                                            {/* Modal Header */}
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-slate-900">
+                                                        Recuperar Senha
+                                                    </h3>
+                                                    <p className="text-slate-500 text-sm mt-1">
+                                                        Enviaremos um link para redefinir sua senha
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowForgotPasswordModal(false)
+                                                        setError(null)
+                                                        setResetEmail('')
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all touch-feedback"
+                                                    aria-label="Fechar"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
 
-                                    <p className="text-slate-600 text-sm mb-4">
-                                        Digite seu email e enviaremos um link para redefinir sua senha.
-                                    </p>
+                                            {/* Error in Modal */}
+                                            {error && (
+                                                <div
+                                                    className="flex items-start gap-3 p-4 mb-5 bg-red-50 border border-red-100 rounded-xl animate-slide-down"
+                                                    role="alert"
+                                                >
+                                                    <div className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-500">
+                                                        <svg className="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-sm text-red-700 font-medium">{error}</p>
+                                                </div>
+                                            )}
 
-                                    {error && (
-                                        <div className="alert alert-error mb-4 animate-slide-down" role="alert">
-                                            <svg className="w-5 h-5 inline mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                            </svg>
-                                            <span className="text-sm">{error}</span>
-                                        </div>
+                                            <form onSubmit={handleForgotPassword} className="space-y-5">
+                                                <div className="input-glow rounded-xl">
+                                                    <Input
+                                                        label="Email"
+                                                        type="email"
+                                                        value={resetEmail}
+                                                        onChange={(e) => setResetEmail(e.target.value)}
+                                                        placeholder="seu.email@exemplo.com"
+                                                        required
+                                                        autoComplete="email"
+                                                        icon={<Icons.Email />}
+                                                        inputSize="md"
+                                                    />
+                                                </div>
+
+                                                <div className="flex gap-3 pt-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="lg"
+                                                        onClick={() => {
+                                                            setShowForgotPasswordModal(false)
+                                                            setError(null)
+                                                            setResetEmail('')
+                                                        }}
+                                                        fullWidth
+                                                        className="!py-3"
+                                                    >
+                                                        Cancelar
+                                                    </Button>
+                                                    <Button
+                                                        type="submit"
+                                                        variant="primary"
+                                                        size="lg"
+                                                        loading={resetLoading}
+                                                        fullWidth
+                                                        className="btn-premium !py-3"
+                                                        icon={<Icons.Send />}
+                                                    >
+                                                        {resetLoading ? 'Enviando...' : 'Enviar Link'}
+                                                    </Button>
+                                                </div>
+                                            </form>
+                                        </>
                                     )}
-
-                                    <form onSubmit={handleForgotPassword} className="space-y-4">
-                                        <Input
-                                            label="Email"
-                                            type="email"
-                                            value={resetEmail}
-                                            onChange={(e) => setResetEmail(e.target.value)}
-                                            placeholder="seu.email@exemplo.com"
-                                            required
-                                            autoComplete="email"
-                                            icon={<Icons.Email />}
-                                        />
-
-                                        <div className="flex gap-3 mt-5">
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
-                                                size="md"
-                                                onClick={() => {
-                                                    setShowForgotPasswordModal(false)
-                                                    setError(null)
-                                                    setResetEmail('')
-                                                }}
-                                                fullWidth
-                                            >
-                                                Cancelar
-                                            </Button>
-                                            <Button
-                                                type="submit"
-                                                variant="primary"
-                                                size="md"
-                                                loading={resetLoading}
-                                                fullWidth
-                                                icon={<Icons.Send />}
-                                            >
-                                                {resetLoading ? 'Enviando...' : 'Enviar Link'}
-                                            </Button>
-                                        </div>
-                                    </form>
-                                </>
-                            )}
-                        </CardBody>
-                    </Card>
+                                </CardBody>
+                            </Card>
+                        </div>
+                    </div>
                 </div>
             )}
-
-            <style>{`
-        @keyframes blob {
-          0%, 100% { 
-            transform: translate(0, 0) scale(1);
-            opacity: 0.3;
-          }
-          33% { 
-            transform: translate(40px, -60px) scale(1.15);
-            opacity: 0.4;
-          }
-          66% { 
-            transform: translate(-30px, 30px) scale(0.95);
-            opacity: 0.25;
-          }
-        }
-        .animate-blob {
-          animation: blob 8s ease-in-out infinite;
-        }
-        .animation-delay-2000 {
-          animation-delay: 2s;
-        }
-        .animation-delay-4000 {
-          animation-delay: 4s;
-        }
-      `}</style>
         </div>
     )
 }
