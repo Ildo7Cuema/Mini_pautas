@@ -5,9 +5,52 @@ import type { UserProfile, TurmaProfessor } from '../types'
  */
 
 /**
+ * Check if user is SUPERADMIN
+ */
+export const isSuperAdmin = (profile: UserProfile | null): boolean => {
+    return profile?.tipo_perfil === 'SUPERADMIN' && profile.ativo
+}
+
+/**
+ * Check if user can manage all escolas (SUPERADMIN only)
+ */
+export const canManageEscolas = (profile: UserProfile | null): boolean => {
+    return isSuperAdmin(profile)
+}
+
+/**
+ * Check if user can view all escolas (SUPERADMIN only)
+ */
+export const canViewAllEscolas = (profile: UserProfile | null): boolean => {
+    return isSuperAdmin(profile)
+}
+
+/**
+ * Check if user can block/unblock escolas (SUPERADMIN only)
+ */
+export const canBlockEscola = (profile: UserProfile | null): boolean => {
+    return isSuperAdmin(profile)
+}
+
+/**
+ * Check if user can view audit logs (SUPERADMIN only)
+ */
+export const canViewAuditLogs = (profile: UserProfile | null): boolean => {
+    return isSuperAdmin(profile)
+}
+
+/**
+ * Check if user can edit system configuration (SUPERADMIN only)
+ */
+export const canEditSystemConfig = (profile: UserProfile | null): boolean => {
+    return isSuperAdmin(profile)
+}
+
+/**
  * Check if user can create teachers
  */
 export const canCreateTeacher = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -15,6 +58,7 @@ export const canCreateTeacher = (profile: UserProfile | null): boolean => {
  * Check if user can create students
  */
 export const canCreateStudent = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -22,6 +66,7 @@ export const canCreateStudent = (profile: UserProfile | null): boolean => {
  * Check if user can create turmas (classes)
  */
 export const canCreateTurma = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -29,6 +74,7 @@ export const canCreateTurma = (profile: UserProfile | null): boolean => {
  * Check if user can assign teachers to turmas/disciplinas
  */
 export const canAssignTeacher = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -97,6 +143,7 @@ export const canExportMiniPauta = (
  * Check if user can edit turma details
  */
 export const canEditTurma = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -104,6 +151,7 @@ export const canEditTurma = (profile: UserProfile | null): boolean => {
  * Check if user can delete turma
  */
 export const canDeleteTurma = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -111,6 +159,7 @@ export const canDeleteTurma = (profile: UserProfile | null): boolean => {
  * Check if user can edit student details
  */
 export const canEditStudent = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -118,6 +167,7 @@ export const canEditStudent = (profile: UserProfile | null): boolean => {
  * Check if user can delete student
  */
 export const canDeleteStudent = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -162,6 +212,7 @@ export const canManageFormulas = (
  * Check if user can view all turmas (not just assigned ones)
  */
 export const canViewAllTurmas = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -169,6 +220,7 @@ export const canViewAllTurmas = (profile: UserProfile | null): boolean => {
  * Check if user can view all students (not just from assigned turmas)
  */
 export const canViewAllStudents = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -176,6 +228,7 @@ export const canViewAllStudents = (profile: UserProfile | null): boolean => {
  * Check if user can access school settings
  */
 export const canAccessSchoolSettings = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 

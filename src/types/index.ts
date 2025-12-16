@@ -16,6 +16,11 @@ export interface Escola {
     telefone?: string;
     email?: string;
     configuracoes?: Record<string, any>;
+    ativo?: boolean;
+    bloqueado?: boolean;
+    bloqueado_motivo?: string;
+    bloqueado_em?: string;
+    bloqueado_por?: string;
     created_at: string;
     updated_at: string;
 }
@@ -335,13 +340,13 @@ export interface ImportError {
 // USER ROLES AND PROFILES
 // ============================================
 
-export type UserRole = 'ESCOLA' | 'PROFESSOR';
+export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN';
 
 export interface UserProfile {
     id: string;
     user_id: string;
     tipo_perfil: UserRole;
-    escola_id: string;
+    escola_id: string | null;  // Nullable for SUPERADMIN users
     ativo: boolean;
     metadata: Record<string, any>;
     created_at: string;
@@ -461,6 +466,31 @@ export interface ViewDesempenhoAluno {
     classificacao: string;
     trimestre: number;
     ano_lectivo: number;
+}
+
+// ============================================
+// SUPERADMIN TYPES
+// ============================================
+
+export interface SuperAdminStats {
+    total_escolas: number;
+    escolas_ativas: number;
+    escolas_inativas: number;
+    escolas_bloqueadas: number;
+    estatisticas_por_provincia: Record<string, number>;
+    estatisticas_por_municipio: Record<string, number>;
+    crescimento_mensal: Array<{ mes: string; ano: number; total: number }>;
+}
+
+export interface SuperAdminAction {
+    id: string;
+    superadmin_user_id: string;
+    action_type: string;
+    target_escola_id?: string;
+    action_details: Record<string, any>;
+    ip_address?: string;
+    user_agent?: string;
+    created_at: string;
 }
 
 // ============================================

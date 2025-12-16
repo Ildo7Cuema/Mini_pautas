@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
 import { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabaseClient'
+import { BlockedSchoolMessage } from '../components/BlockedSchoolMessage'
 import type {
     AuthUser,
     UserProfile,
@@ -18,6 +19,7 @@ interface AuthContextType {
     isProfessor: boolean
     escolaProfile: EscolaProfile | null
     professorProfile: ProfessorProfile | null
+    profile: UserProfile | null  // Added for SUPERADMIN support
     signOut: () => Promise<void>
     refreshProfile: () => Promise<void>
 }
@@ -43,6 +45,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [isProfessor, setIsProfessor] = useState(false)
     const [escolaProfile, setEscolaProfile] = useState<EscolaProfile | null>(null)
     const [professorProfile, setProfessorProfile] = useState<ProfessorProfile | null>(null)
+
+    // Blocked school modal state
+    const [showBlockedModal, setShowBlockedModal] = useState(false)
+    const [blockedModalData, setBlockedModalData] = useState<{
+        reason?: string
+        type: 'blocked' | 'inactive'
+    }>({ type: 'blocked' })
 
     // Flag to prevent race conditions between getSession and onAuthStateChange
     // Using useRef instead of useState for synchronous check
@@ -203,6 +212,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsEscola(profile.tipo_perfil === 'ESCOLA')
             setIsProfessor(profile.tipo_perfil === 'PROFESSOR')
 
+            // Handle SUPERADMIN separately (no escola_id required)
+            if (profile.tipo_perfil === 'SUPERADMIN') {
+                console.log('👑 AuthContext: SUPERADMIN user detected')
+                setUser({
+                    id: authUser.id,
+                    email: authUser.email || '',
+                    profile
+                })
+                console.log('✅ AuthContext: SUPERADMIN profile set successfully')
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
+
             // Load specific profile data based on role
             if (profile.tipo_perfil === 'ESCOLA') {
                 console.log('🏫 AuthContext: Loading escola profile...')
@@ -232,6 +255,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     const loadEscolaProfile = async (userId: string, profile: UserProfile) => {
         try {
+            // Safety check: if escola_id is null, skip loading escola data
+            if (!profile.escola_id) {
+                console.warn('⚠️ AuthContext: escola_id is null, skipping escola profile load')
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
             console.log('🏫 AuthContext: Fetching escola data for escola_id:', profile.escola_id)
             // Get escola data
             const { data: escolaData, error: escolaError } = await supabase
@@ -263,6 +297,36 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             console.log('✅ AuthContext: Escola data loaded:', escolaData)
             const escola = escolaData as Escola
+
+            // Check if escola is blocked
+            if (escola.bloqueado) {
+                console.error('🚫 AuthContext: Escola is blocked:', escola.bloqueado_motivo)
+                setBlockedModalData({
+                    reason: escola.bloqueado_motivo || undefined,
+                    type: 'blocked'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
+
+            // Check if escola is inactive
+            if (!escola.ativo) {
+                console.warn('⚠️ AuthContext: Escola is inactive')
+                setBlockedModalData({
+                    reason: undefined,
+                    type: 'inactive'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
             const escolaProfile: EscolaProfile = {
                 ...escola,
                 user_profile: profile
@@ -336,8 +400,38 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             }
 
             const escola = escolaData ? (escolaData as Escola) : undefined
+
+            // Check if escola is blocked or inactive
             if (escola) {
                 console.log('✅ AuthContext: Escola data loaded:', escola.nome)
+
+                if (escola.bloqueado) {
+                    console.error('🚫 AuthContext: Escola is blocked:', escola.bloqueado_motivo)
+                    setBlockedModalData({
+                        reason: escola.bloqueado_motivo || undefined,
+                        type: 'blocked'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
+                if (!escola.ativo) {
+                    console.warn('⚠️ AuthContext: Escola is inactive')
+                    setBlockedModalData({
+                        reason: undefined,
+                        type: 'inactive'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
             }
 
             // Get turmas associadas (may fail due to RLS, that's OK)
@@ -498,9 +592,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isProfessor,
         escolaProfile,
         professorProfile,
+        profile: user?.profile || null,  // Expose profile for SUPERADMIN checks
         signOut,
         refreshProfile
     }
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    return (
+        <>
+            <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+
+            {/* Blocked School Modal */}
+            {showBlockedModal && (
+                <BlockedSchoolMessage
+                    reason={blockedModalData.reason}
+                    type={blockedModalData.type}
+                    onClose={() => setShowBlockedModal(false)}
+                />
+            )}
+        </>
+    )
 }

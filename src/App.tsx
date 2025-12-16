@@ -13,12 +13,18 @@ import { TeachersPage } from './components/TeachersPage'
 import { ProfessorRegistration } from './components/ProfessorRegistration'
 import { ProfessorDashboard } from './components/ProfessorDashboard'
 import { ResetPasswordPage } from './components/ResetPasswordPage'
+import { SuperAdminDashboard } from './components/SuperAdminDashboard'
+import { EscolaManagement } from './components/EscolaManagement'
+import { SuperAdminAuditLog } from './components/SuperAdminAuditLog'
+import { isSuperAdmin } from './utils/permissions'
 
 function App() {
-    const { user, loading, isProfessor } = useAuth()
+    const { user, loading, isProfessor, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
+
+    const isSuperAdminUser = profile ? isSuperAdmin(profile) : false
 
     if (loading) {
         return (
@@ -54,6 +60,24 @@ function App() {
     }
 
     const renderPage = () => {
+        // SUPERADMIN routes
+        if (isSuperAdminUser) {
+            switch (currentPage) {
+                case 'dashboard':
+                case 'superadmin-dashboard':
+                    return <SuperAdminDashboard />
+                case 'superadmin-escolas':
+                    return <EscolaManagement />
+                case 'superadmin-audit':
+                    return <SuperAdminAuditLog />
+                case 'settings':
+                    return <SettingsPage />
+                default:
+                    return <SuperAdminDashboard />
+            }
+        }
+
+        // Regular user routes
         switch (currentPage) {
             case 'dashboard':
                 return isProfessor ? <ProfessorDashboard /> : <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
