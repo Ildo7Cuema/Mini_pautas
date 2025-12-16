@@ -135,7 +135,7 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
             if (!authData.user) throw new Error('Erro ao criar conta de utilizador')
 
             // 2. Create escola record using RPC function (bypasses RLS)
-            const { data: escolaData, error: escolaError } = await supabase
+            const { error: escolaError } = await supabase
                 .rpc('register_escola', {
                     p_user_id: authData.user.id,
                     p_nome: formData.nome_escola,

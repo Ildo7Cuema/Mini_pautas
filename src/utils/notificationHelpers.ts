@@ -87,8 +87,8 @@ export async function broadcastToSchool(
     escolaId: string,
     tipo: NotificationType,
     title: string,
-    message?: string,
-    link?: string
+    _message?: string,
+    _link?: string
 ): Promise<void> {
     // This would require fetching all users in the school
     // and creating a notification for each one

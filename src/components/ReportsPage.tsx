@@ -1159,7 +1159,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                                     // Build dependency values, using 0 for missing values
                                     const dependencyValues: Record<string, number> = {}
-                                    let hasAtLeastOneValue = false
 
                                     componente.depends_on_components.forEach((depId: string) => {
                                         // Search in components from this trimester only
@@ -1170,7 +1169,6 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                             const value = notasMap[depComponent.codigo_componente]
                                             if (value !== undefined) {
                                                 dependencyValues[depComponent.codigo_componente] = value
-                                                hasAtLeastOneValue = true
                                                 console.log(`[DEBUG T${t}] Found value for ${depComponent.codigo_componente}:`, value)
                                             } else {
                                                 dependencyValues[depComponent.codigo_componente] = 0

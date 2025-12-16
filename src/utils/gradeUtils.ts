@@ -2,7 +2,7 @@
  * Utility functions for grade management
  */
 
-import { Aluno, ComponenteAvaliacao } from '../types'
+import { Aluno } from '../types'
 
 export interface GradeStats {
     total: number
@@ -215,7 +215,7 @@ export const parseGradesFromCSV = (
                 return
             }
 
-            const [numero, nome, numeroProcesso, notaStr] = values
+            const [, , numeroProcesso, notaStr] = values
 
             // Find student by numero_processo
             const aluno = alunos.find(a => a.numero_processo === numeroProcesso)

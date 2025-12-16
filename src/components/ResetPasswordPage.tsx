@@ -166,7 +166,7 @@ export const ResetPasswordPage: React.FC = () => {
                                 required
                                 autoComplete="new-password"
                                 icon={<Icons.Lock />}
-                                helperText="Mínimo de 6 caracteres"
+                                helpText="Mínimo de 6 caracteres"
                             />
 
                             {/* Confirm Password */}

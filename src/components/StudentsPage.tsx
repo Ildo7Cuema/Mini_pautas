@@ -387,7 +387,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
     )
 
     // Form fields for each tab
-    const renderTabContent = (isEdit: boolean = false) => {
+    const renderTabContent = () => {
         switch (activeTab) {
             case 'pessoal':
                 return (

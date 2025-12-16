@@ -31,7 +31,7 @@ interface TeachersPageProps {
     onNavigate?: (page: string) => void
     searchQuery?: string
 }
-export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate, searchQuery = '' }) => {
+export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavigate, searchQuery = '' }) => {
 
     const { escolaProfile } = useAuth()
     const [professores, setProfessores] = useState<Professor[]>([])

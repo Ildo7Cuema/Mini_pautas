@@ -52,10 +52,10 @@ function isAttendanceSufficient(frequencia?: number): boolean {
 function generateObservacao(
     status: 'Transita' | 'Não Transita' | 'Condicional',
     nivelEnsino?: string,
-    classe?: string,
+    _classe?: string,
     disciplinasEmRisco?: string[],
     frequencia?: number,
-    limiar?: number
+    _limiar?: number
 ): string {
     const isPrimary = nivelEnsino?.toLowerCase().includes('primário') || nivelEnsino?.toLowerCase().includes('primario')
     const limiarNota = isPrimary ? 5 : 10
