@@ -129,18 +129,15 @@ export const LoginScreen: React.FC = () => {
                             <button
                                 onClick={() => setMode('login')}
                                 className={`flex-1 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${mode === 'login'
-                                        ? 'bg-white text-primary-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
+                                    ? 'bg-white text-primary-600 shadow-sm'
+                                    : 'text-slate-500 hover:text-slate-700'
                                     }`}
                             >
                                 Entrar
                             </button>
                             <button
                                 onClick={() => setMode('school-registration')}
-                                className={`flex-1 py-2.5 px-3 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 ${mode === 'school-registration'
-                                        ? 'bg-white text-primary-600 shadow-sm'
-                                        : 'text-slate-500 hover:text-slate-700'
-                                    }`}
+                                className="flex-1 py-2.5 px-3 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 text-slate-500 hover:text-slate-700"
                             >
                                 Cadastrar Escola
                             </button>
