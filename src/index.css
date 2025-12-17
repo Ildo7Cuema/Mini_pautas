@@ -75,6 +75,11 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-neutral-300 rounded-full hover:bg-neutral-400;
   }
+
+  /* Hide mobile bottom navigation when modal is open */
+  body:has(.fixed.inset-0.z-50) .mobile-bottom-nav {
+    display: none !important;
+  }
 }
 
 /* ============================================

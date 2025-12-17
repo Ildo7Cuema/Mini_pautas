@@ -443,7 +443,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             </main>
 
             {/* Mobile Bottom Navigation - Glassmorphism */}
-            <nav className="md:hidden fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-xl border border-white/20 shadow-lg shadow-black/5 rounded-2xl z-40 overflow-hidden isolate"
+            <nav className="mobile-bottom-nav md:hidden fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-xl border border-white/20 shadow-lg shadow-black/5 rounded-2xl z-40 overflow-hidden isolate"
                 style={{
                     paddingBottom: 'max(env(safe-area-inset-bottom), 0px)',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.05)'
