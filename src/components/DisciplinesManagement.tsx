@@ -794,104 +794,105 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                         key={disciplina.id}
                                         className="transition-colors duration-200"
                                     >
-                                        <div className="p-4 hover:bg-slate-50">
-                                            <div className="flex items-start justify-between gap-4">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="flex items-center gap-3 mb-2">
-                                                        <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold shadow-md">
-                                                            {disciplina.nome.substring(0, 2).toUpperCase()}
-                                                        </div>
-                                                        <div className="flex-1 min-w-0">
-                                                            <div className="flex items-center gap-2">
-                                                                <h4 className="font-semibold text-slate-900 text-base truncate">
-                                                                    {disciplina.nome}
-                                                                </h4>
-                                                                {disciplinasObrigatorias.has(disciplina.id) && (
-                                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
-                                                                        <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                                                        </svg>
-                                                                        Obrigatória
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                            <p className="text-sm text-slate-500">
-                                                                Código: {disciplina.codigo_disciplina}
-                                                            </p>
-                                                            {/* Display assigned professor */}
-                                                            {disciplina.professor_id && (
-                                                                <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1">
-                                                                    <Icons.User className="w-3 h-3" />
-                                                                    {professores.find(p => p.id === disciplina.professor_id)?.nome_completo || 'Professor não encontrado'}
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                        <div className="p-4 md:p-5 hover:bg-slate-50">
+                                            {/* Mobile-first stacked layout */}
+                                            <div className="flex flex-col gap-3">
+                                                {/* Header row: Badge + Name + Expand/Edit/Delete */}
+                                                <div className="flex items-start gap-3">
+                                                    <div className="flex-shrink-0 w-11 h-11 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                                        {disciplina.nome.substring(0, 2).toUpperCase()}
                                                     </div>
-                                                    {(disciplina.carga_horaria || disciplina.descricao || true) && (
-                                                        <div className="ml-13 space-y-1">
-                                                            {/* Checkbox para marcar como obrigatória */}
-                                                            <div className="flex items-center gap-2 mb-2">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    id={`obrigatoria-${disciplina.id}`}
-                                                                    checked={disciplinasObrigatorias.has(disciplina.id)}
-                                                                    onChange={() => toggleDisciplinaObrigatoria(disciplina.id)}
-                                                                    disabled={loadingObrigatorias}
-                                                                    className="w-4 h-4 text-amber-600 bg-white border-slate-300 rounded focus:ring-amber-500 focus:ring-2 cursor-pointer disabled:opacity-50"
-                                                                />
-                                                                <label
-                                                                    htmlFor={`obrigatoria-${disciplina.id}`}
-                                                                    className="text-sm font-medium text-slate-700 cursor-pointer select-none"
-                                                                >
-                                                                    Disciplina obrigatória para transição
-                                                                </label>
-                                                                <span className="text-xs text-slate-500">
-                                                                    ({disciplinasObrigatorias.size}/3-4)
-                                                                </span>
-                                                            </div>
-                                                            {disciplina.carga_horaria && (
-                                                                <p className="text-sm text-slate-600">
-                                                                    <span className="font-medium">Carga Horária:</span> {disciplina.carga_horaria}h
-                                                                </p>
-                                                            )}
-                                                            {disciplina.descricao && (
-                                                                <p className="text-sm text-slate-600 line-clamp-2">
-                                                                    {disciplina.descricao}
-                                                                </p>
-                                                            )}
-                                                        </div>
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-bold text-slate-900 text-base leading-tight">
+                                                            {disciplina.nome}
+                                                        </h4>
+                                                        <p className="text-sm text-slate-500 mt-0.5">
+                                                            {disciplina.codigo_disciplina}
+                                                        </p>
+                                                        {disciplina.professor_id && (
+                                                            <p className="text-xs text-slate-400 mt-1 flex items-center gap-1 truncate">
+                                                                <Icons.User className="w-3 h-3 flex-shrink-0" />
+                                                                <span className="truncate">{professores.find(p => p.id === disciplina.professor_id)?.nome_completo || 'Professor não encontrado'}</span>
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    {/* Action buttons - always visible */}
+                                                    <div className="flex-shrink-0 flex items-center gap-1">
+                                                        <button
+                                                            onClick={() => toggleDisciplina(disciplina.id)}
+                                                            className={`p-2.5 rounded-xl transition-all min-h-touch min-w-[44px] flex items-center justify-center ${isExpanded ? 'bg-primary-100 text-primary-600' : 'text-slate-400 hover:text-primary-600 hover:bg-primary-50'}`}
+                                                            title={isExpanded ? "Ocultar" : "Ver componentes"}
+                                                        >
+                                                            <svg className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openEditModal(disciplina)}
+                                                            className="p-2.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all min-h-touch min-w-[44px] flex items-center justify-center"
+                                                            title="Editar"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                                            </svg>
+                                                        </button>
+                                                        <button
+                                                            onClick={() => openDeleteModal(disciplina)}
+                                                            className="p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all min-h-touch min-w-[44px] flex items-center justify-center"
+                                                            title="Excluir"
+                                                        >
+                                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                {/* Badges row */}
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {disciplinasObrigatorias.has(disciplina.id) && (
+                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-700">
+                                                            <svg className="w-3.5 h-3.5 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            Obrigatória
+                                                        </span>
+                                                    )}
+                                                    {disciplina.carga_horaria && (
+                                                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600">
+                                                            {disciplina.carga_horaria}h
+                                                        </span>
                                                     )}
                                                 </div>
-                                                <div className="flex-shrink-0 flex items-center gap-2">
-                                                    <button
-                                                        onClick={() => toggleDisciplina(disciplina.id)}
-                                                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
-                                                        title={isExpanded ? "Ocultar componentes" : "Ver componentes"}
-                                                    >
-                                                        <svg className={`w - 5 h - 5 transition - transform ${isExpanded ? 'rotate-180' : ''} `} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openEditModal(disciplina)}
-                                                        className="p-2 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
-                                                        title="Editar disciplina"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                                        </svg>
-                                                    </button>
-                                                    <button
-                                                        onClick={() => openDeleteModal(disciplina)}
-                                                        className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
-                                                        title="Remover disciplina"
-                                                    >
-                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
+
+                                                {/* Checkbox for obrigatória - simplified mobile layout */}
+                                                <label className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl cursor-pointer hover:bg-slate-100 transition-colors">
+                                                    <input
+                                                        type="checkbox"
+                                                        id={`obrigatoria-${disciplina.id}`}
+                                                        checked={disciplinasObrigatorias.has(disciplina.id)}
+                                                        onChange={() => toggleDisciplinaObrigatoria(disciplina.id)}
+                                                        disabled={loadingObrigatorias}
+                                                        className="w-5 h-5 mt-0.5 text-amber-600 bg-white border-slate-300 rounded-md focus:ring-amber-500 focus:ring-2 cursor-pointer disabled:opacity-50 flex-shrink-0"
+                                                    />
+                                                    <div className="flex-1 min-w-0">
+                                                        <span className="text-sm font-medium text-slate-700 block">
+                                                            Disciplina obrigatória
+                                                        </span>
+                                                        <span className="text-xs text-slate-500">
+                                                            Para transição de classe ({disciplinasObrigatorias.size}/3-4)
+                                                        </span>
+                                                    </div>
+                                                </label>
+
+                                                {/* Description if exists */}
+                                                {disciplina.descricao && (
+                                                    <p className="text-sm text-slate-600 line-clamp-2 pl-1">
+                                                        {disciplina.descricao}
+                                                    </p>
+                                                )}
                                             </div>
+
 
                                             {/* Expandable Components Section */}
                                             {isExpanded && (
