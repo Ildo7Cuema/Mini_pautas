@@ -364,10 +364,10 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                    <p className="mt-4 text-slate-600">Carregando detalhes...</p>
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="text-center animate-fade-in">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary-600"></div>
+                    <p className="mt-4 text-slate-500 font-medium animate-pulse">Carregando detalhes...</p>
                 </div>
             </div>
         )
@@ -375,17 +375,25 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
 
     if (error || !turma) {
         return (
-            <div className="space-y-4">
-                <Button variant="ghost" icon={<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>} onClick={handleBack}>
+            <div className="space-y-4 animate-fade-in">
+                <button
+                    onClick={handleBack}
+                    className="flex items-center gap-2 text-slate-500 hover:text-primary-600 font-medium transition-colors min-h-touch"
+                >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
                     Voltar
-                </Button>
-                <Card>
+                </button>
+                <Card className="border-red-100 shadow-red-100/50">
                     <CardBody className="text-center py-12">
-                        <svg className="w-16 h-16 text-red-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <h3 className="text-lg font-semibold text-slate-900 mb-2">Erro ao carregar turma</h3>
-                        <p className="text-slate-600 mb-4">{error}</p>
+                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">Erro ao carregar turma</h3>
+                        <p className="text-slate-500 mb-6 max-w-md mx-auto">{error}</p>
                         <Button variant="primary" onClick={handleBack}>
                             Voltar para Turmas
                         </Button>
@@ -396,70 +404,88 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
     }
 
     return (
-        <div className="space-y-4 md:space-y-6">
+        <div className="space-y-6 md:space-y-8 pb-8 animate-fade-in">
             {/* Header with Back Button */}
-            <div className="flex items-center gap-3">
-                <Button
-                    variant="ghost"
-                    size="sm"
+            <div className="flex items-center gap-4">
+                <button
                     onClick={handleBack}
-                    className="min-h-touch min-w-touch"
+                    className="min-h-touch min-w-touch flex items-center justify-center text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all"
                 >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
-                </Button>
-                <div>
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">{turma.nome}</h2>
-                    <p className="text-sm md:text-base text-slate-600">Detalhes da Turma</p>
+                </button>
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-primary-600 text-white flex items-center justify-center text-xl font-bold shadow-lg shadow-indigo-500/20 flex-shrink-0">
+                        {turma.nome.substring(0, 2).toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                        <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight truncate">{turma.nome}</h2>
+                        <p className="text-slate-500 text-sm md:text-base">Detalhes e gestão da turma</p>
+                    </div>
                 </div>
             </div>
 
             {/* Messages */}
             {error && (
-                <div className="alert alert-error animate-slide-down">
-                    <span className="text-sm">{error}</span>
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center shadow-sm animate-slide-down">
+                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="font-medium">{error}</span>
                 </div>
             )}
             {success && (
-                <div className="alert alert-success animate-slide-down">
+                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center shadow-sm animate-slide-down">
                     <Icons.Check />
-                    <span className="ml-2 text-sm">{success}</span>
+                    <span className="ml-2 font-medium">{success}</span>
                 </div>
             )}
 
             {/* Turma Information Card */}
-            <Card>
-                <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Informações Gerais</h3>
+            <Card className="border-0 shadow-md shadow-slate-200/50 overflow-hidden">
+                <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Informações Gerais</h3>
+                    </div>
                 </CardHeader>
-                <CardBody className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-sm font-medium text-slate-500">Código da Turma</label>
-                            <p className="text-base font-semibold text-slate-900 mt-1">{turma.codigo_turma}</p>
+                <CardBody className="p-5 md:p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Código</label>
+                            <p className="text-base font-bold text-slate-900 mt-1.5">{turma.codigo_turma}</p>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-500">Ano Lectivo</label>
-                            <p className="text-base font-semibold text-slate-900 mt-1">{turma.ano_lectivo}</p>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Ano Lectivo</label>
+                            <p className="text-base font-bold text-slate-900 mt-1.5">{turma.ano_lectivo}</p>
                         </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-500">Trimestre</label>
-                            <p className="text-base font-semibold text-slate-900 mt-1">{turma.trimestre}º Trimestre</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-500">Nível de Ensino</label>
-                            <p className="text-base font-semibold text-slate-900 mt-1">{turma.nivel_ensino}</p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-slate-500">Total de Alunos</label>
-                            <p className="text-base font-semibold text-slate-900 mt-1">
-                                {turma.total_alunos} / {turma.capacidade_maxima}
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Trimestre</label>
+                            <p className="text-base font-bold text-slate-900 mt-1.5">
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-lg text-sm font-bold bg-primary-100 text-primary-700">
+                                    {turma.trimestre}º Trimestre
+                                </span>
                             </p>
                         </div>
-                        <div>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Nível</label>
+                            <p className="text-base font-bold text-slate-900 mt-1.5">{turma.nivel_ensino}</p>
+                        </div>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                            <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Alunos</label>
+                            <p className="text-base font-bold text-slate-900 mt-1.5">
+                                <span className="text-2xl">{turma.total_alunos}</span>
+                                <span className="text-slate-400 text-sm ml-1">/ {turma.capacidade_maxima}</span>
+                            </p>
+                        </div>
+                        <div className="bg-slate-50/50 p-4 rounded-xl border border-slate-100 col-span-2 md:col-span-1">
                             <div className="flex items-center justify-between mb-2">
-                                <label className="text-sm font-medium text-slate-500">Capacidade Máxima</label>
+                                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Capacidade</label>
                                 {!isProfessor && !isEditingCapacity && (
                                     <button
                                         onClick={handleStartEditCapacity}
@@ -467,7 +493,7 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
                                         title="Editar capacidade"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                         </svg>
                                     </button>
                                 )}
@@ -482,7 +508,7 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
                                             max="200"
                                             value={newCapacity}
                                             onChange={(e) => setNewCapacity(parseInt(e.target.value) || 1)}
-                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                            className="flex-1 px-3 py-2 border border-slate-300 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
                                             disabled={savingCapacity}
                                         />
                                         <span className="text-sm text-slate-600">alunos</span>
@@ -506,19 +532,7 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
                                             disabled={savingCapacity || newCapacity < (turma.total_alunos || 0) || newCapacity < 1}
                                             className="flex-1"
                                         >
-                                            {savingCapacity ? (
-                                                <>
-                                                    <div className="inline-block animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                                                    Salvando...
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                    </svg>
-                                                    Salvar
-                                                </>
-                                            )}
+                                            {savingCapacity ? 'Salvando...' : 'Salvar'}
                                         </Button>
                                         <Button
                                             type="button"
@@ -534,64 +548,102 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
                                 </div>
                             ) : (
                                 <div className="mt-2">
-                                    <div className="w-full bg-slate-200 rounded-full h-2">
+                                    <div className="w-full bg-slate-200 rounded-full h-2.5 overflow-hidden">
                                         <div
-                                            className="bg-primary-600 h-2 rounded-full transition-all"
+                                            className={`h-full rounded-full transition-all ${(turma.total_alunos || 0) / turma.capacidade_maxima > 0.9
+                                                ? 'bg-gradient-to-r from-red-500 to-orange-500'
+                                                : 'bg-gradient-to-r from-primary-500 to-indigo-500'
+                                                }`}
                                             style={{ width: `${Math.min((turma.total_alunos || 0) / turma.capacidade_maxima * 100, 100)}%` }}
                                         />
                                     </div>
-                                    <p className="text-xs text-slate-500 mt-1">
-                                        {turma.capacidade_maxima} alunos no máximo
+                                    <p className="text-xs text-slate-500 mt-2">
+                                        {turma.capacidade_maxima} vagas no total • {turma.capacidade_maxima - (turma.total_alunos || 0)} disponíveis
                                     </p>
                                 </div>
                             )}
                         </div>
-
                     </div>
                 </CardBody>
             </Card>
 
             {/* Quick Actions */}
-            <Card>
-                <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Ações Rápidas</h3>
+            <Card className="border-0 shadow-md shadow-slate-200/50 overflow-hidden">
+                <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900">Ações Rápidas</h3>
+                    </div>
                 </CardHeader>
-                <CardBody>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <CardBody className="p-5 md:p-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
                         {!isProfessor && (
                             <>
-                                <Button variant="primary" className="w-full" onClick={() => setShowAddStudentModal(true)}>
-                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    Adicionar Aluno
-                                </Button>
-                                <Button variant="secondary" className="w-full" onClick={() => setShowDisciplinesManagement(!showDisciplinesManagement)}>
-                                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                    </svg>
-                                    {showDisciplinesManagement ? 'Ocultar Disciplinas' : 'Gerir Disciplinas'}
-                                </Button>
+                                <button
+                                    onClick={() => setShowAddStudentModal(true)}
+                                    className="group p-4 bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:shadow-primary-500/10 rounded-2xl text-center transition-all duration-300 hover:-translate-y-1"
+                                >
+                                    <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-primary-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary-500/30 group-hover:scale-110 transition-transform">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700 group-hover:text-primary-600">Adicionar Aluno</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowDisciplinesManagement(!showDisciplinesManagement)}
+                                    className="group p-4 bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:shadow-amber-500/10 rounded-2xl text-center transition-all duration-300 hover:-translate-y-1"
+                                >
+                                    <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform">
+                                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-700 group-hover:text-amber-600">
+                                        {showDisciplinesManagement ? 'Ocultar' : 'Disciplinas'}
+                                    </span>
+                                </button>
                             </>
                         )}
-                        <Button variant="secondary" className="w-full" onClick={handleViewGrades}>
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Ver Notas
-                        </Button>
-                        <Button variant="secondary" className="w-full" onClick={handleListStudents}>
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                            </svg>
-                            {showStudentsList ? 'Ocultar Alunos' : 'Listar Alunos'}
-                        </Button>
-                        <Button variant="secondary" className="w-full" onClick={handleGenerateReport}>
-                            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            Gerar Relatório
-                        </Button>
+                        <button
+                            onClick={handleViewGrades}
+                            className="group p-4 bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:shadow-green-500/10 rounded-2xl text-center transition-all duration-300 hover:-translate-y-1"
+                        >
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 group-hover:text-green-600">Ver Notas</span>
+                        </button>
+                        <button
+                            onClick={handleListStudents}
+                            className="group p-4 bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:shadow-violet-500/10 rounded-2xl text-center transition-all duration-300 hover:-translate-y-1"
+                        >
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 group-hover:text-violet-600">
+                                {showStudentsList ? 'Ocultar' : 'Alunos'}
+                            </span>
+                        </button>
+                        <button
+                            onClick={handleGenerateReport}
+                            className="group p-4 bg-white border border-slate-100 shadow-sm hover:shadow-lg hover:shadow-rose-500/10 rounded-2xl text-center transition-all duration-300 hover:-translate-y-1"
+                        >
+                            <div className="w-12 h-12 mx-auto mb-3 bg-gradient-to-br from-rose-500 to-pink-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform">
+                                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                            </div>
+                            <span className="text-sm font-bold text-slate-700 group-hover:text-rose-600">Relatório</span>
+                        </button>
                     </div>
                 </CardBody>
             </Card>
@@ -607,10 +659,20 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
 
             {/* Students List - Conditionally shown */}
             {showStudentsList && (
-                <Card>
-                    <CardHeader>
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <h3 className="text-lg font-semibold text-slate-900">Alunos da Turma</h3>
+                <Card className="border-0 shadow-md shadow-slate-200/50 overflow-hidden animate-slide-up">
+                    <CardHeader className="border-b border-slate-100 bg-slate-50/50 p-5">
+                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white flex items-center justify-center shadow-lg shadow-violet-500/20">
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-bold text-slate-900">Alunos da Turma</h3>
+                                    <p className="text-sm text-slate-500">{students.length} aluno{students.length !== 1 && 's'} matriculado{students.length !== 1 && 's'}</p>
+                                </div>
+                            </div>
                             {students.length > 0 && (
                                 <div className="relative flex-1 sm:max-w-xs">
                                     <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -621,37 +683,45 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
                                         placeholder="Pesquisar aluno..."
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                        className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all bg-white shadow-sm"
                                     />
                                 </div>
                             )}
                         </div>
                     </CardHeader>
-                    <CardBody>
+                    <CardBody className="p-5 md:p-6">
                         {loadingStudents ? (
-                            <div className="text-center py-8">
-                                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                                <p className="mt-2 text-slate-600">Carregando alunos...</p>
+                            <div className="text-center py-12">
+                                <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-primary-600"></div>
+                                <p className="mt-3 text-slate-500 font-medium">Carregando alunos...</p>
                             </div>
                         ) : students.length === 0 ? (
-                            <div className="text-center py-8">
-                                <svg className="w-12 h-12 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-                                </svg>
-                                <p className="text-slate-600">Nenhum aluno nesta turma</p>
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-gradient-to-br from-violet-100 to-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-lg font-bold text-slate-800 mb-2">Nenhum aluno nesta turma</h4>
+                                <p className="text-slate-500 mb-6">Adicione o primeiro aluno para começar</p>
                                 {!isProfessor && (
-                                    <Button variant="primary" className="mt-4" onClick={() => setShowAddStudentModal(true)}>
+                                    <Button variant="primary" onClick={() => setShowAddStudentModal(true)}>
+                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                        </svg>
                                         Adicionar Primeiro Aluno
                                     </Button>
                                 )}
                             </div>
                         ) : filteredStudents.length === 0 ? (
-                            <div className="text-center py-8">
-                                <svg className="w-12 h-12 text-slate-300 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                </svg>
-                                <p className="text-slate-600">Nenhum aluno encontrado</p>
-                                <p className="text-sm text-slate-500 mt-1">Tente pesquisar com outros termos</p>
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <h4 className="text-lg font-bold text-slate-800 mb-2">Nenhum aluno encontrado</h4>
+                                <p className="text-slate-500">Tente pesquisar com outros termos</p>
                             </div>
                         ) : (
                             <>
