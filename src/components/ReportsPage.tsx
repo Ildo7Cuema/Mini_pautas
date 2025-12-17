@@ -1950,7 +1950,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
 
     return (
-        <div className="space-y-4 md:space-y-6">
+        <div className="space-y-4 md:space-y-6 pb-24 md:pb-6">
             {/* Header with Tabs */}
             <div>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Relatórios e Pautas</h2>
