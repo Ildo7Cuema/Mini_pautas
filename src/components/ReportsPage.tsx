@@ -1956,19 +1956,22 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                 <h2 className="text-xl md:text-2xl font-bold text-slate-900">Relatórios e Pautas</h2>
                 <p className="text-sm md:text-base text-slate-600 mt-1">Gere relatórios e exporte dados das turmas</p>
 
-                {/* Tab Navigation */}
-                <div className="mt-4 border-b border-slate-200">
-                    <nav className="-mb-px flex space-x-4 md:space-x-8 overflow-x-auto">
+                {/* Tab Navigation - Modern Pill Style */}
+                <div className="mt-4">
+                    <nav className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide -mx-1 px-1">
                         <button
                             onClick={() => setActiveTab('mini-pauta')}
                             className={`
-                                py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
+                                flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 whitespace-nowrap touch-feedback min-h-touch
                                 ${activeTab === 'mini-pauta'
-                                    ? 'border-blue-500 text-blue-600'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25'
+                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95'
                                 }
                             `}
                         >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
                             Mini-Pauta
                         </button>
                         {!isProfessor && (
@@ -1976,25 +1979,31 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                 <button
                                     onClick={() => setActiveTab('pauta-geral')}
                                     className={`
-                                        py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
+                                        flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 whitespace-nowrap touch-feedback min-h-touch
                                         ${activeTab === 'pauta-geral'
-                                            ? 'border-blue-500 text-blue-600'
-                                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95'
                                         }
                                     `}
                                 >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
                                     Pauta-Geral
                                 </button>
                                 <button
                                     onClick={() => setActiveTab('termo-frequencia')}
                                     className={`
-                                        py-2 px-1 border-b-2 font-medium text-sm transition whitespace-nowrap
+                                        flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm transition-all duration-200 whitespace-nowrap touch-feedback min-h-touch
                                         ${activeTab === 'termo-frequencia'
-                                            ? 'border-blue-500 text-blue-600'
-                                            : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
+                                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:scale-95'
                                         }
                                     `}
                                 >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
                                     Termo de Frequência
                                 </button>
                             </>
@@ -2050,14 +2059,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardBody>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <CardBody className="p-3 md:p-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Turma</label>
+                                    <label className="form-label">Turma</label>
                                     <select
                                         value={selectedTurma}
                                         onChange={(e) => setSelectedTurma(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="form-input min-h-touch"
                                     >
                                         <option value="">Selecione uma turma</option>
                                         {turmas.map((turma) => (
@@ -2069,11 +2078,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Disciplina</label>
+                                    <label className="form-label">Disciplina</label>
                                     <select
                                         value={selectedDisciplina}
                                         onChange={(e) => setSelectedDisciplina(e.target.value)}
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="form-input min-h-touch"
                                         disabled={!selectedTurma || disciplinas.length === 0}
                                     >
                                         <option value="">Selecione uma disciplina</option>
@@ -2090,14 +2099,14 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">Trimestre</label>
+                                    <label className="form-label">Trimestre</label>
                                     <select
                                         value={trimestre}
                                         onChange={(e) => {
                                             const value = e.target.value
                                             setTrimestre(value === 'all' ? 'all' : parseInt(value) as 1 | 2 | 3)
                                         }}
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                        className="form-input min-h-touch"
                                     >
                                         <option value={1}>1º Trimestre</option>
                                         <option value={2}>2º Trimestre</option>
@@ -2113,9 +2122,24 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                     <button
                                         onClick={loadMiniPautaData}
                                         disabled={!selectedTurma || !selectedDisciplina || loadingData}
-                                        className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all duration-200 shadow-md shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none min-h-touch touch-feedback"
                                     >
-                                        {loadingData ? 'Carregando...' : 'Carregar Dados'}
+                                        {loadingData ? (
+                                            <>
+                                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                Carregando...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                                                </svg>
+                                                Carregar Dados
+                                            </>
+                                        )}
                                     </button>
                                 </div>
                             </div>
@@ -2275,15 +2299,20 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     {/* Filters */}
                     <Card>
                         <CardHeader>
-                            <h3 className="text-lg font-semibold text-slate-900">Selecionar Aluno</h3>
+                            <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                    </svg>
+                                </div>
+                                <h3 className="text-base md:text-lg font-semibold text-slate-900">Selecionar Aluno</h3>
+                            </div>
                         </CardHeader>
-                        <CardBody>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <CardBody className="p-3 md:p-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                 {/* Turma Selection */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Turma
-                                    </label>
+                                    <label className="form-label">Turma</label>
                                     <select
                                         value={selectedTurma}
                                         onChange={(e) => {
@@ -2291,7 +2320,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                             setSelectedAluno('')
                                             setTermoFrequenciaData(null)
                                         }}
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        className="form-input min-h-touch"
                                     >
                                         <option value="">Selecione uma turma</option>
                                         {turmas.map((turma) => (
@@ -2304,14 +2333,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                                 {/* Student Selection */}
                                 <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                                        Aluno
-                                    </label>
+                                    <label className="form-label">Aluno</label>
                                     <select
                                         value={selectedAluno}
                                         onChange={(e) => setSelectedAluno(e.target.value)}
                                         disabled={!selectedTurma || alunos.length === 0}
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100 disabled:cursor-not-allowed"
+                                        className="form-input min-h-touch"
                                     >
                                         <option value="">Selecione um aluno</option>
                                         {alunos.map((aluno) => (
@@ -2329,44 +2356,70 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     {selectedTurma && availableComponents.length > 0 && (
                         <Card>
                             <CardHeader>
-                                <h3 className="text-lg font-semibold text-slate-900">Componentes a Exibir</h3>
-                                <p className="text-sm text-slate-500 mt-1">Selecione quais componentes de avaliação deseja mostrar no termo</p>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base md:text-lg font-semibold text-slate-900">Componentes a Exibir</h3>
+                                            <p className="text-xs md:text-sm text-slate-500">Selecione quais componentes mostrar no termo</p>
+                                        </div>
+                                    </div>
+                                    {selectedComponents.length > 0 && (
+                                        <span className="px-2.5 py-1 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">
+                                            {selectedComponents.length}/{availableComponents.length}
+                                        </span>
+                                    )}
+                                </div>
                             </CardHeader>
-                            <CardBody>
+                            <CardBody className="p-3 md:p-4">
                                 {/* Select All Components */}
                                 <div className="mb-4 pb-4 border-b border-slate-200">
-                                    <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition">
+                                    <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-100 p-3 rounded-xl transition-all duration-200 touch-feedback min-h-touch">
                                         <input
                                             type="checkbox"
                                             checked={selectedComponents.length === availableComponents.length}
                                             onChange={handleSelectAllComponents}
-                                            className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                            className="w-5 h-5 text-purple-600 border-2 border-slate-300 rounded-md focus:ring-2 focus:ring-purple-500 cursor-pointer"
                                         />
-                                        <span className="font-medium text-slate-900">
-                                            {selectedComponents.length === availableComponents.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
-                                        </span>
-                                        <span className="text-sm text-slate-500">
-                                            ({selectedComponents.length} de {availableComponents.length} selecionados)
-                                        </span>
+                                        <div className="flex-1">
+                                            <span className="font-semibold text-slate-900">
+                                                {selectedComponents.length === availableComponents.length ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                            </span>
+                                            <span className="ml-2 text-sm text-slate-500">
+                                                ({selectedComponents.length} de {availableComponents.length} selecionados)
+                                            </span>
+                                        </div>
                                     </label>
                                 </div>
 
-                                {/* Individual Component Checkboxes */}
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                                {/* Individual Component Checkboxes - Card Style */}
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                                     {availableComponents.map((component) => (
                                         <label
                                             key={component.codigo}
-                                            className="flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition"
+                                            className={`
+                                                flex items-center gap-2 cursor-pointer p-3 rounded-xl transition-all duration-200 touch-feedback min-h-touch
+                                                ${selectedComponents.includes(component.codigo)
+                                                    ? 'bg-purple-50 border-2 border-purple-300'
+                                                    : 'bg-slate-50 hover:bg-slate-100 border-2 border-transparent'
+                                                }
+                                            `}
                                         >
                                             <input
                                                 type="checkbox"
                                                 checked={selectedComponents.includes(component.codigo)}
                                                 onChange={() => handleToggleComponent(component.codigo)}
-                                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                                                className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500 cursor-pointer"
                                             />
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-medium text-slate-900">{component.codigo}</span>
-                                                <span className="text-xs text-slate-500">{component.nome}</span>
+                                            <div className="flex flex-col min-w-0">
+                                                <span className={`text-sm font-bold ${selectedComponents.includes(component.codigo) ? 'text-purple-700' : 'text-slate-900'}`}>
+                                                    {component.codigo}
+                                                </span>
+                                                <span className="text-xs text-slate-500 truncate">{component.nome}</span>
                                             </div>
                                         </label>
                                     ))}
@@ -2374,43 +2427,43 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                                 {/* Alignment Controls */}
                                 <div className="mt-6 pt-4 border-t border-slate-200">
-                                    <label className="block text-sm font-medium text-slate-700 mb-3">Alinhamento dos Componentes</label>
+                                    <label className="form-label mb-3">Alinhamento dos Componentes</label>
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => setComponentAlignment('left')}
-                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition ${componentAlignment === 'left'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                            className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch ${componentAlignment === 'left'
+                                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95'
                                                 }`}
                                         >
-                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h7" />
                                             </svg>
-                                            <span className="block mt-1">Esquerda</span>
+                                            <span>Esquerda</span>
                                         </button>
                                         <button
                                             onClick={() => setComponentAlignment('center')}
-                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition ${componentAlignment === 'center'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                            className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch ${componentAlignment === 'center'
+                                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95'
                                                 }`}
                                         >
-                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M7 12h10M9 18h6" />
                                             </svg>
-                                            <span className="block mt-1">Centro</span>
+                                            <span>Centro</span>
                                         </button>
                                         <button
                                             onClick={() => setComponentAlignment('right')}
-                                            className={`flex-1 px-4 py-2 text-sm font-medium rounded-lg transition ${componentAlignment === 'right'
-                                                ? 'bg-blue-600 text-white'
-                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                                            className={`flex-1 flex flex-col items-center gap-1.5 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch ${componentAlignment === 'right'
+                                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-md shadow-blue-500/25'
+                                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200 active:scale-95'
                                                 }`}
                                         >
-                                            <svg className="w-4 h-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M10 12h10M13 18h7" />
                                             </svg>
-                                            <span className="block mt-1">Direita</span>
+                                            <span>Direita</span>
                                         </button>
                                     </div>
                                 </div>
@@ -2422,60 +2475,105 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     {selectedTurma && alunos.length > 0 && !batchGenerating && (
                         <Card>
                             <CardHeader>
-                                <h3 className="text-lg font-semibold text-slate-900">Geração em Lote</h3>
-                                <p className="text-sm text-slate-500 mt-1">Selecione múltiplos alunos para gerar vários termos de uma vez</p>
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base md:text-lg font-semibold text-slate-900">Geração em Lote</h3>
+                                            <p className="text-xs md:text-sm text-slate-500">Selecione múltiplos alunos para gerar vários termos</p>
+                                        </div>
+                                    </div>
+                                    {selectedAlunosIds.length > 0 && (
+                                        <span className="px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                                            {selectedAlunosIds.length} selecionados
+                                        </span>
+                                    )}
+                                </div>
                             </CardHeader>
-                            <CardBody>
+                            <CardBody className="p-3 md:p-4">
                                 {/* Select All Checkbox */}
                                 <div className="mb-4 pb-4 border-b border-slate-200">
-                                    <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedAlunosIds.length === alunos.length && alunos.length > 0}
-                                            onChange={handleSelectAllAlunos}
-                                            className="w-5 h-5 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
-                                        />
-                                        <span className="font-medium text-slate-900">
-                                            Selecionar Todos ({alunos.length} alunos)
-                                        </span>
+                                    <label className="flex items-center gap-3 cursor-pointer hover:bg-slate-100 p-3 rounded-xl transition-all duration-200 touch-feedback min-h-touch">
+                                        <div className="relative flex items-center justify-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedAlunosIds.length === alunos.length && alunos.length > 0}
+                                                onChange={handleSelectAllAlunos}
+                                                className="w-5 h-5 text-blue-600 border-2 border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 cursor-pointer"
+                                            />
+                                        </div>
+                                        <div className="flex-1">
+                                            <span className="font-semibold text-slate-900">
+                                                {selectedAlunosIds.length === alunos.length && alunos.length > 0 ? 'Desmarcar Todos' : 'Selecionar Todos'}
+                                            </span>
+                                            <span className="ml-2 text-sm text-slate-500">
+                                                ({alunos.length} alunos na turma)
+                                            </span>
+                                        </div>
                                     </label>
                                 </div>
 
-                                {/* Student List with Checkboxes */}
-                                <div className="max-h-64 overflow-y-auto space-y-2 mb-4">
-                                    {alunos.map((aluno) => (
+                                {/* Student List with Checkboxes - Mobile Card Style */}
+                                <div className="max-h-72 overflow-y-auto space-y-2 mb-4 -mx-1 px-1">
+                                    {alunos.map((aluno, index) => (
                                         <label
                                             key={aluno.id}
-                                            className="flex items-center gap-3 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition"
+                                            className={`
+                                                flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all duration-200 touch-feedback min-h-touch
+                                                ${selectedAlunosIds.includes(aluno.id)
+                                                    ? 'bg-blue-50 border border-blue-200'
+                                                    : 'bg-slate-50 hover:bg-slate-100 border border-transparent'
+                                                }
+                                            `}
                                         >
+                                            <div className="w-7 h-7 bg-slate-200 rounded-lg flex items-center justify-center text-xs font-bold text-slate-600 flex-shrink-0">
+                                                {index + 1}
+                                            </div>
                                             <input
                                                 type="checkbox"
                                                 checked={selectedAlunosIds.includes(aluno.id)}
                                                 onChange={() => handleToggleAluno(aluno.id)}
-                                                className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-2 focus:ring-blue-500"
+                                                className="w-5 h-5 text-blue-600 border-2 border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 cursor-pointer flex-shrink-0"
                                             />
-                                            <span className="text-sm text-slate-700">
-                                                {aluno.nome_completo} <span className="text-slate-500">({aluno.numero_processo})</span>
-                                            </span>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm font-medium text-slate-900 truncate">
+                                                    {aluno.nome_completo}
+                                                </p>
+                                                <p className="text-xs text-slate-500">
+                                                    Nº {aluno.numero_processo}
+                                                </p>
+                                            </div>
+                                            {selectedAlunosIds.includes(aluno.id) && (
+                                                <svg className="w-5 h-5 text-blue-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                                </svg>
+                                            )}
                                         </label>
                                     ))}
                                 </div>
 
                                 {/* Counter and Button */}
-                                <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-                                    <span className="text-sm text-slate-600">
-                                        {selectedAlunosIds.length} de {alunos.length} alunos selecionados
-                                    </span>
-                                    <Button
+                                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-4 border-t border-slate-200">
+                                    <div className="flex items-center gap-2 text-sm text-slate-600">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span className="font-medium">{selectedAlunosIds.length}</span> de <span className="font-medium">{alunos.length}</span> alunos selecionados
+                                    </div>
+                                    <button
                                         onClick={handleGenerateBatchPDFs}
                                         disabled={selectedAlunosIds.length === 0}
-                                        className="bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
+                                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-medium rounded-xl transition-all duration-200 shadow-md shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none min-h-touch touch-feedback"
                                     >
-                                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                         </svg>
                                         Gerar PDFs em Lote
-                                    </Button>
+                                    </button>
                                 </div>
                             </CardBody>
                         </Card>
