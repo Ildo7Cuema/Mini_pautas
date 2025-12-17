@@ -140,8 +140,8 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
             type="button"
             onClick={() => setActiveTab(tab)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg transition-all ${activeTab === tab
-                    ? 'bg-primary-600 text-white shadow-md'
-                    : 'text-slate-600 hover:bg-slate-100'
+                ? 'bg-primary-600 text-white shadow-md'
+                : 'text-slate-600 hover:bg-slate-100'
                 }`}
         >
             {icon}
@@ -459,7 +459,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                         <TabButton tab="academico" label="Acadêmico" icon={<Icons.ClipboardList />} />
                     </div>
                 </CardHeader>
-                <CardBody className="flex-1 overflow-y-auto">
+                <CardBody className="flex-1 overflow-y-auto pb-24 md:pb-0">
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {renderTabContent()}
 
@@ -468,7 +468,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                                 type="button"
                                 variant="ghost"
                                 onClick={handleClose}
-                                className="flex-1"
+                                className="flex-1 min-h-touch"
                                 disabled={isSubmitting}
                             >
                                 Cancelar
@@ -476,7 +476,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                             <Button
                                 type="submit"
                                 variant="primary"
-                                className="flex-1"
+                                className="flex-1 min-h-touch"
                                 disabled={isSubmitting}
                             >
                                 {isSubmitting ? 'Salvando...' : submitLabel}
