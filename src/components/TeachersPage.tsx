@@ -10,7 +10,6 @@ component-meta:
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Card, CardBody, CardHeader } from './ui/Card'
-import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
@@ -241,24 +240,28 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
     }
 
     return (
-        <div className="space-y-4 md:space-y-6">
+        <div className="space-y-4 md:space-y-6 pb-24 md:pb-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-xl md:text-2xl font-bold text-slate-900">Professores</h2>
-                    <p className="text-sm md:text-base text-slate-600 mt-1">Gerencie o corpo docente da escola</p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/25">
+                        <Icons.User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl md:text-2xl font-bold text-slate-900">Professores</h2>
+                        <p className="text-sm text-slate-500">Gerencie o corpo docente da escola</p>
+                    </div>
                 </div>
-                <Button
-                    variant="primary"
-                    icon={<Icons.UserPlus />}
+                <button
                     onClick={() => {
                         resetForm()
                         setShowModal(true)
                     }}
-                    className="w-full sm:w-auto"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all duration-200 shadow-md shadow-blue-500/25 min-h-touch touch-feedback w-full sm:w-auto"
                 >
-                    Novo Professor
-                </Button>
+                    <Icons.UserPlus className="w-5 h-5" />
+                    <span>Novo Professor</span>
+                </button>
             </div>
 
             {/* Messages */}
@@ -278,89 +281,103 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
             {/* Empty State */}
             {!loading && filteredProfessores.length === 0 && !error ? (
                 <Card>
-                    <CardBody className="text-center py-8 md:py-12">
-                        <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <Icons.User className="w-8 h-8 text-slate-400" />
+                    <CardBody className="text-center py-12 md:py-16 px-6">
+                        <div className="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Icons.User className="w-10 h-10 text-slate-400" />
                         </div>
-                        <h3 className="text-base md:text-lg font-semibold text-slate-900 mb-2">
+                        <h3 className="text-lg md:text-xl font-semibold text-slate-900 mb-2">
                             {searchQuery ? 'Nenhum professor encontrado' : 'Nenhum professor cadastrado'}
                         </h3>
-                        <p className="text-sm md:text-base text-slate-600 mb-4">
-                            {searchQuery ? 'Tente pesquisar com outros termos' : 'Cadastre os professores para vinculá-los às turmas'}
+                        <p className="text-sm text-slate-500 mb-6 max-w-sm mx-auto">
+                            {searchQuery ? 'Tente pesquisar com outros termos' : 'Cadastre os professores para vinculá-los às turmas e disciplinas'}
                         </p>
                         {!searchQuery && (
-                            <Button variant="primary" onClick={() => setShowModal(true)} className="w-full sm:w-auto">
+                            <button
+                                onClick={() => setShowModal(true)}
+                                className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all duration-200 shadow-md shadow-blue-500/25 min-h-touch touch-feedback"
+                            >
+                                <Icons.UserPlus className="w-5 h-5" />
                                 Cadastrar Professor
-                            </Button>
+                            </button>
                         )}
                     </CardBody>
                 </Card>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                    {filteredProfessores.map((prof) => (
-                        <Card key={prof.id} className="hover:shadow-lg transition-shadow">
-                            <CardBody className="p-4 md:p-6">
-                                <div className="flex items-start justify-between mb-3 md:mb-4">
-                                    <div className="flex flex-col">
-                                        <h3 className="text-base md:text-lg font-semibold text-slate-900 truncate">{prof.nome_completo}</h3>
-                                        <p className="text-xs md:text-sm text-slate-500">{prof.email}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
+                    {filteredProfessores.map((prof, index) => (
+                        <Card key={prof.id} className="hover:shadow-lg transition-all duration-300 touch-feedback">
+                            <CardBody className="p-4">
+                                {/* Header with Avatar and Status */}
+                                <div className="flex items-start gap-3 mb-4">
+                                    <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-lg font-bold text-slate-600 flex-shrink-0">
+                                        {prof.nome_completo.charAt(0).toUpperCase()}
                                     </div>
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${prof.ativo ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                                        }`}>
-                                        {prof.ativo ? 'Ativo' : 'Inativo'}
-                                    </span>
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ml-2 ${prof.user_id ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'
-                                        }`}>
-                                        {prof.user_id ? 'Registado' : 'Pendente'}
-                                    </span>
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-base font-semibold text-slate-900 truncate">{prof.nome_completo}</h3>
+                                        <p className="text-xs text-slate-500 truncate">{prof.email}</p>
+                                        <div className="flex items-center gap-1.5 mt-1.5">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${prof.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                                                {prof.ativo ? 'Ativo' : 'Inativo'}
+                                            </span>
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold ${prof.user_id ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                {prof.user_id ? 'Registado' : 'Pendente'}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </div>
 
+                                {/* Info */}
                                 <div className="space-y-2 mb-4">
                                     {prof.especialidade && (
-                                        <div className="flex items-center gap-2 text-slate-600">
-                                            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Especialidade:</span>
-                                            <span className="text-sm">{prof.especialidade}</span>
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+                                            <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                            </svg>
+                                            <span className="text-sm text-slate-700 truncate">{prof.especialidade}</span>
                                         </div>
                                     )}
                                     {prof.telefone && (
-                                        <div className="flex items-center gap-2 text-slate-600">
-                                            <Icons.Phone className="w-4 h-4" />
-                                            <span className="text-sm">{prof.telefone}</span>
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+                                            <Icons.Phone className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                                            <span className="text-sm text-slate-700">{prof.telefone}</span>
+                                        </div>
+                                    )}
+                                    {prof.numero_agente && (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+                                            <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" />
+                                            </svg>
+                                            <span className="text-sm text-slate-700">Nº {prof.numero_agente}</span>
                                         </div>
                                     )}
                                 </div>
 
-                                <div className="flex gap-2 border-t pt-4 mt-2">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
+                                {/* Actions */}
+                                <div className="flex gap-2 pt-3 border-t border-slate-100">
+                                    <button
                                         onClick={() => handleEdit(prof)}
-                                        className="flex-1"
+                                        className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch"
                                     >
-                                        <span className="mr-2">Editar</span>
                                         <Icons.Edit className="w-4 h-4" />
-                                    </Button>
+                                        <span>Editar</span>
+                                    </button>
 
                                     {!prof.user_id && (
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
+                                        <button
                                             onClick={() => handleCopyInvite(prof)}
-                                            className="min-h-touch min-w-touch"
+                                            className="flex items-center justify-center px-3 py-2.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl transition-all duration-200 touch-feedback min-h-touch"
                                             title="Copiar link de convite"
                                         >
                                             <Icons.Link className="w-4 h-4" />
-                                        </Button>
+                                        </button>
                                     )}
 
-                                    <Button
-                                        variant="danger"
-                                        size="sm"
+                                    <button
                                         onClick={() => handleDeleteClick(prof.id)}
-                                        className="min-h-touch min-w-touch"
+                                        className="flex items-center justify-center px-3 py-2.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-xl transition-all duration-200 touch-feedback min-h-touch"
                                     >
                                         <Icons.Trash className="w-4 h-4" />
-                                    </Button>
+                                    </button>
                                 </div>
                             </CardBody>
                         </Card>
@@ -370,23 +387,32 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
 
             {/* Create/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
-                    <Card className="w-full md:max-w-md md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
+                    <Card className="w-full md:max-w-md md:rounded-2xl rounded-t-2xl rounded-b-none md:rounded-b-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <CardHeader className="border-b border-slate-100">
                             <div className="flex items-center justify-between">
-                                <h3 className="text-lg font-semibold text-slate-900">{editMode ? 'Editar Professor' : 'Novo Professor'}</h3>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                                        {editMode ? (
+                                            <Icons.Edit className="w-5 h-5 text-white" />
+                                        ) : (
+                                            <Icons.UserPlus className="w-5 h-5 text-white" />
+                                        )}
+                                    </div>
+                                    <h3 className="text-lg font-semibold text-slate-900">{editMode ? 'Editar Professor' : 'Novo Professor'}</h3>
+                                </div>
                                 <button
                                     onClick={() => {
                                         setShowModal(false)
                                         resetForm()
                                     }}
-                                    className="text-slate-400 hover:text-slate-600"
+                                    className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors touch-feedback"
                                 >
-                                    <Icons.X className="w-6 h-6" />
+                                    <Icons.X className="w-5 h-5" />
                                 </button>
                             </div>
                         </CardHeader>
-                        <CardBody>
+                        <CardBody className="p-4">
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <Input
                                     label="Nome Completo"
@@ -431,20 +457,33 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
                                 />
 
                                 <div className="flex gap-3 pt-4">
-                                    <Button
+                                    <button
                                         type="button"
-                                        variant="ghost"
                                         onClick={() => {
                                             setShowModal(false)
                                             resetForm()
                                         }}
-                                        className="flex-1"
+                                        className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch"
                                     >
                                         Cancelar
-                                    </Button>
-                                    <Button type="submit" variant="primary" loading={submitting} className="flex-1">
-                                        {editMode ? 'Salvar' : 'Cadastrar'}
-                                    </Button>
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={submitting}
+                                        className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all duration-200 shadow-md shadow-blue-500/25 disabled:opacity-50 touch-feedback min-h-touch"
+                                    >
+                                        {submitting ? (
+                                            <>
+                                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                                A guardar...
+                                            </>
+                                        ) : (
+                                            editMode ? 'Salvar Alterações' : 'Cadastrar Professor'
+                                        )}
+                                    </button>
                                 </div>
                             </form>
                         </CardBody>
