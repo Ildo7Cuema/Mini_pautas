@@ -882,7 +882,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
 
                                                     {/* Grade Input */}
                                                     <div className="flex-shrink-0 w-24">
-                                                        <label className="text-xs font-medium text-slate-500 block mb-1 text-center">Nota</label>
+                                                        <label className="text-xs font-medium text-slate-500 block mb-1 text-center">{selectedComponenteData?.codigo_componente || 'Nota'}</label>
                                                         <input
                                                             type="number"
                                                             step="0.5"
@@ -917,7 +917,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                                                 <th className="sticky left-0 bg-slate-50 z-10 w-16 text-center">Nº</th>
                                                 <th className="sticky left-16 bg-slate-50 z-10 min-w-[200px] text-left">Aluno</th>
                                                 <th className="min-w-[120px] text-left">Nº Processo</th>
-                                                <th className="text-center min-w-[120px]">Nota</th>
+                                                <th className="text-center min-w-[120px]">{selectedComponenteData?.codigo_componente || 'Nota'}</th>
                                                 <th className="text-center min-w-[100px]">Status</th>
                                             </tr>
                                         </thead>
