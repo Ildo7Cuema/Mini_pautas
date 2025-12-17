@@ -2031,32 +2031,37 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     {/* Filters */}
                     <Card>
                         <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="flex items-center gap-2">
-                                    {selectedTurma && !isProfessor && (
+                                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                                        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                                        </svg>
+                                    </div>
+                                    <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
+                                </div>
+                                {selectedTurma && !isProfessor && (
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <button
                                             onClick={() => setShowOrdenarDisciplinasModal(true)}
-                                            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-all duration-200 touch-feedback"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
                                             </svg>
-                                            Ordenar Disciplinas
+                                            <span className="hidden sm:inline">Ordenar</span>
                                         </button>
-                                    )}
-                                    {selectedTurma && !isProfessor && (
                                         <button
                                             onClick={() => setShowColorConfigModal(true)}
-                                            className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
+                                            className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-all duration-200 touch-feedback"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
                                             </svg>
-                                            Configurar Cores
+                                            <span className="hidden sm:inline">Cores</span>
                                         </button>
-                                    )}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         </CardHeader>
                         <CardBody className="p-3 md:p-4">
@@ -2153,71 +2158,98 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                     {/* Preview */}
                     {miniPautaData && (
-                        <div>
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-lg font-semibold text-slate-900">Preview da Mini-Pauta</h3>
-                                <div className="flex gap-2">
-                                    <Button
-                                        variant="primary"
-                                        onClick={handleGeneratePDF}
-                                        icon={
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <Card>
+                            <CardHeader>
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-base md:text-lg font-semibold text-slate-900">Preview da Mini-Pauta</h3>
+                                            <p className="text-xs md:text-sm text-slate-500 hidden sm:block">
+                                                {miniPautaData.disciplina.nome} • {miniPautaData.trimestre === 'all' ? 'Todos os Trimestres' : `${miniPautaData.trimestre}º Trimestre`}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    {/* Action Buttons - Responsive */}
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {/* PDF - Primary Action */}
+                                        <button
+                                            onClick={handleGeneratePDF}
+                                            className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-md shadow-red-500/25 touch-feedback min-h-touch"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                             </svg>
-                                        }
-                                    >
-                                        PDF
-                                    </Button>
-                                    {!isProfessor && (
-                                        <>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={handleGenerateExcel}
-                                                icon={
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <span className="hidden sm:inline">PDF</span>
+                                        </button>
+                                        {!isProfessor && (
+                                            <>
+                                                {/* Excel */}
+                                                <button
+                                                    onClick={handleGenerateExcel}
+                                                    className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-sm font-medium rounded-xl transition-all duration-200 shadow-md shadow-green-500/25 touch-feedback min-h-touch"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                     </svg>
-                                                }
-                                            >
-                                                Excel
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={handleExportCSV}
-                                                icon={
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <span className="hidden sm:inline">Excel</span>
+                                                </button>
+                                                {/* CSV */}
+                                                <button
+                                                    onClick={handleExportCSV}
+                                                    className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                                     </svg>
-                                                }
-                                            >
-                                                CSV
-                                            </Button>
-                                            <Button
-                                                variant="secondary"
-                                                onClick={() => setShowHeaderConfigModal(true)}
-                                                icon={
-                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <span className="hidden md:inline">CSV</span>
+                                                </button>
+                                                {/* Header Config */}
+                                                <button
+                                                    onClick={() => setShowHeaderConfigModal(true)}
+                                                    className="flex items-center gap-2 px-3 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-xl transition-all duration-200 touch-feedback min-h-touch"
+                                                >
+                                                    <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                                     </svg>
-                                                }
-                                            >
-                                                Cabeçalho
-                                            </Button>
-                                        </>
-                                    )}
+                                                    <span className="hidden md:inline">Cabeçalho</span>
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
                                 </div>
-                            </div>
-                            <MiniPautaPreview data={miniPautaData} loading={loadingData} colorConfig={colorConfig} />
-                        </div>
+                            </CardHeader>
+                            <CardBody className="p-0 md:p-4">
+                                <MiniPautaPreview data={miniPautaData} loading={loadingData} colorConfig={colorConfig} />
+                            </CardBody>
+                        </Card>
                     )}
 
                     {!miniPautaData && !loadingData && selectedTurma && selectedDisciplina && (
-                        <div className="bg-slate-50 rounded-lg p-8 text-center">
-                            <svg className="w-16 h-16 mx-auto text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <p className="text-slate-600">Clique em "Carregar Dados" para visualizar a mini-pauta</p>
-                        </div>
+                        <Card>
+                            <CardBody className="p-8 md:p-12">
+                                <div className="text-center">
+                                    <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                        <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="text-base font-semibold text-slate-700 mb-2">Pronto para carregar</h4>
+                                    <p className="text-sm text-slate-500 mb-4">Clique em "Carregar Dados" para visualizar a mini-pauta</p>
+                                    <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                        <span>Os dados serão carregados com base nos filtros selecionados</span>
+                                    </div>
+                                </div>
+                            </CardBody>
+                        </Card>
                     )}
 
                     {/* Configuration Modal */}
