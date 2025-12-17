@@ -62,8 +62,8 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
     const [saving, setSaving] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
-    // Use topbar search if provided, otherwise use local state
-    const searchQuery = topbarSearchQuery
+    // Local search query state for the in-page search input
+    const [searchQuery, setSearchQuery] = useState('')
     const [sortBy, setSortBy] = useState<'nome' | 'numero' | 'nota'>('numero')
     const [filterStatus, setFilterStatus] = useState<'all' | 'filled' | 'pending'>('all')
     const [showImportModal, setShowImportModal] = useState(false)
@@ -817,16 +817,100 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                                 </div>
                             </div>
                         ) : alunos.length === 0 ? (
-                            <div className="text-center py-12">
-                                <p className="text-slate-600">Nenhum aluno encontrado nesta turma</p>
+                            <div className="text-center py-16">
+                                <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                </div>
+                                <p className="text-slate-600 font-medium">Nenhum aluno encontrado nesta turma</p>
                             </div>
                         ) : filteredAndSortedAlunos.length === 0 ? (
-                            <div className="text-center py-12">
-                                <p className="text-slate-600">Nenhum aluno corresponde aos filtros</p>
+                            <div className="text-center py-16">
+                                <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                    </svg>
+                                </div>
+                                <p className="text-slate-600 font-medium">Nenhum aluno corresponde aos filtros</p>
                             </div>
                         ) : (
                             <>
-                                <div className="overflow-x-auto">
+                                {/* Mobile Card Layout */}
+                                <div className="md:hidden divide-y divide-slate-200">
+                                    {filteredAndSortedAlunos.map((aluno, index) => {
+                                        const hasError = errors[aluno.id]
+                                        const nota = notas[aluno.id]
+                                        const hasNota = nota !== undefined
+
+                                        return (
+                                            <div
+                                                key={aluno.id}
+                                                className={`p-4 ${hasNota ? getGradeBgColor(nota) : ''}`}
+                                            >
+                                                <div className="flex items-start gap-3">
+                                                    {/* Number Badge */}
+                                                    <div className="flex-shrink-0 w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl flex items-center justify-center text-sm font-bold text-slate-600">
+                                                        {index + 1}
+                                                    </div>
+
+                                                    {/* Student Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <h4 className="font-bold text-slate-900 text-base leading-tight">
+                                                            {aluno.nome_completo}
+                                                        </h4>
+                                                        <p className="text-sm text-slate-500 mt-0.5">
+                                                            Nº {aluno.numero_processo}
+                                                        </p>
+
+                                                        {/* Status Badge */}
+                                                        <div className="mt-2">
+                                                            {hasNota ? (
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-green-100 text-green-700">
+                                                                    <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                    Lançada
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-600">
+                                                                    Pendente
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Grade Input */}
+                                                    <div className="flex-shrink-0 w-24">
+                                                        <label className="text-xs font-medium text-slate-500 block mb-1 text-center">Nota</label>
+                                                        <input
+                                                            type="number"
+                                                            step="0.5"
+                                                            min={selectedComponenteData?.escala_minima}
+                                                            max={selectedComponenteData?.escala_maxima}
+                                                            value={nota ?? ''}
+                                                            onChange={(e) => handleNotaChange(aluno.id, e.target.value)}
+                                                            className={`w-full h-12 text-center text-lg font-bold rounded-xl border-2 transition-all focus:ring-2 focus:ring-primary-500 focus:border-primary-500
+                                                                ${hasError
+                                                                    ? 'border-red-500 bg-red-50 text-red-700'
+                                                                    : hasNota
+                                                                        ? `border-slate-200 ${getGradeColor(nota)}`
+                                                                        : 'border-slate-200 bg-white'
+                                                                }`}
+                                                            placeholder="0"
+                                                        />
+                                                        {hasError && (
+                                                            <span className="text-xs text-red-600 block mt-1 text-center">{hasError}</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+
+                                {/* Desktop Table Layout */}
+                                <div className="hidden md:block overflow-x-auto">
                                     <table className="table-excel">
                                         <thead>
                                             <tr>
