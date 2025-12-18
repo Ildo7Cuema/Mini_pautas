@@ -389,6 +389,10 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
                     <Card className="w-full md:max-w-md md:rounded-2xl rounded-t-2xl rounded-b-none md:rounded-b-2xl animate-slide-up max-h-[90vh] overflow-y-auto">
+                        {/* Drag Handle - Mobile Only */}
+                        <div className="md:hidden flex justify-center pt-3 pb-1">
+                            <div className="w-10 h-1 bg-slate-300 rounded-full" />
+                        </div>
                         <CardHeader className="border-b border-slate-100">
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
