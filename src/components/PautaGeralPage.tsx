@@ -108,6 +108,7 @@ export const PautaGeralPage: React.FC = () => {
     const [headerConfig, setHeaderConfig] = useState<HeaderConfig | null>(null)
     const [colorConfig, setColorConfig] = useState<GradeColorConfig | null>(null)
     const [showHeaderConfigModal, setShowHeaderConfigModal] = useState(false)
+    const [showExportMenu, setShowExportMenu] = useState(false)
 
     const [fieldSelection, setFieldSelection] = useState<FieldSelection>({
         disciplinas: [],
@@ -555,6 +556,7 @@ export const PautaGeralPage: React.FC = () => {
         try {
             await generatePautaGeralPDF(filteredData, headerConfig, colorConfig)
             setSuccess('PDF gerado com sucesso!')
+            setShowExportMenu(false)
             setTimeout(() => setSuccess(null), 3000)
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar PDF'
@@ -572,6 +574,7 @@ export const PautaGeralPage: React.FC = () => {
         try {
             generatePautaGeralExcel(filteredData)
             setSuccess('Excel gerado com sucesso!')
+            setShowExportMenu(false)
             setTimeout(() => setSuccess(null), 3000)
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar Excel'
@@ -589,6 +592,7 @@ export const PautaGeralPage: React.FC = () => {
         try {
             generatePautaGeralCSV(filteredData)
             setSuccess('CSV exportado com sucesso!')
+            setShowExportMenu(false)
             setTimeout(() => setSuccess(null), 3000)
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao exportar CSV'
@@ -597,82 +601,159 @@ export const PautaGeralPage: React.FC = () => {
     }
 
     return (
-        <div className="space-y-4 md:space-y-6">
-            {/* Header */}
-            <div>
-                <h2 className="text-xl md:text-2xl font-bold text-slate-900">Pauta-Geral</h2>
-                <p className="text-sm md:text-base text-slate-600 mt-1">Gere pauta geral por turma com todas as disciplinas</p>
+        <div className="space-y-5 md:space-y-6 animate-fade-in pb-6">
+            {/* Modern Header with Gradient */}
+            <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 p-5 md:p-6 shadow-lg">
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTM2IDM0djItSDI0di0yaDEyek0zNiAzMHYySDI0di0yaDEyek0zNiAyNnYySDI0di0yaDEyeiIvPjwvZz48L2c+PC9zdmc+')] opacity-30"></div>
+                <div className="relative flex items-start gap-4">
+                    <div className="hidden sm:flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm">
+                        <svg className="h-7 w-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <div className="flex-1">
+                        <h2 className="text-xl md:text-2xl font-bold text-white mb-1">Pauta-Geral</h2>
+                        <p className="text-sm md:text-base text-blue-100/90">
+                            Gere a pauta geral completa por turma com todas as disciplinas e classificações finais
+                        </p>
+                    </div>
+                </div>
             </div>
 
             {/* Messages */}
             {error && (
-                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                    <span className="text-sm">{error}</span>
+                <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-xl flex items-center gap-3 animate-slide-up shadow-sm">
+                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-red-100">
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <span className="text-sm flex-1">{error}</span>
+                    <button onClick={() => setError(null)} className="text-red-600 hover:text-red-800 p-1">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
             )}
             {success && (
-                <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg">
-                    <span className="text-sm">{success}</span>
+                <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-xl flex items-center gap-3 animate-slide-up shadow-sm">
+                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-green-100">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <span className="text-sm flex-1">{success}</span>
                 </div>
             )}
 
-            {/* Filters */}
-            <Card>
-                <CardHeader>
-                    <h3 className="text-base md:text-lg font-semibold text-slate-900">Filtros</h3>
+            {/* Filters Card - Modern Glass Design */}
+            <Card className="overflow-hidden border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardHeader className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200/50">
+                    <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-lg bg-blue-100 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                            </svg>
+                        </div>
+                        <h3 className="text-base md:text-lg font-semibold text-slate-800">Selecionar Turma</h3>
+                    </div>
                 </CardHeader>
-                <CardBody>
+                <CardBody className="p-4 md:p-5">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-2">Turma</label>
-                            <select
-                                value={selectedTurma}
-                                onChange={(e) => setSelectedTurma(e.target.value)}
-                                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            >
-                                <option value="">Selecione uma turma</option>
-                                {turmas.map((turma) => (
-                                    <option key={turma.id} value={turma.id}>
-                                        {turma.nome} - {turma.ano_lectivo}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative">
+                                <select
+                                    value={selectedTurma}
+                                    onChange={(e) => setSelectedTurma(e.target.value)}
+                                    className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm appearance-none cursor-pointer text-slate-700 transition-all hover:border-slate-300"
+                                >
+                                    <option value="">Selecione uma turma</option>
+                                    {turmas.map((turma) => (
+                                        <option key={turma.id} value={turma.id}>
+                                            {turma.nome} - {turma.ano_lectivo}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex items-end">
                             <button
                                 onClick={loadPautaGeralData}
                                 disabled={!selectedTurma || loadingData}
-                                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="w-full px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
                             >
-                                {loadingData ? 'Carregando...' : 'Carregar Dados'}
+                                {loadingData ? (
+                                    <>
+                                        <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Carregando...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                        </svg>
+                                        <span>Carregar Dados</span>
+                                    </>
+                                )}
                             </button>
                         </div>
                     </div>
-                    <div className="mt-3 text-xs text-slate-600 bg-blue-50 border border-blue-200 rounded-lg p-2">
-                        <strong>Nota:</strong> A Pauta-Geral é gerada automaticamente com os dados do <strong>3º Trimestre</strong>.
+
+                    {/* Info Note */}
+                    <div className="mt-4 flex items-start gap-3 text-sm text-blue-700 bg-blue-50 border border-blue-100 rounded-xl p-3">
+                        <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <p>
+                            A Pauta-Geral é gerada automaticamente com os dados do <strong>3º Trimestre</strong>, incluindo médias finais e situação de cada aluno.
+                        </p>
                     </div>
                 </CardBody>
             </Card>
 
             {/* Field Selector */}
             {pautaGeralData && (
-                <PautaGeralFieldSelector
-                    data={pautaGeralData}
-                    selection={fieldSelection}
-                    onChange={setFieldSelection}
-                />
+                <div className="animate-slide-up">
+                    <PautaGeralFieldSelector
+                        data={pautaGeralData}
+                        selection={fieldSelection}
+                        onChange={setFieldSelection}
+                    />
+                </div>
             )}
 
             {/* Preview and Export */}
             {pautaGeralData && (
-                <div>
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold text-slate-900">Preview da Pauta-Geral</h3>
-                        <div className="flex gap-2">
+                <div className="animate-slide-up space-y-4">
+                    {/* Section Header with Actions */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center">
+                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                            </div>
+                            <h3 className="text-lg font-semibold text-slate-800">Preview da Pauta-Geral</h3>
+                        </div>
+
+                        {/* Desktop Action Buttons */}
+                        <div className="hidden md:flex items-center gap-2">
                             <Button
                                 variant="primary"
                                 onClick={handleGeneratePDF}
+                                className="shadow-md hover:shadow-lg"
                                 icon={
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -715,7 +796,74 @@ export const PautaGeralPage: React.FC = () => {
                                 Cabeçalho
                             </Button>
                         </div>
+
+                        {/* Mobile Action Menu */}
+                        <div className="md:hidden relative">
+                            <button
+                                onClick={() => setShowExportMenu(!showExportMenu)}
+                                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-medium rounded-xl shadow-md flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                <span>Exportar</span>
+                                <svg className={`w-4 h-4 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </button>
+
+                            {showExportMenu && (
+                                <div className="absolute right-0 left-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-20 animate-scale-in">
+                                    <button
+                                        onClick={handleGeneratePDF}
+                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-medium text-slate-700">Exportar PDF</span>
+                                    </button>
+                                    <button
+                                        onClick={handleGenerateExcel}
+                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-t border-slate-100"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-medium text-slate-700">Exportar Excel</span>
+                                    </button>
+                                    <button
+                                        onClick={handleExportCSV}
+                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-t border-slate-100"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-medium text-slate-700">Exportar CSV</span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setShowHeaderConfigModal(true); setShowExportMenu(false); }}
+                                        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-50 transition-colors text-left border-t border-slate-100"
+                                    >
+                                        <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                                            <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                            </svg>
+                                        </div>
+                                        <span className="font-medium text-slate-700">Configurar Cabeçalho</span>
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
+
+                    {/* Preview Component */}
                     <PautaGeralPreview
                         data={getFilteredData()!}
                         loading={loadingData}
@@ -726,12 +874,43 @@ export const PautaGeralPage: React.FC = () => {
                 </div>
             )}
 
+            {/* Empty State */}
             {!pautaGeralData && !loadingData && selectedTurma && (
-                <div className="bg-slate-50 rounded-lg p-8 text-center">
-                    <svg className="w-16 h-16 mx-auto text-slate-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    <p className="text-slate-600">Clique em "Carregar Dados" para visualizar a pauta-geral</p>
+                <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-8 md:p-12 text-center border border-slate-200 shadow-sm animate-fade-in">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-blue-100 flex items-center justify-center">
+                        <svg className="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">Pronto para gerar a Pauta-Geral</h3>
+                    <p className="text-slate-600 mb-6 max-w-md mx-auto">
+                        Clique no botão "Carregar Dados" acima para visualizar e exportar a pauta-geral desta turma.
+                    </p>
+                    <button
+                        onClick={loadPautaGeralData}
+                        disabled={loadingData}
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-md hover:shadow-lg"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Carregar Dados
+                    </button>
+                </div>
+            )}
+
+            {/* Initial State - No turma selected */}
+            {!selectedTurma && (
+                <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-2xl p-8 md:p-12 text-center border border-slate-200 shadow-sm animate-fade-in">
+                    <div className="w-20 h-20 mx-auto mb-6 rounded-2xl bg-slate-200 flex items-center justify-center">
+                        <svg className="w-10 h-10 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">Selecione uma Turma</h3>
+                    <p className="text-slate-600 max-w-md mx-auto">
+                        Escolha uma turma no selector acima para começar a gerar a Pauta-Geral.
+                    </p>
                 </div>
             )}
 
@@ -746,6 +925,14 @@ export const PautaGeralPage: React.FC = () => {
                 escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
                 documentType="Pauta-Geral"
             />
+
+            {/* Click outside to close export menu */}
+            {showExportMenu && (
+                <div
+                    className="fixed inset-0 z-10"
+                    onClick={() => setShowExportMenu(false)}
+                />
+            )}
         </div>
     )
 }
