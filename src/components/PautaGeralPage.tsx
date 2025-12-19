@@ -378,6 +378,7 @@ export const PautaGeralPage: React.FC = () => {
                     disciplinas_em_risco: [] as string[],
                     acoes_recomendadas: [] as string[],
                     observacao_padronizada: '',
+                    motivo_retencao: undefined as string | undefined,
                     matricula_condicional: false
                 }
             })
