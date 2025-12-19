@@ -1725,6 +1725,25 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
         }
     }
 
+    // Component reordering handlers
+    const moveComponentUp = (index: number) => {
+        if (index === 0) return
+        const newComponents = [...availableComponents]
+        const temp = newComponents[index]
+        newComponents[index] = newComponents[index - 1]
+        newComponents[index - 1] = temp
+        setAvailableComponents(newComponents)
+    }
+
+    const moveComponentDown = (index: number) => {
+        if (index === availableComponents.length - 1) return
+        const newComponents = [...availableComponents]
+        const temp = newComponents[index]
+        newComponents[index] = newComponents[index + 1]
+        newComponents[index + 1] = temp
+        setAvailableComponents(newComponents)
+    }
+
     const handleGenerateBatchPDFs = async () => {
         if (selectedAlunosIds.length === 0) {
             setError('Selecione pelo menos um aluno')
@@ -2428,32 +2447,66 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                     </label>
                                 </div>
 
-                                {/* Individual Component Checkboxes - Card Style */}
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                                    {availableComponents.map((component) => (
-                                        <label
+                                {/* Individual Component Checkboxes - Reorderable List */}
+                                <div className="space-y-2">
+                                    {availableComponents.map((component, index) => (
+                                        <div
                                             key={component.codigo}
                                             className={`
-                                                flex items-center gap-2 cursor-pointer p-3 rounded-xl transition-all duration-200 touch-feedback min-h-touch
+                                                flex items-center gap-2 p-3 rounded-xl transition-all duration-200
                                                 ${selectedComponents.includes(component.codigo)
                                                     ? 'bg-purple-50 border-2 border-purple-300'
                                                     : 'bg-slate-50 hover:bg-slate-100 border-2 border-transparent'
                                                 }
                                             `}
                                         >
-                                            <input
-                                                type="checkbox"
-                                                checked={selectedComponents.includes(component.codigo)}
-                                                onChange={() => handleToggleComponent(component.codigo)}
-                                                className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500 cursor-pointer"
-                                            />
-                                            <div className="flex flex-col min-w-0">
-                                                <span className={`text-sm font-bold ${selectedComponents.includes(component.codigo) ? 'text-purple-700' : 'text-slate-900'}`}>
-                                                    {component.codigo}
-                                                </span>
-                                                <span className="text-xs text-slate-500 truncate">{component.nome}</span>
+                                            {/* Reorder Buttons */}
+                                            <div className="flex flex-col gap-0.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); moveComponentUp(index); }}
+                                                    disabled={index === 0}
+                                                    className="p-1.5 rounded-lg hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition touch-feedback"
+                                                    title="Mover para cima"
+                                                >
+                                                    <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                                    </svg>
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.preventDefault(); moveComponentDown(index); }}
+                                                    disabled={index === availableComponents.length - 1}
+                                                    className="p-1.5 rounded-lg hover:bg-slate-200 disabled:opacity-30 disabled:cursor-not-allowed transition touch-feedback"
+                                                    title="Mover para baixo"
+                                                >
+                                                    <svg className="w-3.5 h-3.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </button>
                                             </div>
-                                        </label>
+
+                                            {/* Checkbox */}
+                                            <label className="flex items-center gap-2 flex-1 cursor-pointer min-h-touch">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedComponents.includes(component.codigo)}
+                                                    onChange={() => handleToggleComponent(component.codigo)}
+                                                    className="w-4 h-4 text-purple-600 border-slate-300 rounded focus:ring-purple-500 cursor-pointer"
+                                                />
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <span className={`text-sm font-bold ${selectedComponents.includes(component.codigo) ? 'text-purple-700' : 'text-slate-900'}`}>
+                                                        {component.codigo}
+                                                    </span>
+                                                    <span className="text-xs text-slate-500 truncate">{component.nome}</span>
+                                                </div>
+                                            </label>
+
+                                            {/* Order Indicator */}
+                                            <span className="text-sm font-medium text-slate-400 px-2">
+                                                #{index + 1}
+                                            </span>
+                                        </div>
                                     ))}
                                 </div>
 
@@ -2662,7 +2715,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     {termoFrequenciaData && !loadingTermo && (
                         <>
                             {/* Preview */}
-                            <TermoFrequenciaPreview data={termoFrequenciaData} colorConfig={colorConfig} componentAlignment={componentAlignment} />
+                            <TermoFrequenciaPreview data={termoFrequenciaData} colorConfig={colorConfig} componentAlignment={componentAlignment} componentOrder={availableComponents.map(c => c.codigo)} />
 
                             {/* Actions */}
                             <Card>

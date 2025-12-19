@@ -94,10 +94,11 @@ interface TermoFrequenciaPreviewProps {
     data: TermoFrequenciaData
     colorConfig?: GradeColorConfig | null
     componentAlignment?: 'left' | 'center' | 'right'
+    componentOrder?: string[] // Custom order of component codes
 }
 
 
-export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ data, colorConfig, componentAlignment = 'center' }) => {
+export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ data, colorConfig, componentAlignment = 'center', componentOrder }) => {
     // Extract classe from turma name (e.g., "4ª Classe A" -> "4ª Classe")
     const extractClasse = (turmaName: string): string | undefined => {
         const match = turmaName.match(/(\d+[ªº]\s*Classe)/i)
@@ -321,10 +322,24 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                 }
                             })
 
-                            // Convert maps to arrays preserving order
-                            maxComponentsPerTrimester[1] = Array.from(componentCodesByTrimester[1].values())
-                            maxComponentsPerTrimester[2] = Array.from(componentCodesByTrimester[2].values())
-                            maxComponentsPerTrimester[3] = Array.from(componentCodesByTrimester[3].values())
+                            // Convert maps to arrays and sort by custom order if provided
+                            const sortByOrder = (components: ComponenteNota[]): ComponenteNota[] => {
+                                if (!componentOrder || componentOrder.length === 0) {
+                                    return components
+                                }
+                                return [...components].sort((a, b) => {
+                                    const indexA = componentOrder.indexOf(a.codigo)
+                                    const indexB = componentOrder.indexOf(b.codigo)
+                                    // If not in order array, put at end
+                                    const posA = indexA === -1 ? 999 : indexA
+                                    const posB = indexB === -1 ? 999 : indexB
+                                    return posA - posB
+                                })
+                            }
+
+                            maxComponentsPerTrimester[1] = sortByOrder(Array.from(componentCodesByTrimester[1].values()))
+                            maxComponentsPerTrimester[2] = sortByOrder(Array.from(componentCodesByTrimester[2].values()))
+                            maxComponentsPerTrimester[3] = sortByOrder(Array.from(componentCodesByTrimester[3].values()))
 
                             const hasAnyComponents =
                                 maxComponentsPerTrimester[1].length > 0 ||
@@ -350,7 +365,6 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                     {maxComponentsPerTrimester[3].length > 0 && (
                                                         <th colSpan={maxComponentsPerTrimester[3].length} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">3º TRIMESTRE</th>
                                                     )}
-                                                    <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">MÉDIA FINAL</th>
                                                     <th rowSpan={2} className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">OBSERVAÇÃO</th>
                                                 </tr>
 
@@ -384,7 +398,6 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                 <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">1º TRIM</th>
                                                 <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">2º TRIM</th>
                                                 <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">3º TRIM</th>
-                                                <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">MÉDIA FINAL</th>
                                                 <th className="border border-slate-300 px-2 py-0.5 text-center text-sm font-semibold">OBSERVAÇÃO</th>
                                             </tr>
                                         )}
@@ -456,9 +469,6 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                         </>
                                                     )}
 
-                                                    <td className="border border-slate-300 px-2 py-0.5 text-center font-bold text-sm" style={{ color: disciplina.nota_final !== null ? getGradeColor(disciplina.nota_final, true) : '#000000' }}>
-                                                        {disciplina.nota_final !== null ? disciplina.nota_final.toFixed(1) : '-'}
-                                                    </td>
                                                     <td className={`border border-slate-300 px-2 py-0.5 text-center font-bold text-sm ${disciplina.transita ? 'text-green-600' : 'text-red-600'}`}>
                                                         {disciplina.transita ? 'Transita' : 'Não Transita'}
                                                     </td>
