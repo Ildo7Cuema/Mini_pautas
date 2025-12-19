@@ -207,7 +207,7 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                         )}
                         <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${aluno.aprovado ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
                             }`}>
-                            {aluno.aprovado ? 'Aprovado' : 'Reprovado'}
+                            {aluno.aprovado ? 'Transita' : 'Não Transita'}
                         </span>
                     </div>
 
@@ -405,8 +405,8 @@ export const MiniPautaPreviewPrimario: React.FC<MiniPautaPreviewPrimarioProps> =
                                     <td className="border border-slate-200 px-4 py-2 text-sm text-slate-900 font-medium bg-white sticky left-12">{aluno.nome_completo}</td>
                                     <td className="border border-slate-200 px-2 py-2 text-center">
                                         <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${aluno.genero === 'M' ? 'bg-blue-100 text-blue-700' :
-                                                aluno.genero === 'F' ? 'bg-pink-100 text-pink-700' :
-                                                    'bg-slate-100 text-slate-500'
+                                            aluno.genero === 'F' ? 'bg-pink-100 text-pink-700' :
+                                                'bg-slate-100 text-slate-500'
                                             }`}>
                                             {aluno.genero || '-'}
                                         </span>
