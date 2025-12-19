@@ -2,7 +2,12 @@
  * Student Classification Utility
  * 
  * Determines if a student transitions (Transita) or not (Não Transita) based on
- * Angolan education system rules for Ensino Primário and Ensino Secundário I Ciclo.
+ * Angolan education system rules for Ensino Primário, Ensino Secundário I Ciclo (7ª-9ª)
+ * and Ensino Secundário II Ciclo (10ª-12ª).
+ * 
+ * Rules:
+ * - 7ª, 8ª, 10ª, 11ª: Allow conditional transition (up to 2 disciplines 7-9, except mandatory)
+ * - 9ª, 12ª: Terminal classes, no conditional allowed
  */
 
 export interface DisciplinaGrade {
@@ -234,34 +239,38 @@ function classifyEnsinoSecundario(
         }
     }
 
-    // 9ª Classe: Apply general rule (all >= 10)
-    if (classNumber === 9) {
+    // 9ª and 12ª Classes (Terminal): Apply general rule (all >= 10) - NO conditional allowed
+    const isTerminalClass = classNumber === 9 || classNumber === 12
+    if (isTerminalClass) {
         if (disciplinasEntre7e9.length > 0 || disciplinasAbaixo10.length > 0) {
             const todasEmRisco = [...disciplinasEntre7e9, ...disciplinasAbaixo10]
+            const classeLabel = classNumber === 9 ? '9ª Classe' : '12ª Classe'
             return {
                 status: 'Não Transita',
-                motivos: ['9ª Classe requer todas as disciplinas >= 10'],
+                motivos: [`${classeLabel} (terminal) requer todas as disciplinas >= 10`],
                 disciplinas_em_risco: todasEmRisco,
                 acoes_recomendadas: ['Reforço nas disciplinas abaixo de 10', 'Preparação para exames'],
-                observacao_padronizada: generateObservacao('Não Transita', 'Ensino Secundário', '9ª Classe', todasEmRisco, frequencia, 10),
-                motivo_retencao: `9ª Classe requer todas as disciplinas com nota >= 10 valores. Disciplinas em risco: ${todasEmRisco.join(', ')}`,
+                observacao_padronizada: generateObservacao('Não Transita', 'Ensino Secundário', classeLabel, todasEmRisco, frequencia, 10),
+                motivo_retencao: `${classeLabel} (terminal) requer todas as disciplinas com nota >= 10 valores. Disciplinas em risco: ${todasEmRisco.join(', ')}`,
                 matricula_condicional: false
             }
         } else {
+            const classeLabel = classNumber === 9 ? '9ª Classe' : '12ª Classe'
             return {
                 status: 'Transita',
                 motivos: ['Todas as disciplinas >= 10'],
                 disciplinas_em_risco: [],
                 acoes_recomendadas: [],
-                observacao_padronizada: generateObservacao('Transita', 'Ensino Secundário', '9ª Classe', [], frequencia, 10),
+                observacao_padronizada: generateObservacao('Transita', 'Ensino Secundário', classeLabel, [], frequencia, 10),
                 matricula_condicional: false
             }
         }
     }
 
-    // 7ª and 8ª Classes: Exception allows up to 2 disciplines between 7-9
-    // BUT NOT if both are Português and Matemática
-    if (classNumber === 7 || classNumber === 8) {
+    // 7ª, 8ª, 10ª and 11ª Classes: Exception allows up to 2 disciplines between 7-9
+    // BUT NOT if two are mandatory disciplines simultaneously (Português and Matemática or configured by admin)
+    const allowsConditional = classNumber === 7 || classNumber === 8 || classNumber === 10 || classNumber === 11
+    if (allowsConditional) {
         if (disciplinasEntre7e9.length === 0) {
             // All disciplines >= 10
             return {

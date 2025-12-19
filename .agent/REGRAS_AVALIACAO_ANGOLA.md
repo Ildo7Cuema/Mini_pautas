@@ -85,27 +85,43 @@ O aluno **NÃO TRANSITA** quando:
 
 ---
 
-## 4. ENSINO SECUNDÁRIO – II CICLO (10.ª, 11.ª, 12.ª e 13.ª Classes)
+## 4. ENSINO SECUNDÁRIO – II CICLO (10.ª, 11.ª e 12.ª Classes)
 
-### 4.1 Critérios de Transição
+### 4.1 Critérios de Transição Plena
 
-Nas classes do II Ciclo, incluindo **classes terminais e de Exame**, aplicam-se os **limiares definidos nos editais ministeriais** por disciplina.
+O aluno **TRANSITA** quando:
+- Classificação final ≥ **10 valores** em **TODAS** as disciplinas
+- Frequência anual ≥ **66,67%**
 
-### 4.2 Configuração de Limiares
+### 4.2 Transição Condicional (10.ª e 11.ª Classes)
 
-- O sistema deve permitir **actualizar estes limiares** por configuração oficial
-- Deve manter **registo documental** de cada actualização
-- Os limiares podem variar por:
-  - Disciplina
-  - Classe
-  - Ano lectivo
-  - Tipo de curso (Ciências, Letras, etc.)
+Nas **10.ª e 11.ª classes**, é permitida a transição com:
+- Até **duas disciplinas** com nota entre **7 e 9 valores**
+- **EXCETO** se forem simultaneamente **disciplinas obrigatórias do curso**
 
-### 4.3 Classes Terminais
+**Disciplinas Obrigatórias por Curso (configuráveis pelo administrador):**
+- Por defeito: **Língua Portuguesa** e **Matemática**
+- Podem ser configuradas disciplinas específicas por curso (ex: Física e Química para Ciências)
 
-- 12.ª e 13.ª classes são classes de **Exame Nacional**
+**Consequências:**
+- Aluno fica em **matrícula condicional**
+- Deve ser registado **Exame Extraordinário** conforme calendário oficial
+- A conclusão definitiva do ano permanece **bloqueada** até ao resultado final
+
+### 4.3 Critérios de Retenção
+
+O aluno **NÃO TRANSITA** quando:
+- Três ou mais disciplinas com nota < 10 valores
+- OU duas disciplinas com nota < 10, sendo simultaneamente disciplinas obrigatórias do curso
+- OU qualquer disciplina com nota < 7 valores
+- OU frequência anual < 66,67%
+
+### 4.4 12.ª Classe (Terminal)
+
+- Aplicam-se os critérios de transição plena (≥ 10 em todas)
+- **Não é permitida** matrícula condicional
+- É classe terminal do II Ciclo e de **Exame Nacional**
 - O resultado do exame integra a avaliação final
-- Influencia directamente o estado **Transita** / **Não Transita**
 
 ---
 
@@ -114,8 +130,8 @@ Nas classes do II Ciclo, incluindo **classes terminais e de Exame**, aplicam-se 
 ### 5.1 Tipos de Prova
 
 O sistema deve registar o tipo de prova:
-- **Exame Nacional**: Classes terminais (6.ª, 9.ª, 12.ª, 13.ª)
-- **Exame Extraordinário**: Alunos em matrícula condicional (7.ª e 8.ª)
+- **Exame Nacional**: Classes terminais (6.ª, 9.ª, 12.ª)
+- **Exame Extraordinário**: Alunos em matrícula condicional (7.ª, 8.ª, 10.ª e 11.ª)
 - **Recurso**: Conforme calendário oficial
 
 ### 5.2 Integração do Resultado
@@ -232,22 +248,21 @@ flowchart TD
     CheckPrim -->|Sim| Transita1[TRANSITA]
     CheckPrim -->|Não| Retido2[NÃO TRANSITA<br/>Motivo: Nota < 5]
     
-    CheckNivel -->|Sec I Ciclo| CheckClasse{Classe?}
-    CheckClasse -->|7ª ou 8ª| CheckNotas78{Todas ≥ 10?}
-    CheckNotas78 -->|Sim| Transita2[TRANSITA]
-    CheckNotas78 -->|Não| CheckCond{2 disciplinas<br/>entre 7-9?}
-    CheckCond -->|Não| Retido3[NÃO TRANSITA]
-    CheckCond -->|Sim| CheckLP_Mat{LP e Mat<br/>simultaneamente?}
-    CheckLP_Mat -->|Sim| Retido4[NÃO TRANSITA<br/>Motivo: LP e Mat < 10]
-    CheckLP_Mat -->|Não| Condicional[MATRÍCULA CONDICIONAL<br/>Exame Extraordinário]
+    CheckNivel -->|Secundário| CheckClasse{Classe?}
     
-    CheckClasse -->|9ª| CheckNotas9{Todas ≥ 10?}
-    CheckNotas9 -->|Sim| Transita3[TRANSITA]
-    CheckNotas9 -->|Não| Retido5[NÃO TRANSITA]
+    CheckClasse -->|7ª, 8ª, 10ª ou 11ª| CheckNotas{Todas ≥ 10?}
+    CheckNotas -->|Sim| Transita2[TRANSITA]
+    CheckNotas -->|Não| CheckAbaixo7{Alguma < 7?}
+    CheckAbaixo7 -->|Sim| Retido3[NÃO TRANSITA<br/>Motivo: Nota < 7]
+    CheckAbaixo7 -->|Não| CheckCond{Até 2 disciplinas<br/>entre 7-9?}
+    CheckCond -->|Não| Retido4[NÃO TRANSITA<br/>Motivo: 3+ disciplinas < 10]
+    CheckCond -->|Sim| CheckObrig{2 disciplinas<br/>obrigatórias?}
+    CheckObrig -->|Sim| Retido5[NÃO TRANSITA<br/>Motivo: Disc. Obrigatórias < 10]
+    CheckObrig -->|Não| Condicional[MATRÍCULA CONDICIONAL<br/>Exame Extraordinário]
     
-    CheckNivel -->|Sec II Ciclo| CheckLimiares{Atende limiares<br/>ministeriais?}
-    CheckLimiares -->|Sim| Transita4[TRANSITA]
-    CheckLimiares -->|Não| Retido6[NÃO TRANSITA]
+    CheckClasse -->|9ª ou 12ª| CheckTerminal{Todas ≥ 10?}
+    CheckTerminal -->|Sim| Transita3[TRANSITA]
+    CheckTerminal -->|Não| Retido6[NÃO TRANSITA<br/>Classe Terminal]
 ```
 
 ---
