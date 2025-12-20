@@ -140,8 +140,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
 
             // Count alunos for those turmas
             let alunosCount = 0
+            const turmaIdList = turmasIds?.map(t => t.id) || []
             if (turmasIds && turmasIds.length > 0) {
-                const turmaIdList = turmasIds.map(t => t.id)
                 const { count, error: alunosError } = await supabase
                     .from('alunos')
                     .select('*', { count: 'exact', head: true })
@@ -171,22 +171,142 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                 throw turmasDataError
             }
 
-            const classesWithCount = turmasData?.map(turma => ({
-                id: turma.id,
-                nome: turma.nome,
-                total_alunos: turma.alunos?.[0]?.count || 0,
-                media: 0, // Will be calculated from grades when implemented
-            })) || []
+            // Calculate mediaGeral and taxaAprovacao from notas
+            let mediaGeral = 0
+            let taxaAprovacao = 0
+
+            if (turmaIdList.length > 0) {
+                // Get all alunos for these turmas
+                const { data: alunosData, error: alunosDataError } = await supabase
+                    .from('alunos')
+                    .select('id, turma_id')
+                    .in('turma_id', turmaIdList)
+
+                if (!alunosDataError && alunosData && alunosData.length > 0) {
+                    const alunoIds = alunosData.map(a => a.id)
+
+                    // Get componentes_avaliacao that represent final grades (MF = Média Final or NF = Nota Final)
+                    const { data: componentesMF, error: componentesMFError } = await supabase
+                        .from('componentes_avaliacao')
+                        .select('id, disciplina_id, codigo_componente')
+                        .in('codigo_componente', ['MF', 'NF', 'MT', 'CF'])
+
+                    if (!componentesMFError && componentesMF && componentesMF.length > 0) {
+                        const componenteMFIds = componentesMF.map(c => c.id)
+
+                        // Get notas for final grade components
+                        const { data: notasData, error: notasError } = await supabase
+                            .from('notas')
+                            .select('aluno_id, componente_id, valor')
+                            .in('aluno_id', alunoIds)
+                            .in('componente_id', componenteMFIds)
+
+                        if (!notasError && notasData && notasData.length > 0) {
+                            // Calculate average grade per student (across all disciplines)
+                            const notasPorAluno: Record<string, number[]> = {}
+
+                            notasData.forEach(nota => {
+                                if (nota.valor !== null && nota.valor !== undefined) {
+                                    if (!notasPorAluno[nota.aluno_id]) {
+                                        notasPorAluno[nota.aluno_id] = []
+                                    }
+                                    notasPorAluno[nota.aluno_id].push(nota.valor)
+                                }
+                            })
+
+                            // Calculate media for each student and overall statistics
+                            const mediasAlunos: number[] = []
+                            let alunosAprovados = 0
+                            let totalAlunosComNotas = 0
+
+                            Object.entries(notasPorAluno).forEach(([, notas]) => {
+                                if (notas.length > 0) {
+                                    const mediaAluno = notas.reduce((sum, n) => sum + n, 0) / notas.length
+                                    mediasAlunos.push(mediaAluno)
+                                    totalAlunosComNotas++
+
+                                    // In Angolan system, >= 10 is passing
+                                    if (mediaAluno >= 10) {
+                                        alunosAprovados++
+                                    }
+                                }
+                            })
+
+                            // Calculate overall average
+                            if (mediasAlunos.length > 0) {
+                                mediaGeral = mediasAlunos.reduce((sum, m) => sum + m, 0) / mediasAlunos.length
+                                taxaAprovacao = (alunosAprovados / totalAlunosComNotas) * 100
+                            }
+
+                            console.log('Dashboard: Grade statistics calculated:', {
+                                mediasAlunos: mediasAlunos.length,
+                                mediaGeral,
+                                alunosAprovados,
+                                totalAlunosComNotas,
+                                taxaAprovacao
+                            })
+                        }
+                    }
+                }
+            }
+
+            // Calculate media for each recent class
+            const classesWithCount = await Promise.all(
+                (turmasData || []).map(async (turma) => {
+                    let mediaTurma = 0
+
+                    // Get alunos for this turma
+                    const { data: alunosTurma } = await supabase
+                        .from('alunos')
+                        .select('id')
+                        .eq('turma_id', turma.id)
+
+                    if (alunosTurma && alunosTurma.length > 0) {
+                        const alunoIdsTurma = alunosTurma.map(a => a.id)
+
+                        // Get componentes MF
+                        const { data: componentesMF } = await supabase
+                            .from('componentes_avaliacao')
+                            .select('id')
+                            .in('codigo_componente', ['MF', 'NF', 'MT', 'CF'])
+
+                        if (componentesMF && componentesMF.length > 0) {
+                            const componenteMFIds = componentesMF.map(c => c.id)
+
+                            // Get notas
+                            const { data: notasTurma } = await supabase
+                                .from('notas')
+                                .select('valor')
+                                .in('aluno_id', alunoIdsTurma)
+                                .in('componente_id', componenteMFIds)
+
+                            if (notasTurma && notasTurma.length > 0) {
+                                const notasValidas = notasTurma.filter(n => n.valor !== null && n.valor !== undefined)
+                                if (notasValidas.length > 0) {
+                                    mediaTurma = notasValidas.reduce((sum, n) => sum + n.valor, 0) / notasValidas.length
+                                }
+                            }
+                        }
+                    }
+
+                    return {
+                        id: turma.id,
+                        nome: turma.nome,
+                        total_alunos: turma.alunos?.[0]?.count || 0,
+                        media: mediaTurma,
+                    }
+                })
+            )
 
             setStats({
                 totalTurmas: turmasCount || 0,
                 totalAlunos: alunosCount,
-                mediaGeral: 0, // Will be calculated from grades
-                taxaAprovacao: 0, // Will be calculated from grades
+                mediaGeral: Math.round(mediaGeral * 10) / 10, // Round to 1 decimal
+                taxaAprovacao: Math.round(taxaAprovacao), // Round to whole number
             })
 
             setRecentClasses(classesWithCount)
-            console.log('Dashboard: Data loaded successfully', { turmasCount, alunosCount, classesWithCount })
+            console.log('Dashboard: Data loaded successfully', { turmasCount, alunosCount, classesWithCount, mediaGeral, taxaAprovacao })
         } catch (err) {
             console.error('Dashboard: Caught error:', err)
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar dados'
@@ -407,16 +527,16 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                         <CardBody className="p-4 md:p-6 relative z-10">
                             <div className="flex items-start justify-between mb-4">
                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/10 ${index === 0 ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white' :
-                                        index === 1 ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white' :
-                                            index === 2 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' :
-                                                'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
+                                    index === 1 ? 'bg-gradient-to-br from-emerald-500 to-teal-600 text-white' :
+                                        index === 2 ? 'bg-gradient-to-br from-amber-400 to-orange-500 text-white' :
+                                            'bg-gradient-to-br from-violet-500 to-purple-600 text-white'
                                     }`}>
                                     {stat.icon}
                                 </div>
                                 {stat.change !== '--' && (
                                     <div className={`flex items-center gap-1 text-xs font-bold px-2 py-1 rounded-lg ${stat.changeType === 'positive'
-                                            ? 'bg-green-50 text-green-700'
-                                            : 'bg-red-50 text-red-700'
+                                        ? 'bg-green-50 text-green-700'
+                                        : 'bg-red-50 text-red-700'
                                         }`}>
                                         {stat.changeType === 'positive' ? '↑' : '↓'} {stat.change}
                                     </div>
@@ -483,8 +603,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                                                 <div className="flex items-center gap-3">
                                                     {cls.media > 0 ? (
                                                         <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${cls.media >= 14 ? 'bg-green-100 text-green-700' :
-                                                                cls.media >= 10 ? 'bg-yellow-100 text-yellow-700' :
-                                                                    'bg-red-100 text-red-700'
+                                                            cls.media >= 10 ? 'bg-yellow-100 text-yellow-700' :
+                                                                'bg-red-100 text-red-700'
                                                             }`}>
                                                             {cls.media.toFixed(1)}
                                                         </span>

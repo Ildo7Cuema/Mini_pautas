@@ -227,6 +227,56 @@ function addPDFSignatures(doc: jsPDF, finalY: number, pageWidth: number, pageHei
     }
 }
 
+/**
+ * Adds Conselho de Notas signature section for Pauta-Geral PDF
+ * Shows 3 numbered lines for council members on the left
+ * And Director signatures on the right
+ */
+function addConselhoNotasSignatures(doc: jsPDF, finalY: number, pageWidth: number, pageHeight: number) {
+    const lineSpacing = 8 // Spacing between each signature line
+
+    // Check if there's enough space, otherwise add new page
+    if (finalY + 50 > pageHeight) {
+        doc.addPage()
+        finalY = 20
+    }
+
+    const startY = finalY + 8
+
+    // LEFT SIDE: Conselho de Notas
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.text('CONSELHO DE NOTAS:', 10, startY)
+
+    // Three numbered signature lines
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(8)
+
+    const signatures = [
+        '1. _______________________________________',
+        '2. _______________________________________',
+        '3. _______________________________________'
+    ]
+
+    let currentY = startY + 6
+    signatures.forEach((sig) => {
+        doc.text(sig, 10, currentY)
+        currentY += lineSpacing
+    })
+
+    // RIGHT SIDE: Director signatures (como antes)
+    const rightX = pageWidth - 80
+    doc.text('_________________________________', rightX, startY + 6)
+    doc.text('Diretor(a) Pedagógico(a)', rightX, startY + 11)
+
+    doc.text('_________________________________', rightX, startY + 22)
+    doc.text('Diretor(a) da Escola', rightX, startY + 27)
+
+    // Date field at the bottom
+    doc.setFontSize(8)
+    doc.text('Local e Data: ___________________', 10, currentY + 5)
+}
+
 // ============================================================================
 // PRIMARY EDUCATION PDF GENERATION
 // ============================================================================
@@ -833,7 +883,7 @@ interface ComponenteAvaliacaoPG {
     is_calculated?: boolean
 }
 
-interface DisciplinaComComponentes {
+interface DisciplinaComComponentesPG {
     id: string
     nome: string
     codigo_disciplina: string
@@ -855,9 +905,13 @@ interface PautaGeralData {
         numero_processo: string
         nome_completo: string
         genero?: 'M' | 'F'
+        frequencia_anual?: number
         notas_por_disciplina: Record<string, Record<string, number>>
+        media_geral?: number
+        observacao?: 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas'
+        observacao_padronizada?: string
     }>
-    disciplinas: DisciplinaComComponentes[]
+    disciplinas: DisciplinaComComponentesPG[]
     estatisticas?: {
         por_disciplina: Record<string, any>
         geral: any
@@ -870,9 +924,143 @@ interface PautaGeralData {
 }
 
 /**
+ * Renders the PDF header specifically for Pauta-Geral
+ * Uses title "PAUTA-GERAL" instead of "MINI-PAUTA"
+ */
+async function renderPautaGeralHeader(
+    doc: jsPDF,
+    data: PautaGeralData,
+    headerConfig: HeaderConfig | null | undefined,
+    pageWidth: number
+): Promise<number> {
+    let currentY = 10
+
+    if (headerConfig) {
+        // Logo (if configured)
+        if (headerConfig.logo_url) {
+            try {
+                const base64Image = await imageUrlToBase64(headerConfig.logo_url)
+                const imageFormat = getImageFormat(headerConfig.logo_url)
+
+                const maxLogoSize = 25
+                const logoWidthPx = headerConfig.logo_width || 50
+                const logoHeightPx = headerConfig.logo_height || 50
+
+                let logoWidth = logoWidthPx * 0.26
+                let logoHeight = logoHeightPx * 0.26
+
+                if (logoWidth > maxLogoSize || logoHeight > maxLogoSize) {
+                    const scale = Math.min(maxLogoSize / logoWidth, maxLogoSize / logoHeight)
+                    logoWidth *= scale
+                    logoHeight *= scale
+                }
+
+                const logoX = (pageWidth - logoWidth) / 2
+                doc.addImage(base64Image, imageFormat, logoX, currentY, logoWidth, logoHeight)
+                currentY += logoHeight + 2
+            } catch (err) {
+                console.error('Error adding logo to PDF:', err)
+            }
+        }
+
+        const fontSize = headerConfig.tamanho_fonte_outros || 9
+        doc.setFontSize(fontSize)
+        doc.setFont('helvetica', 'normal')
+
+        if (headerConfig.mostrar_republica && headerConfig.texto_republica) {
+            doc.text(headerConfig.texto_republica, pageWidth / 2, currentY, { align: 'center' })
+            currentY += fontSize * 0.45
+        }
+
+        if (headerConfig.mostrar_governo_provincial && headerConfig.provincia) {
+            doc.text(`Governo Provincial da ${headerConfig.provincia}`, pageWidth / 2, currentY, { align: 'center' })
+            currentY += fontSize * 0.45
+        }
+
+        if (headerConfig.mostrar_orgao_educacao && headerConfig.nivel_ensino) {
+            const orgaoText = getOrgaoEducacao(
+                headerConfig.nivel_ensino,
+                headerConfig.provincia,
+                headerConfig.municipio
+            )
+            doc.text(orgaoText, pageWidth / 2, currentY, { align: 'center' })
+            currentY += fontSize * 0.45
+        }
+
+        doc.text(headerConfig.nome_escola, pageWidth / 2, currentY, { align: 'center' })
+        currentY += fontSize * 0.6
+
+        // Title: PAUTA-GERAL (not MINI-PAUTA)
+        const titleFontSize = headerConfig.tamanho_fonte_mini_pauta || 14
+        doc.setFontSize(titleFontSize)
+        doc.setFont('helvetica', 'bold')
+        doc.text('PAUTA-GERAL', pageWidth / 2, currentY, { align: 'center' })
+        currentY += titleFontSize * 0.5
+    } else {
+        doc.setFontSize(14)
+        doc.setFont('helvetica', 'bold')
+        doc.text('PAUTA-GERAL', pageWidth / 2, currentY, { align: 'center' })
+        currentY += 6
+
+        if (data.escola) {
+            doc.setFontSize(9)
+            doc.setFont('helvetica', 'normal')
+            doc.text(data.escola.nome, pageWidth / 2, currentY, { align: 'center' })
+            currentY += 4
+            doc.text(`${data.escola.provincia} - ${data.escola.municipio}`, pageWidth / 2, currentY, { align: 'center' })
+            currentY += 5
+        } else {
+            currentY += 5
+        }
+    }
+
+    return currentY
+}
+
+/**
+ * Abbreviates discipline name if too long
+ */
+function abbreviateDisciplineName(nome: string, maxLength: number = 12): string {
+    if (nome.length <= maxLength) return nome
+
+    // Common abbreviations
+    const abbreviations: Record<string, string> = {
+        'Língua Portuguesa': 'L.Port.',
+        'Português': 'Port.',
+        'Matemática': 'Mat.',
+        'História': 'Hist.',
+        'Geografia': 'Geo.',
+        'Ciências Naturais': 'C.Nat.',
+        'Ciências da Natureza': 'C.Nat.',
+        'Educação Visual': 'Ed.Vis.',
+        'Educação Física': 'Ed.Fís.',
+        'Educação Moral e Cívica': 'EMC',
+        'Educação Manual e Plástica': 'EMP',
+        'Educação Laboral': 'Ed.Lab.',
+        'Educação Musical': 'Ed.Mus.',
+        'Inglês': 'Ing.',
+        'Francês': 'Fr.',
+        'Física': 'Fís.',
+        'Química': 'Quím.',
+        'Biologia': 'Bio.',
+        'Formação de Atitudes Integradoras': 'FAI'
+    }
+
+    if (abbreviations[nome]) return abbreviations[nome]
+
+    // Generic abbreviation: take first letters of each word
+    const words = nome.split(' ')
+    if (words.length > 1) {
+        return words.map(w => w.charAt(0).toUpperCase()).join('.') + '.'
+    }
+
+    return nome.substring(0, maxLength - 2) + '..'
+}
+
+/**
  * Generates PDF for Pauta-Geral (General Report by Class)
  * Shows all disciplines with their components in a grouped table format
- * Uses A3 landscape format to accommodate multiple disciplines
+ * Uses A3 landscape format with flexible columns to accommodate all disciplines
  */
 export async function generatePautaGeralPDF(
     data: PautaGeralData,
@@ -883,38 +1071,71 @@ export async function generatePautaGeralPDF(
     const pageWidth = doc.internal.pageSize.getWidth()
     const pageHeight = doc.internal.pageSize.getHeight()
 
-    // Render header
-    let currentY = await renderPDFHeader(doc, data as any, headerConfig, pageWidth)
+    // Render Pauta-Geral specific header
+    let currentY = await renderPautaGeralHeader(doc, data, headerConfig, pageWidth)
 
-    // Class info
-    doc.setFontSize(11)
+    // Class info - compact layout
+    doc.setFontSize(9)
     doc.setFont('helvetica', 'bold')
-    doc.text(`Turma: ${data.turma.nome}`, 14, currentY + 5)
-    doc.text(`Trimestre: ${data.trimestre}º`, 14, currentY + 11)
-    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth - 14, currentY + 5, { align: 'right' })
+    doc.text(`Turma: ${data.turma.nome}`, 10, currentY + 3)
+    doc.text(`Ano Lectivo: ${data.turma.ano_lectivo}`, pageWidth / 2, currentY + 3, { align: 'center' })
+    doc.text(`Nível: ${data.turma.nivel_ensino || 'N/D'}`, pageWidth - 10, currentY + 3, { align: 'right' })
 
-    const tableStartY = currentY + 17
+    const tableStartY = currentY + 8
+
+    // Calculate total number of component columns
+    const totalComponentCols = data.disciplinas.reduce((sum, d) => sum + d.componentes.length, 0)
+
+    // Fixed columns: Nº (1) + Nome (2) + GÊN (3) + MG (media geral) + OBS (observação)
+    const fixedColsCount = 5
+    const availableWidth = pageWidth - 20 // margins
+
+    // Calculate column widths
+    const numColWidth = 6
+    const genColWidth = 6
+    const mgColWidth = 8
+    const obsColWidth = 18
+    const fixedColsWidth = numColWidth + genColWidth + mgColWidth + obsColWidth
+
+    // Remaining width for Name + component columns
+    const remainingWidth = availableWidth - fixedColsWidth
+
+    // Name column gets proportionally more space
+    const nameColWidth = Math.max(25, Math.min(40, remainingWidth * 0.2))
+    const componentAreaWidth = remainingWidth - nameColWidth
+
+    // Each component column width (flexible)
+    const componentColWidth = Math.max(6, componentAreaWidth / totalComponentCols)
 
     // Build two-row header
-    // Row 1: Nº (rowSpan 2), Nome (rowSpan 2), Discipline names (colSpan = num components)
+    // Row 1: Nº (rowSpan 2), Nome (rowSpan 2), GÊN (rowSpan 2), Discipline names (colSpan), MG (rowSpan 2), OBS (rowSpan 2)
     const headerRow1: any[] = [
-        { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } },
-        { content: 'GÊN', rowSpan: 2, styles: { halign: 'center', valign: 'middle' } }
+        { content: 'Nº', rowSpan: 2, styles: { halign: 'center', valign: 'middle', cellWidth: numColWidth } },
+        { content: 'Nome do Aluno', rowSpan: 2, styles: { halign: 'center', valign: 'middle', cellWidth: nameColWidth } },
+        { content: 'GÊN', rowSpan: 2, styles: { halign: 'center', valign: 'middle', cellWidth: genColWidth } }
     ]
 
+    // Add discipline headers with abbreviated names if needed
     data.disciplinas.forEach((disciplina) => {
+        const displayName = abbreviateDisciplineName(disciplina.nome, 10)
         headerRow1.push({
-            content: disciplina.nome,
+            content: displayName,
             colSpan: disciplina.componentes.length,
             styles: {
                 halign: 'center',
                 valign: 'middle',
                 fontStyle: 'bold',
-                fillColor: [59, 130, 246] // Blue for discipline headers
+                fillColor: [30, 64, 175], // Darker blue for discipline headers
+                fontSize: 6
             }
         })
     })
+
+    // Add MG and OBS columns
+    headerRow1.push(
+        { content: 'MG', rowSpan: 2, styles: { halign: 'center', valign: 'middle', cellWidth: mgColWidth, fillColor: [22, 163, 74] } }, // Green
+        { content: 'OBS', rowSpan: 2, styles: { halign: 'center', valign: 'middle', cellWidth: obsColWidth, fillColor: [147, 51, 234] } }  // Purple
+    )
 
     // Row 2: Component codes only
     const headerRow2: any[] = []
@@ -922,7 +1143,7 @@ export async function generatePautaGeralPDF(
         disciplina.componentes.forEach(comp => {
             headerRow2.push({
                 content: comp.codigo_componente,
-                styles: { halign: 'center', valign: 'middle' }
+                styles: { halign: 'center', valign: 'middle', fontSize: 5, cellWidth: componentColWidth }
             })
         })
     })
@@ -943,8 +1164,42 @@ export async function generatePautaGeralPDF(
             })
         })
 
+        // Add MG (Media Geral)
+        row.push(aluno.media_geral !== undefined ? aluno.media_geral.toFixed(1) : '-')
+
+        // Add OBS (Observação) - abbreviated
+        let obs = '-'
+        if (aluno.observacao) {
+            switch (aluno.observacao) {
+                case 'Transita': obs = 'T'; break
+                case 'Não Transita': obs = 'NT'; break
+                case 'Condicional': obs = 'C'; break
+                case 'AguardandoNotas': obs = 'AG'; break
+                default: obs = aluno.observacao
+            }
+        }
+        row.push(obs)
+
         return row
     })
+
+    // Calculate column styles for all component columns
+    const columnStyles: Record<number, any> = {
+        0: { halign: 'center', cellWidth: numColWidth },   // Nº
+        1: { halign: 'left', cellWidth: nameColWidth, overflow: 'ellipsize' },   // Nome
+        2: { halign: 'center', cellWidth: genColWidth }    // GÊN
+    }
+
+    // Component columns (flexible width)
+    for (let i = 0; i < totalComponentCols; i++) {
+        columnStyles[3 + i] = { halign: 'center', cellWidth: componentColWidth }
+    }
+
+    // MG and OBS columns
+    const mgColIndex = 3 + totalComponentCols
+    const obsColIndex = mgColIndex + 1
+    columnStyles[mgColIndex] = { halign: 'center', cellWidth: mgColWidth, fontStyle: 'bold' }
+    columnStyles[obsColIndex] = { halign: 'center', cellWidth: obsColWidth, fontStyle: 'bold' }
 
     // Generate table with autoTable
     autoTable(doc, {
@@ -953,55 +1208,88 @@ export async function generatePautaGeralPDF(
         body: tableData,
         theme: 'grid',
         styles: {
-            fontSize: 7,
-            cellPadding: 1.5,
-            overflow: 'linebreak'
+            fontSize: 5.5,
+            cellPadding: 1,
+            overflow: 'ellipsize', // Avoid text wrapping
+            lineWidth: 0.1
         },
         headStyles: {
             fillColor: [59, 130, 246],  // Blue
             textColor: 255,
             fontStyle: 'bold',
             halign: 'center',
-            valign: 'middle'
+            valign: 'middle',
+            fontSize: 6
         },
-        columnStyles: {
-            0: { halign: 'center', cellWidth: 8 },
-            1: { halign: 'left', cellWidth: 40 },
-            2: { halign: 'center', cellWidth: 8 }
-        },
+        columnStyles: columnStyles,
+        tableWidth: 'auto',
+        margin: { left: 10, right: 10 },
         didParseCell: (hookData: any) => {
-            if (hookData.section === 'body' && hookData.column.index >= 3) {
-                hookData.cell.styles.halign = 'center'
+            if (hookData.section === 'body') {
+                const colIndex = hookData.column.index
 
-                const cellValue = hookData.cell.raw
-                if (cellValue && cellValue !== '-') {
-                    const nota = parseFloat(cellValue)
-                    if (!isNaN(nota)) {
-                        const colIndex = hookData.column.index - 3
-                        let currentIndex = 0
-                        let component: any = null
+                // Grade columns (between GÊN and MG)
+                if (colIndex >= 3 && colIndex < mgColIndex) {
+                    hookData.cell.styles.halign = 'center'
 
-                        for (const disciplina of data.disciplinas) {
-                            for (const comp of disciplina.componentes) {
-                                if (currentIndex === colIndex) {
-                                    component = comp
-                                    break
+                    const cellValue = hookData.cell.raw
+                    if (cellValue && cellValue !== '-') {
+                        const nota = parseFloat(cellValue)
+                        if (!isNaN(nota)) {
+                            const compColIndex = colIndex - 3
+                            let currentIndex = 0
+                            let component: any = null
+
+                            for (const disciplina of data.disciplinas) {
+                                for (const comp of disciplina.componentes) {
+                                    if (currentIndex === compColIndex) {
+                                        component = comp
+                                        break
+                                    }
+                                    currentIndex++
                                 }
-                                currentIndex++
+                                if (component) break
                             }
-                            if (component) break
-                        }
 
-                        if (component) {
-                            const color = getGradeColorRGB(
-                                nota,
-                                data.nivel_ensino,
-                                data.classe,
-                                component.is_calculated || false,
-                                colorConfig
-                            )
-                            hookData.cell.styles.textColor = color
+                            if (component) {
+                                const color = getGradeColorRGB(
+                                    nota,
+                                    data.nivel_ensino,
+                                    data.classe,
+                                    component.is_calculated || false,
+                                    colorConfig
+                                )
+                                hookData.cell.styles.textColor = color
+                            }
                         }
+                    }
+                }
+
+                // MG column - color based on grade
+                if (colIndex === mgColIndex) {
+                    const cellValue = hookData.cell.raw
+                    if (cellValue && cellValue !== '-') {
+                        const nota = parseFloat(cellValue)
+                        if (!isNaN(nota)) {
+                            const color = getGradeColorRGB(nota, data.nivel_ensino, data.classe, true, colorConfig)
+                            hookData.cell.styles.textColor = color
+                            hookData.cell.styles.fontStyle = 'bold'
+                        }
+                    }
+                }
+
+                // OBS column - color based on status
+                if (colIndex === obsColIndex) {
+                    const obs = hookData.cell.raw
+                    if (obs === 'T') {
+                        hookData.cell.styles.textColor = [22, 163, 74] // Green
+                        hookData.cell.styles.fontStyle = 'bold'
+                    } else if (obs === 'NT') {
+                        hookData.cell.styles.textColor = [220, 38, 38] // Red
+                        hookData.cell.styles.fontStyle = 'bold'
+                    } else if (obs === 'C') {
+                        hookData.cell.styles.textColor = [234, 179, 8] // Yellow/Orange
+                        hookData.cell.styles.fontStyle = 'bold'
                     }
                 }
             }
@@ -1010,35 +1298,44 @@ export async function generatePautaGeralPDF(
     })
 
     // Statistics and signatures
-    const finalY = (doc as any).lastAutoTable.finalY + 10
+    const finalY = (doc as any).lastAutoTable.finalY + 5
+
+    // Legend for OBS abbreviations
+    doc.setFontSize(7)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Legenda: T = Transita | NT = Não Transita | C = Condicional | AG = Aguardando Notas | MG = Média Geral', 10, finalY)
 
     if (data.estatisticas) {
-        if (finalY + 30 < pageHeight) {
-            doc.setFontSize(10)
+        const statsY = finalY + 6
+        if (statsY + 20 < pageHeight) {
+            doc.setFontSize(9)
             doc.setFont('helvetica', 'bold')
-            doc.text('ESTATÍSTICAS GERAIS', 14, finalY)
+            doc.text('ESTATÍSTICAS GERAIS', 10, statsY)
 
             doc.setFont('helvetica', 'normal')
-            doc.setFontSize(9)
+            doc.setFontSize(8)
 
             const stats = [
-                `Total de Alunos: ${data.estatisticas.geral.total_alunos}`,
+                `Total: ${data.estatisticas.geral.total_alunos}`,
                 `Aprovados: ${data.estatisticas.geral.aprovados}`,
                 `Reprovados: ${data.estatisticas.geral.reprovados}`,
-                `Média Geral: ${data.estatisticas.geral.media_turma?.toFixed(2) || 'N/A'}`,
-                `Nota Mínima: ${data.estatisticas.geral.nota_minima?.toFixed(2) || 'N/A'}`,
-                `Nota Máxima: ${data.estatisticas.geral.nota_maxima?.toFixed(2) || 'N/A'}`
+                `Média: ${data.estatisticas.geral.media_turma?.toFixed(2) || 'N/A'}`
             ]
 
-            stats.forEach((stat, index) => {
-                doc.text(stat, 14, finalY + 7 + (index * 5))
+            // Display stats in a row
+            let xPos = 10
+            stats.forEach((stat) => {
+                doc.text(stat, xPos, statsY + 5)
+                xPos += 40
             })
         }
     }
 
-    addPDFSignatures(doc, finalY, pageWidth, pageHeight)
+    addConselhoNotasSignatures(doc, finalY + 12, pageWidth, pageHeight)
 
-    // Save
+    // Save PDF with descriptive filename
+    const filename = `pauta-geral_${data.turma.codigo_turma}_${data.turma.ano_lectivo}.pdf`
+    doc.save(filename)
 }
 
 
