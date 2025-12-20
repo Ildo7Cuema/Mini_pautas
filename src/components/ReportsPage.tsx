@@ -487,8 +487,12 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                         : null
                 }
 
-                // Determine pass/fail (assuming passing grade is 10)
-                const transita = notaFinal !== null && notaFinal >= 10
+                // Determine pass/fail based on education level
+                // Ensino Primário: MF >= 5 transita, Ensino Secundário: MF >= 10 transita
+                const isPrimary = turmaData.nivel_ensino?.toLowerCase().includes('primário') ||
+                    turmaData.nivel_ensino?.toLowerCase().includes('primario')
+                const limiarTransicao = isPrimary ? 5 : 10
+                const transita = notaFinal !== null && notaFinal >= limiarTransicao
 
                 console.log(`[TERMO DEBUG] Final componentesPorTrimestre[3] for ${disciplina.nome}:`, componentesPorTrimestre[3].map(c => `${c.codigo}=${c.nota}`))
 
@@ -499,10 +503,15 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     notas_trimestrais: notasTrimestrais,
                     componentesPorTrimestre: componentesPorTrimestre,
                     nota_final: notaFinal,
-                    classificacao: notaFinal !== null ? (notaFinal >= 10 ? 'Aprovado' : 'Reprovado') : 'N/A',
+                    classificacao: notaFinal !== null ? (notaFinal >= limiarTransicao ? 'Aprovado' : 'Reprovado') : 'N/A',
                     transita
                 }
             })
+
+            // Determine overall education level for threshold
+            const isPrimaryEducation = turmaData.nivel_ensino?.toLowerCase().includes('primário') ||
+                turmaData.nivel_ensino?.toLowerCase().includes('primario')
+            const limiarGeralTransicao = isPrimaryEducation ? 5 : 10
 
             // Calculate overall statistics
             const notasFinaisValidas = disciplinasProcessadas
@@ -516,8 +525,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
             const disciplinasAprovadas = disciplinasProcessadas.filter(d => d.transita).length
             const disciplinasReprovadas = disciplinasProcessadas.filter(d => !d.transita).length
 
-            // Student passes if all disciplines are passed
-            const transitaGeral = disciplinasProcessadas.every(d => d.transita) && mediaGeral >= 10
+            // Student passes if all disciplines are passed and average meets threshold
+            const transitaGeral = disciplinasProcessadas.every(d => d.transita) && mediaGeral >= limiarGeralTransicao
 
             // Load escola info (optional)
             const { data: escolaData } = await supabase
@@ -1850,7 +1859,11 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                         ? notasValidas.reduce((sum, n) => sum + n, 0) / notasValidas.length
                         : null
 
-                    const transita = notaFinal !== null && notaFinal >= 10
+                    // Determine pass/fail based on education level
+                    const isPrimary = selectedTurmaData.nivel_ensino?.toLowerCase().includes('primário') ||
+                        selectedTurmaData.nivel_ensino?.toLowerCase().includes('primario')
+                    const limiarTransicao = isPrimary ? 5 : 10
+                    const transita = notaFinal !== null && notaFinal >= limiarTransicao
 
                     return {
                         id: disciplina.id,
@@ -1859,10 +1872,15 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                         notas_trimestrais: notasTrimestrais,
                         componentesPorTrimestre: componentesPorTrimestre,
                         nota_final: notaFinal,
-                        classificacao: notaFinal !== null ? (notaFinal >= 10 ? 'Aprovado' : 'Reprovado') : 'N/A',
+                        classificacao: notaFinal !== null ? (notaFinal >= limiarTransicao ? 'Aprovado' : 'Reprovado') : 'N/A',
                         transita
                     }
                 })
+
+                // Determine overall education level for threshold
+                const isPrimaryEducation = selectedTurmaData.nivel_ensino?.toLowerCase().includes('primário') ||
+                    selectedTurmaData.nivel_ensino?.toLowerCase().includes('primario')
+                const limiarGeralTransicao = isPrimaryEducation ? 5 : 10
 
                 const notasFinaisValidas = disciplinasProcessadas
                     .map(d => d.nota_final)
@@ -1874,7 +1892,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                 const disciplinasAprovadas = disciplinasProcessadas.filter(d => d.transita).length
                 const disciplinasReprovadas = disciplinasProcessadas.filter(d => !d.transita).length
-                const transitaGeral = disciplinasProcessadas.every(d => d.transita) && mediaGeral >= 10
+                const transitaGeral = disciplinasProcessadas.every(d => d.transita) && mediaGeral >= limiarGeralTransicao
 
                 const { data: escolaData } = await supabase
                     .from('escolas')

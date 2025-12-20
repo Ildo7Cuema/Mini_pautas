@@ -15,6 +15,11 @@ import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { ConfirmModal } from './ui/ConfirmModal'
+import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
+import { HeaderConfig, loadHeaderConfig, getOrgaoEducacao } from '../utils/headerConfigUtils'
+import { useAuth } from '../contexts/AuthContext'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 interface Aluno {
     id: string
@@ -97,6 +102,7 @@ interface StudentsPageProps {
 }
 
 export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) => {
+    const { escolaProfile, professorProfile } = useAuth()
     const [alunos, setAlunos] = useState<Aluno[]>([])
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
@@ -112,6 +118,9 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
     const [success, setSuccess] = useState<string | null>(null)
     const [generatingNumero, setGeneratingNumero] = useState(false)
     const [manualNumero, setManualNumero] = useState(false)
+    const [exporting, setExporting] = useState(false)
+    const [headerConfig, setHeaderConfig] = useState<HeaderConfig | null>(null)
+    const [showHeaderConfigModal, setShowHeaderConfigModal] = useState(false)
 
     useEffect(() => {
         loadTurmas()
@@ -124,6 +133,33 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
             generateNumeroProcesso()
         }
     }, [formData.turma_id, manualNumero])
+
+    // Load header configuration on mount
+    useEffect(() => {
+        loadHeaderConfiguration()
+    }, [escolaProfile, professorProfile])
+
+    const loadHeaderConfiguration = async () => {
+        try {
+            let escola_id: string | undefined
+
+            if (escolaProfile) {
+                escola_id = escolaProfile.id
+            } else if (professorProfile) {
+                escola_id = professorProfile.escola_id
+            }
+
+            if (!escola_id) {
+                console.error('No escola_id found in auth context')
+                return
+            }
+
+            const config = await loadHeaderConfig(escola_id)
+            setHeaderConfig(config)
+        } catch (err) {
+            console.error('Error loading header config:', err)
+        }
+    }
 
     const loadTurmas = async () => {
         try {
@@ -369,6 +405,239 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
         setActiveTab('pessoal')
         setGeneratingNumero(false)
         setManualNumero(false)
+    }
+
+    // Helper function to add a page with student list for a turma
+    const addTurmaPageToPDF = (
+        doc: jsPDF,
+        turmaStudents: Aluno[],
+        turmaNome: string,
+        logoBase64: string | null,
+        isFirstPage: boolean
+    ) => {
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const centerX = pageWidth / 2
+
+        // Add new page if not the first
+        if (!isFirstPage) {
+            doc.addPage()
+        }
+
+        let startY = 15
+
+        // Header with configuration
+        if (headerConfig) {
+            // Logo (if configured and loaded)
+            if (logoBase64) {
+                const logoWidth = 18
+                const logoHeight = 18
+                const logoX = centerX - (logoWidth / 2)
+                doc.addImage(logoBase64, 'PNG', logoX, 8, logoWidth, logoHeight)
+                startY = 8 + logoHeight + 3
+            }
+
+            // República de Angola
+            if (headerConfig.mostrar_republica && headerConfig.texto_republica) {
+                doc.setFontSize(10)
+                doc.setFont('helvetica', 'bold')
+                doc.text(headerConfig.texto_republica.toUpperCase(), centerX, startY, { align: 'center' })
+                startY += 5
+            }
+
+            // Governo Provincial
+            if (headerConfig.mostrar_governo_provincial && headerConfig.provincia) {
+                doc.setFontSize(9)
+                doc.setFont('helvetica', 'normal')
+                doc.text(`Governo Provincial da ${headerConfig.provincia}`, centerX, startY, { align: 'center' })
+                startY += 5
+            }
+
+            // Órgão de Educação
+            if (headerConfig.mostrar_orgao_educacao && headerConfig.nivel_ensino) {
+                const orgaoTexto = getOrgaoEducacao(
+                    headerConfig.nivel_ensino,
+                    headerConfig.provincia,
+                    headerConfig.municipio
+                )
+                doc.setFontSize(9)
+                doc.text(orgaoTexto, centerX, startY, { align: 'center' })
+                startY += 5
+            }
+
+            // Nome da Escola
+            if (headerConfig.nome_escola) {
+                doc.setFontSize(12)
+                doc.setFont('helvetica', 'bold')
+                doc.text(headerConfig.nome_escola, centerX, startY, { align: 'center' })
+                startY += 8
+            }
+
+            // Separator line
+            doc.setLineWidth(0.3)
+            doc.line(14, startY, pageWidth - 14, startY)
+            startY += 8
+        }
+
+        // Document title
+        doc.setFontSize(14)
+        doc.setFont('helvetica', 'bold')
+        doc.text('LISTA DE ALUNOS', 105, startY, { align: 'center' })
+        startY += 8
+
+        // Turma and count info
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'normal')
+        doc.text(`Turma: ${turmaNome}`, 14, startY)
+        startY += 5
+        doc.text(`Total de Alunos: ${turmaStudents.length}`, 14, startY)
+        startY += 8
+
+        // Sort students alphabetically
+        const sortedStudents = [...turmaStudents].sort((a, b) =>
+            a.nome_completo.localeCompare(b.nome_completo, 'pt')
+        )
+
+        // Table data
+        const tableData = sortedStudents.map((aluno, index) => [
+            index + 1,
+            aluno.nome_completo,
+            aluno.genero || '-'
+        ])
+
+        autoTable(doc, {
+            startY: startY,
+            head: [['Nº', 'Nome do Aluno', 'Género']],
+            body: tableData,
+            theme: 'plain',
+            headStyles: {
+                fillColor: [255, 255, 255],
+                textColor: [0, 0, 0],
+                fontSize: 10,
+                fontStyle: 'bold',
+                lineWidth: 0.05,
+                lineColor: [200, 200, 200]
+            },
+            styles: {
+                fontSize: 9,
+                cellPadding: 1,
+                lineWidth: 0.05,
+                lineColor: [200, 200, 200]
+            },
+            columnStyles: {
+                0: { cellWidth: 15, halign: 'center' },
+                1: { cellWidth: 'auto', halign: 'left' },
+                2: { cellWidth: 20, halign: 'center' }
+            },
+            tableLineWidth: 0.05,
+            tableLineColor: [200, 200, 200],
+            didParseCell: (data) => {
+                if (data.section === 'head') {
+                    if (data.column.index === 0 || data.column.index === 2) {
+                        data.cell.styles.halign = 'center'
+                    } else {
+                        data.cell.styles.halign = 'left'
+                    }
+                }
+            }
+        })
+
+        // Get final Y position after table
+        const finalY = (doc as any).lastAutoTable.finalY || 150
+
+        // Signature section (only if there's enough space on the page)
+        const pageHeight = doc.internal.pageSize.getHeight()
+        if (finalY + 45 < pageHeight) {
+            const signatureY = finalY + 30
+            doc.setFontSize(10)
+            doc.setLineWidth(0.3)
+
+            // Left signature
+            doc.line(20, signatureY, 90, signatureY)
+            doc.text('Assinatura do Director', 55, signatureY + 5, { align: 'center' })
+
+            // Right signature
+            doc.line(120, signatureY, 190, signatureY)
+            doc.text('Assinatura do Secretário', 155, signatureY + 5, { align: 'center' })
+        }
+    }
+
+    // Print/Export student list to PDF (supports batch export by turma)
+    const handlePrintList = async () => {
+        setExporting(true)
+        try {
+            const doc = new jsPDF()
+
+            // Pre-load logo if configured
+            let logoBase64: string | null = null
+            if (headerConfig?.logo_url) {
+                try {
+                    const response = await fetch(headerConfig.logo_url)
+                    const blob = await response.blob()
+                    logoBase64 = await new Promise<string>((resolve) => {
+                        const reader = new FileReader()
+                        reader.onloadend = () => resolve(reader.result as string)
+                        reader.readAsDataURL(blob)
+                    })
+                } catch (logoError) {
+                    console.error('Error loading logo:', logoError)
+                }
+            }
+
+            if (selectedTurma === 'all') {
+                // Batch export: Create separate pages for each turma
+                const turmasWithStudents = turmas.filter(turma =>
+                    filteredAlunos.some(aluno => aluno.turma_id === turma.id)
+                ).sort((a, b) => a.nome.localeCompare(b.nome, 'pt'))
+
+                let isFirstPage = true
+                for (const turma of turmasWithStudents) {
+                    const turmaStudents = filteredAlunos.filter(aluno => aluno.turma_id === turma.id)
+                    if (turmaStudents.length > 0) {
+                        addTurmaPageToPDF(doc, turmaStudents, turma.nome, logoBase64, isFirstPage)
+                        isFirstPage = false
+                    }
+                }
+            } else {
+                // Single turma export
+                const turmaNome = turmas.find(t => t.id === selectedTurma)?.nome || 'Turma'
+                addTurmaPageToPDF(doc, filteredAlunos, turmaNome, logoBase64, true)
+            }
+
+            // Footer with page numbers
+            const pageCount = doc.getNumberOfPages()
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i)
+                doc.setFontSize(8)
+                doc.text(
+                    `Página ${i} de ${pageCount}`,
+                    105,
+                    doc.internal.pageSize.height - 10,
+                    { align: 'center' }
+                )
+                doc.text(
+                    `Gerado em: ${new Date().toLocaleString('pt-AO')}`,
+                    105,
+                    doc.internal.pageSize.height - 5,
+                    { align: 'center' }
+                )
+            }
+
+            // Generate filename
+            const date = new Date().toISOString().split('T')[0]
+            const filenameSlug = selectedTurma === 'all'
+                ? 'todas-turmas'
+                : turmas.find(t => t.id === selectedTurma)?.nome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'turma'
+            doc.save(`lista-alunos-${filenameSlug}_${date}.pdf`)
+
+            setSuccess('Lista exportada com sucesso!')
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (error) {
+            console.error('Erro ao exportar PDF:', error)
+            setError('Erro ao exportar a lista de alunos')
+            setTimeout(() => setError(null), 3000)
+        } finally {
+            setExporting(false)
+        }
     }
 
     // Tab component with icons
@@ -799,6 +1068,32 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                         <span className="text-sm text-slate-600">
                             {alunos.length} {alunos.length === 1 ? 'aluno' : 'alunos'}
                         </span>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setShowHeaderConfigModal(true)}
+                            className="hidden sm:flex"
+                            icon={
+                                <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            }
+                        >
+                            Cabeçalho
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            onClick={handlePrintList}
+                            loading={exporting}
+                            disabled={filteredAlunos.length === 0}
+                            className="ml-auto sm:ml-0"
+                            icon={
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                </svg>
+                            }
+                        >
+                            Imprimir Lista
+                        </Button>
                     </div>
                 </CardBody>
             </Card>
@@ -984,7 +1279,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                         </CardHeader>
                         <CardBody className="flex-1 overflow-y-auto">
                             <form onSubmit={handleUpdateStudent} className="space-y-4">
-                                {renderTabContent(true)}
+                                {renderTabContent()}
 
                                 <div className="flex gap-3 pt-4 border-t border-slate-200 mt-6">
                                     <Button
@@ -1018,6 +1313,17 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                 confirmText="Sim, Excluir"
                 cancelText="Cancelar"
                 variant="danger"
+            />
+
+            {/* Header Configuration Modal */}
+            <ConfiguracaoCabecalhoModal
+                isOpen={showHeaderConfigModal}
+                onClose={() => setShowHeaderConfigModal(false)}
+                onSave={() => {
+                    setShowHeaderConfigModal(false)
+                    loadHeaderConfiguration()
+                }}
+                escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
             />
         </div>
     )

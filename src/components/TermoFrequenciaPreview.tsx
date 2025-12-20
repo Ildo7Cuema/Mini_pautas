@@ -469,7 +469,7 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                         </>
                                                     )}
 
-                                                    <td className={`border border-slate-300 px-2 py-0.5 text-center font-bold text-sm ${disciplina.transita ? 'text-green-600' : 'text-red-600'}`}>
+                                                    <td className={`border border-slate-300 px-2 py-0.5 text-center font-bold text-sm ${disciplina.transita ? 'text-blue-600' : 'text-red-600'}`}>
                                                         {disciplina.transita ? 'Transita' : 'Não Transita'}
                                                     </td>
                                                 </tr>
@@ -510,11 +510,11 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
 
                     {/* Final Observation */}
                     <div className={`p-4 rounded-lg ${data.estatisticas.transita
-                        ? 'bg-green-50 border-2 border-green-500'
+                        ? 'bg-blue-50 border-2 border-blue-500'
                         : 'bg-red-50 border-2 border-red-500'
                         }`}>
                         <div className="text-center mb-3">
-                            <p className={`text-xl font-bold ${data.estatisticas.transita ? 'text-green-700' : 'text-red-700'}`}>
+                            <p className={`text-xl font-bold ${data.estatisticas.transita ? 'text-blue-700' : 'text-red-700'}`}>
                                 OBSERVAÇÃO FINAL: {data.estatisticas.transita ? 'TRANSITA' : 'NÃO TRANSITA'}
                             </p>
                             {data.estatisticas.matricula_condicional && (

@@ -402,7 +402,7 @@ export const PautaGeralPage: React.FC = () => {
 
                     if (componenteMF) {
                         const nota = notasDisciplina[componenteMF.id]
-                        if (nota !== undefined && nota > 0) {
+                        if (nota !== undefined) {
                             disciplinaGrades.push({
                                 id: disc.id,
                                 nome: disc.nome,

@@ -147,7 +147,7 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
             if (componenteParaMedia) {
                 const nota = notasDisciplina[componenteParaMedia.id]
 
-                if (nota !== undefined && nota > 0) {
+                if (nota !== undefined) {
                     // Use the nota directly from the selected component
                     let notaFinalDisciplina = nota
 
@@ -196,9 +196,9 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
     const StatusBadge = ({ observacao, matriculaCondicional }: { observacao: string; matriculaCondicional: boolean }) => (
         <div className="flex flex-wrap items-center gap-1.5">
             <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${observacao === 'Transita' ? 'bg-emerald-100 text-emerald-700' :
-                    observacao === 'Condicional' ? 'bg-amber-100 text-amber-700' :
-                        observacao === 'AguardandoNotas' ? 'bg-slate-100 text-slate-600' :
-                            'bg-red-100 text-red-700'
+                observacao === 'Condicional' ? 'bg-amber-100 text-amber-700' :
+                    observacao === 'AguardandoNotas' ? 'bg-slate-100 text-slate-600' :
+                        'bg-red-100 text-red-700'
                 }`}>
                 {observacao === 'Transita' && (
                     <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -274,8 +274,8 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                         <div className="flex items-center justify-between py-2 px-3 rounded-lg bg-white border border-slate-200">
                             <span className="text-sm font-medium text-slate-600">Frequência Anual</span>
                             <span className={`text-sm font-bold ${aluno.frequencia_anual !== undefined && aluno.frequencia_anual < 66.67
-                                    ? 'text-red-600'
-                                    : 'text-green-600'
+                                ? 'text-red-600'
+                                : 'text-green-600'
                                 }`}>
                                 {aluno.frequencia_anual !== undefined ? `${aluno.frequencia_anual.toFixed(1)}%` : 'N/A'}
                             </span>
@@ -416,8 +416,8 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                         <th
                                             key={componente.id}
                                             className={`border border-slate-200 px-2 py-1.5 text-center text-xs font-semibold ${['MF', 'MFD', 'MEC'].includes(componente.codigo_componente)
-                                                    ? 'bg-amber-100 text-amber-700'
-                                                    : 'bg-slate-100 text-slate-600'
+                                                ? 'bg-amber-100 text-amber-700'
+                                                : 'bg-slate-100 text-slate-600'
                                                 }`}
                                         >
                                             {componente.codigo_componente}
@@ -451,8 +451,8 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                         )}
                                         <td className="border border-slate-200 px-2 py-2 whitespace-nowrap text-center text-sm text-slate-600 bg-white">
                                             <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-medium ${aluno.genero === 'M' ? 'bg-blue-100 text-blue-700' :
-                                                    aluno.genero === 'F' ? 'bg-pink-100 text-pink-700' :
-                                                        'bg-slate-100 text-slate-500'
+                                                aluno.genero === 'F' ? 'bg-pink-100 text-pink-700' :
+                                                    'bg-slate-100 text-slate-500'
                                                 }`}>
                                                 {aluno.genero || '-'}
                                             </span>
@@ -488,8 +488,8 @@ export const PautaGeralPreview: React.FC<Props> = ({ data, loading, colorConfig,
                                         )}
                                         {/* Frequência */}
                                         <td className={`border border-slate-200 px-2 py-2 whitespace-nowrap text-center text-sm font-semibold ${aluno.frequencia_anual !== undefined && aluno.frequencia_anual !== null && aluno.frequencia_anual < 66.67
-                                                ? 'bg-red-50 text-red-700'
-                                                : 'bg-green-50 text-green-700'
+                                            ? 'bg-red-50 text-red-700'
+                                            : 'bg-green-50 text-green-700'
                                             }`}>
                                             {aluno.frequencia_anual !== undefined && aluno.frequencia_anual !== null
                                                 ? `${aluno.frequencia_anual.toFixed(1)}%`

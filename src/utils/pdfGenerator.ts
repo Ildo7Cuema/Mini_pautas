@@ -1556,7 +1556,7 @@ export async function generateTermoFrequenciaPDF(
                     // Color code observation column (last column)
                     if (colIdx === totalCols - 1 && hookData.cell.raw) {
                         if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
-                            hookData.cell.styles.textColor = [34, 197, 94]
+                            hookData.cell.styles.textColor = [37, 99, 235]  // Blue
                             hookData.cell.styles.fontStyle = 'bold'
                         } else if (hookData.cell.raw.includes('Não')) {
                             hookData.cell.styles.textColor = [239, 68, 68]
@@ -1620,7 +1620,7 @@ export async function generateTermoFrequenciaPDF(
                 }
                 if (hookData.section === 'body' && hookData.column.index === 6 && hookData.cell.raw) {
                     if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
-                        hookData.cell.styles.textColor = [34, 197, 94]
+                        hookData.cell.styles.textColor = [37, 99, 235]  // Blue
                         hookData.cell.styles.fontStyle = 'bold'
                     } else if (hookData.cell.raw.includes('Não')) {
                         hookData.cell.styles.textColor = [239, 68, 68]
@@ -1651,7 +1651,7 @@ export async function generateTermoFrequenciaPDF(
 
     const obsY = finalY
     if (data.estatisticas.transita) {
-        doc.setTextColor(34, 197, 94)  // Green
+        doc.setTextColor(37, 99, 235)  // Blue
         doc.text('OBSERVAÇÃO: TRANSITA', pageWidth - 14, obsY, { align: 'right' })
     } else {
         doc.setTextColor(239, 68, 68)  // Red
@@ -1880,7 +1880,7 @@ export async function generateTermoFrequenciaPDFBlob(
                     // Color code observation column (last column)
                     if (colIdx === totalCols - 1 && hookData.cell.raw) {
                         if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
-                            hookData.cell.styles.textColor = [34, 197, 94]
+                            hookData.cell.styles.textColor = [37, 99, 235]  // Blue
                             hookData.cell.styles.fontStyle = 'bold'
                         } else if (hookData.cell.raw.includes('Não')) {
                             hookData.cell.styles.textColor = [239, 68, 68]
@@ -1944,7 +1944,7 @@ export async function generateTermoFrequenciaPDFBlob(
                 }
                 if (hookData.section === 'body' && hookData.column.index === 6 && hookData.cell.raw) {
                     if (hookData.cell.raw.includes('Transita') && !hookData.cell.raw.includes('Não')) {
-                        hookData.cell.styles.textColor = [34, 197, 94]
+                        hookData.cell.styles.textColor = [37, 99, 235]  // Blue
                         hookData.cell.styles.fontStyle = 'bold'
                     } else if (hookData.cell.raw.includes('Não')) {
                         hookData.cell.styles.textColor = [239, 68, 68]
@@ -1975,7 +1975,7 @@ export async function generateTermoFrequenciaPDFBlob(
 
     const obsY = finalY
     if (data.estatisticas.transita) {
-        doc.setTextColor(34, 197, 94)  // Green
+        doc.setTextColor(37, 99, 235)  // Blue
         doc.text('OBSERVAÇÃO: TRANSITA', pageWidth - 14, obsY, { align: 'right' })
     } else {
         doc.setTextColor(239, 68, 68)  // Red
