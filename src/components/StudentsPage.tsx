@@ -235,14 +235,70 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
 
         setGeneratingNumero(true)
         try {
+            // Try to use the RPC function first
             const { data, error } = await supabase
                 .rpc('generate_numero_processo', { turma_uuid: formData.turma_id })
 
-            if (error) throw error
-            setFormData(prev => ({ ...prev, numero_processo: data }))
+            if (error) {
+                // Fallback: Generate locally if RPC function doesn't exist or fails
+                console.warn('RPC function not available, generating locally:', error.message)
+
+                // Get turma details
+                const { data: turmaData } = await supabase
+                    .from('turmas')
+                    .select('nome, ano_lectivo')
+                    .eq('id', formData.turma_id)
+                    .single()
+
+                // Count existing students in this turma
+                const { count } = await supabase
+                    .from('alunos')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('turma_id', formData.turma_id)
+
+                // Use nome da turma simplificado (ex: "1ª Classe A" -> "1A")
+                const turmaNome = turmaData?.nome || 'TURMA'
+                const turmaCodigo = turmaNome
+                    .replace(/[ªº°]/g, '')           // Remove ordinal symbols
+                    .replace(/classe/gi, '')         // Remove "classe"
+                    .replace(/\s+/g, '')             // Remove spaces
+                    .substring(0, 4)                 // Max 4 chars
+                    .toUpperCase()
+
+                const anoLectivo = turmaData?.ano_lectivo || new Date().getFullYear()
+                let contador = (count || 0) + 1
+                let novoNumero = `${turmaCodigo}-${anoLectivo}-${String(contador).padStart(3, '0')}`
+
+                // Check if numero already exists and increment if needed
+                let exists = true
+                while (exists) {
+                    const { data: existingAluno } = await supabase
+                        .from('alunos')
+                        .select('id')
+                        .eq('numero_processo', novoNumero)
+                        .maybeSingle()
+
+                    if (existingAluno) {
+                        contador++
+                        novoNumero = `${turmaCodigo}-${anoLectivo}-${String(contador).padStart(3, '0')}`
+                    } else {
+                        exists = false
+                    }
+                }
+
+                setFormData(prev => ({ ...prev, numero_processo: novoNumero }))
+            } else {
+                setFormData(prev => ({ ...prev, numero_processo: data }))
+            }
         } catch (err) {
             console.error('Error generating numero_processo:', err)
-            setError('Erro ao gerar número de processo automaticamente')
+            // Fallback to simple format if all else fails
+            const turma = turmas.find(t => t.id === formData.turma_id)
+            const turmaNome = turma?.nome || 'TURMA'
+            const turmaCodigo = turmaNome.replace(/[ªº°]/g, '').replace(/classe/gi, '').replace(/\s+/g, '').substring(0, 4).toUpperCase()
+            const anoAtual = new Date().getFullYear()
+            const randomNum = Math.floor(Math.random() * 900) + 100 // 100-999
+            setFormData(prev => ({ ...prev, numero_processo: `${turmaCodigo}-${anoAtual}-${randomNum}` }))
         } finally {
             setGeneratingNumero(false)
         }
@@ -676,15 +732,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                                     label="Nº de Processo"
                                     type="text"
                                     value={formData.numero_processo}
-                                    onChange={(e) => {
-                                        setFormData({ ...formData, numero_processo: e.target.value })
-                                        setManualNumero(true)
-                                    }}
+                                    onChange={() => { }}
                                     placeholder={generatingNumero ? "Gerando..." : "Gerado automaticamente"}
-                                    disabled={generatingNumero}
+                                    disabled={true}
                                     helpText={
                                         formData.turma_id
-                                            ? "Gerado automaticamente ao selecionar a turma. Clique para editar manualmente."
+                                            ? "Gerado automaticamente ao selecionar a turma"
                                             : "Selecione uma turma primeiro"
                                     }
                                 />
