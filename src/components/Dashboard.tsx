@@ -51,6 +51,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
         ano_lectivo: new Date().getFullYear(),
         nivel_ensino: 'Ensino Secundário',
     })
+    const [showHelpModal, setShowHelpModal] = useState(false)
 
     useEffect(() => {
         if (!authLoading && user && (escolaProfile || professorProfile)) {
@@ -747,7 +748,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                         <div className="relative z-10">
                             <h4 className="font-bold text-lg mb-1">Precisa de ajuda?</h4>
                             <p className="text-indigo-100 text-xs mb-3">Consulte nossos tutoriais ou entre em contato com o suporte.</p>
-                            <button className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors w-full text-center backdrop-blur-sm">
+                            <button
+                                onClick={() => setShowHelpModal(true)}
+                                className="bg-white/20 hover:bg-white/30 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors w-full text-center backdrop-blur-sm"
+                            >
                                 Central de Ajuda
                             </button>
                         </div>
@@ -834,6 +838,199 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                                     </Button>
                                 </div>
                             </form>
+                        </CardBody>
+                    </Card>
+                </div>
+            )}
+
+            {/* Help Center Modal */}
+            {showHelpModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in">
+                    <Card className="w-full max-w-2xl max-h-[90vh] overflow-hidden animate-slide-up shadow-2xl ring-1 ring-black/5">
+                        <CardHeader className="border-b border-slate-100 p-5 bg-gradient-to-r from-indigo-500 to-purple-600">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">Central de Ajuda</h3>
+                                        <p className="text-indigo-100 text-xs">Tutoriais e suporte para você</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setShowHelpModal(false)}
+                                    className="p-1.5 text-white/70 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </CardHeader>
+                        <CardBody className="p-0 overflow-y-auto max-h-[calc(90vh-120px)]">
+                            {/* Quick Start Section */}
+                            <div className="p-5 border-b border-slate-100">
+                                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                    </svg>
+                                    Início Rápido
+                                </h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <div
+                                        className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl cursor-pointer hover:shadow-md transition-all group"
+                                        onClick={() => { setShowHelpModal(false); onNavigate?.('classes'); }}
+                                    >
+                                        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white mb-2 group-hover:scale-110 transition-transform">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                        </div>
+                                        <h5 className="font-semibold text-slate-800 text-sm">Criar Turma</h5>
+                                        <p className="text-xs text-slate-500">Configure turmas e organize seus alunos</p>
+                                    </div>
+                                    <div
+                                        className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl cursor-pointer hover:shadow-md transition-all group"
+                                        onClick={() => { setShowHelpModal(false); onNavigate?.('students'); }}
+                                    >
+                                        <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white mb-2 group-hover:scale-110 transition-transform">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                            </svg>
+                                        </div>
+                                        <h5 className="font-semibold text-slate-800 text-sm">Adicionar Alunos</h5>
+                                        <p className="text-xs text-slate-500">Cadastre alunos com dados completos</p>
+                                    </div>
+                                    <div
+                                        className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl cursor-pointer hover:shadow-md transition-all group"
+                                        onClick={() => { setShowHelpModal(false); onNavigate?.('grades'); }}
+                                    >
+                                        <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center text-white mb-2 group-hover:scale-110 transition-transform">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                            </svg>
+                                        </div>
+                                        <h5 className="font-semibold text-slate-800 text-sm">Lançar Notas</h5>
+                                        <p className="text-xs text-slate-500">Registre avaliações por disciplina</p>
+                                    </div>
+                                    <div
+                                        className="p-4 bg-gradient-to-br from-purple-50 to-fuchsia-50 rounded-xl cursor-pointer hover:shadow-md transition-all group"
+                                        onClick={() => { setShowHelpModal(false); onNavigate?.('reports'); }}
+                                    >
+                                        <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center text-white mb-2 group-hover:scale-110 transition-transform">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <h5 className="font-semibold text-slate-800 text-sm">Gerar Relatórios</h5>
+                                        <p className="text-xs text-slate-500">Exporte pautas e boletins em PDF</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* FAQ Section */}
+                            <div className="p-5 border-b border-slate-100">
+                                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Perguntas Frequentes
+                                </h4>
+                                <div className="space-y-2">
+                                    <details className="group bg-slate-50 rounded-xl overflow-hidden">
+                                        <summary className="p-3 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between">
+                                            Como criar uma nova turma?
+                                            <svg className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </summary>
+                                        <div className="px-3 pb-3 text-sm text-slate-600">
+                                            Clique em "Nova Turma" no Dashboard ou acesse o menu Turmas. Preencha o nome, nível de ensino e ano lectivo. A turma será criada automaticamente e estará pronta para receber alunos.
+                                        </div>
+                                    </details>
+                                    <details className="group bg-slate-50 rounded-xl overflow-hidden">
+                                        <summary className="p-3 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between">
+                                            Como lançar notas dos alunos?
+                                            <svg className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </summary>
+                                        <div className="px-3 pb-3 text-sm text-slate-600">
+                                            Acesse o menu "Notas", selecione a turma, disciplina e trimestre desejados. Depois, clique em "Lançar Notas" para inserir as notas de cada componente de avaliação. O sistema calcula automaticamente as médias.
+                                        </div>
+                                    </details>
+                                    <details className="group bg-slate-50 rounded-xl overflow-hidden">
+                                        <summary className="p-3 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between">
+                                            Como gerar a pauta trimestral?
+                                            <svg className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </summary>
+                                        <div className="px-3 pb-3 text-sm text-slate-600">
+                                            No menu "Relatórios", selecione a turma, o trimestre e o tipo de pauta. Clique em "Gerar Pauta" para visualizar e depois "Exportar PDF" para baixar. Pode ainda configurar o cabeçalho institucional.
+                                        </div>
+                                    </details>
+                                    <details className="group bg-slate-50 rounded-xl overflow-hidden">
+                                        <summary className="p-3 cursor-pointer font-medium text-sm text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between">
+                                            Como funciona o sistema de avaliação angolano?
+                                            <svg className="w-4 h-4 text-slate-400 group-open:rotate-180 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                            </svg>
+                                        </summary>
+                                        <div className="px-3 pb-3 text-sm text-slate-600">
+                                            O sistema usa a escala de 0-20 pontos. A nota mínima de aprovação é 10 valores. As avaliações incluem MAC (Média de Avaliação Contínua), NPP (Nota da Prova do Professor), NPT (Nota da Prova Trimestral) e MT (Média Trimestral).
+                                        </div>
+                                    </details>
+                                </div>
+                            </div>
+
+                            {/* Contact Support Section */}
+                            <div className="p-5">
+                                <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+                                    <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                    </svg>
+                                    Precisa de mais ajuda?
+                                </h4>
+                                <div className="bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl p-4">
+                                    <p className="text-sm text-slate-600 mb-4">Entre em contacto connosco por um dos canais abaixo:</p>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        <a
+                                            href="mailto:ildocuema@gmail.com"
+                                            className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-all group"
+                                        >
+                                            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center text-indigo-600 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-slate-800 text-sm">Email</p>
+                                                <p className="text-xs text-slate-500">ildocuema@gmail.com</p>
+                                            </div>
+                                        </a>
+                                        <a
+                                            href="https://wa.me/244921923232"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-3 p-3 bg-white rounded-lg hover:shadow-md transition-all group"
+                                        >
+                                            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center text-green-600 group-hover:bg-green-500 group-hover:text-white transition-colors">
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-slate-800 text-sm">WhatsApp</p>
+                                                <p className="text-xs text-slate-500">+244 921 923 232</p>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
                         </CardBody>
                     </Card>
                 </div>
