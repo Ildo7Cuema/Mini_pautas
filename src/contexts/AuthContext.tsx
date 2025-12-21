@@ -249,10 +249,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 }
 
                 // Try to find encarregado (user associated with a student as guardian)
+                // NOTE: Check encarregado even if user is an aluno - they might be both!
                 console.log('🔍 AuthContext: Checking if user is an encarregado...')
                 const { data: encarregadoData, error: encarregadoError } = await supabase
                     .from('alunos')
-                    .select('*, turmas(id, nome, escola_id)')
+                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, sigla, logo_url))')
                     .eq('encarregado_user_id', authUser.id)
                     .eq('ativo', true)
 
@@ -267,9 +268,20 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setIsProfessor(false)
                     setIsAluno(false)
 
-                    // Create inline encarregado profile
+                    // Extract escola from first aluno's turma
+                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; sigla?: string; logo_url?: string } } | null
+                    const escolaData = firstAlunoTurma?.escolas || null
+
+                    // Create inline encarregado profile with escola
                     const encarregadoProfile = {
-                        alunos_associados: encarregadoData,
+                        alunos_associados: encarregadoData.map((aluno: any) => {
+                            const turmaData = aluno.turmas as { id: string; nome: string; escola_id: string; escolas?: any } | null
+                            return {
+                                ...aluno,
+                                turma: turmaData ? { id: turmaData.id, nome: turmaData.nome, escola_id: turmaData.escola_id } : undefined
+                            }
+                        }),
+                        escola: escolaData,
                         user_profile: null as any
                     }
 

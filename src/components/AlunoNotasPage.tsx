@@ -146,7 +146,7 @@ export const AlunoNotasPage: React.FC = () => {
     return (
         <div className="min-h-screen bg-gradient-to-b from-slate-50 to-slate-100 pb-24 md:pb-6">
             {/* Mobile Header - Fixed */}
-            <div className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm md:relative md:bg-transparent md:border-0 md:shadow-none">
+            <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-200 shadow-sm md:relative md:bg-transparent md:border-0 md:shadow-none">
                 <div className="px-4 py-4 md:p-6">
                     <div className="flex items-center gap-4">
                         <div className="relative">

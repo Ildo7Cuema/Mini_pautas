@@ -67,9 +67,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
     return (
         <>
-            {/* Backdrop for mobile */}
+            {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/20 z-40 md:hidden animate-fade-in"
+                className="fixed inset-0 bg-black/20 z-[100] animate-fade-in"
                 onClick={onClose}
             />
 
@@ -77,10 +77,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             <div
                 ref={panelRef}
                 className="
-          absolute right-0 top-full mt-2 w-full md:w-96
-          bg-white rounded-lg shadow-xl border border-slate-200
-          z-50 animate-slide-down
-          max-h-[calc(100vh-80px)] md:max-h-[500px]
+          fixed right-4 md:right-8 top-20
+          w-[calc(100vw-2rem)] md:w-96
+          bg-white rounded-2xl shadow-2xl border border-slate-200
+          z-[101] animate-slide-down
+          max-h-[calc(100vh-6rem)]
           flex flex-col
         "
             >

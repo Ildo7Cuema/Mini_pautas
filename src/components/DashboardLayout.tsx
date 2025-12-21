@@ -49,6 +49,12 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             return escolaProfile.nome || 'Escola'
         } else if (isProfessor && professorProfile) {
             return professorProfile.nome_completo || 'Professor'
+        } else if (isAlunoRole && alunoProfile) {
+            return alunoProfile.nome_completo || 'Aluno'
+        } else if (isEncarregadoRole && encarregadoProfile) {
+            // Get name from first associated student or use email
+            const primeiroEducando = encarregadoProfile.alunos_associados?.[0]
+            return primeiroEducando?.nome_encarregado || 'Encarregado'
         }
         return user?.email?.split('@')[0] || 'Usuário'
     }
@@ -406,7 +412,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             {/* Main Content */}
             <main className="flex-1 flex flex-col overflow-hidden pb-[calc(env(safe-area-inset-bottom)+60px)] md:pb-0 z-10">
                 {/* Header - Responsive */}
-                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-4 md:px-8 z-20 sticky top-0">
+                <header className="h-16 bg-white/80 backdrop-blur-md border-b border-slate-200/60 flex items-center justify-between px-4 md:px-8 z-20 sticky top-0 overflow-visible">
                     <div className="flex items-center gap-4">
                         {/* Mobile Logo */}
                         <div className="md:hidden w-9 h-9 bg-gradient-to-br from-primary-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-primary-500/20">
@@ -433,7 +439,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                         </form>
 
                         {/* Actions */}
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 relative">
                             <button
                                 onClick={() => setNotificationPanelOpen(!notificationPanelOpen)}
                                 className="relative p-2.5 text-slate-400 hover:text-primary-600 hover:bg-primary-50 rounded-xl transition-all duration-200 active:scale-95"

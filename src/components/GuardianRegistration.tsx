@@ -99,7 +99,7 @@ export const GuardianRegistration: React.FC = () => {
         }
 
         try {
-            // Create auth user
+            // Try to create auth user
             const { data: authData, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
@@ -111,9 +111,51 @@ export const GuardianRegistration: React.FC = () => {
                 }
             })
 
-            if (signUpError) throw signUpError
+            // Handle case where user already exists
+            if (signUpError) {
+                // Check if it's a "user already exists" error
+                if (signUpError.message.includes('already registered') ||
+                    signUpError.message.includes('already exists') ||
+                    signUpError.message.includes('User already registered')) {
 
-            // Use RPC function to link encarregado_user_id and create user_profile (bypasses RLS)
+                    // Try to sign in with the provided credentials
+                    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+                        email,
+                        password
+                    })
+
+                    if (signInError) {
+                        // If sign in fails, the password is wrong
+                        setError('Este email já está registado. Por favor faça login com a senha existente ou use outro email.')
+                        setLoading(false)
+                        return
+                    }
+
+                    // User signed in successfully - link as encarregado
+                    if (signInData.user && alunoId) {
+                        const { data: rpcResult, error: rpcError } = await supabase
+                            .rpc('link_existing_user_as_guardian', {
+                                p_aluno_id: alunoId,
+                                p_user_id: signInData.user.id
+                            })
+
+                        if (rpcError) {
+                            console.error('Error linking existing user as guardian:', rpcError)
+                        } else if (rpcResult && !rpcResult.success) {
+                            console.error('RPC returned error:', rpcResult.error)
+                        } else {
+                            console.log('Successfully linked existing user as guardian:', rpcResult)
+                        }
+                    }
+
+                    setSuccess(true)
+                    return
+                }
+
+                throw signUpError
+            }
+
+            // New user created - use RPC function to link and create profile
             if (authData.user && alunoId) {
                 const { data: rpcResult, error: rpcError } = await supabase
                     .rpc('register_guardian_account', {
@@ -124,7 +166,6 @@ export const GuardianRegistration: React.FC = () => {
 
                 if (rpcError) {
                     console.error('Error in register_guardian_account RPC:', rpcError)
-                    // Don't fail completely - auth user was created
                 } else if (rpcResult && !rpcResult.success) {
                     console.error('RPC returned error:', rpcResult.error)
                 } else {
