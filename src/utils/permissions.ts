@@ -259,3 +259,51 @@ export const getAccessibleDisciplinaIds = (
 export const hasAnyAssignments = (associations?: TurmaProfessor[]): boolean => {
     return (associations?.length || 0) > 0
 }
+
+// ============================================
+// ALUNO AND ENCARREGADO PERMISSIONS
+// ============================================
+
+/**
+ * Check if user is ALUNO (student)
+ */
+export const isAluno = (profile: UserProfile | null): boolean => {
+    return profile?.tipo_perfil === 'ALUNO' && profile.ativo
+}
+
+/**
+ * Check if user is ENCARREGADO (guardian)
+ */
+export const isEncarregado = (profile: UserProfile | null): boolean => {
+    return profile?.tipo_perfil === 'ENCARREGADO' && profile.ativo
+}
+
+/**
+ * Check if user can view their own grades (ALUNO only)
+ */
+export const canViewOwnGrades = (profile: UserProfile | null): boolean => {
+    return isAluno(profile)
+}
+
+/**
+ * Check if user can view associated students' grades (ENCARREGADO only)
+ */
+export const canViewAssociatedStudentGrades = (profile: UserProfile | null): boolean => {
+    return isEncarregado(profile)
+}
+
+/**
+ * Check if user is a read-only viewer (ALUNO or ENCARREGADO)
+ * These users can only view data, not modify it
+ */
+export const isReadOnlyViewer = (profile: UserProfile | null): boolean => {
+    return isAluno(profile) || isEncarregado(profile)
+}
+
+/**
+ * Check if user can modify grades (ESCOLA, PROFESSOR only - not ALUNO/ENCARREGADO)
+ */
+export const canModifyGrades = (profile: UserProfile | null): boolean => {
+    if (!profile || !profile.ativo) return false
+    return profile.tipo_perfil === 'ESCOLA' || profile.tipo_perfil === 'PROFESSOR'
+}

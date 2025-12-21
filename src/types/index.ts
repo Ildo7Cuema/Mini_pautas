@@ -60,6 +60,7 @@ export interface Aluno {
     id: string;
     turma_id: string;
     user_id?: string;
+    encarregado_user_id?: string; // Links guardian auth user to this student
 
     // Dados Pessoais
     nome_completo: string;
@@ -340,7 +341,7 @@ export interface ImportError {
 // USER ROLES AND PROFILES
 // ============================================
 
-export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN';
+export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO';
 
 export interface UserProfile {
     id: string;
@@ -380,6 +381,22 @@ export interface AuthUser {
     profile: UserProfile | null;
     escola?: EscolaProfile;
     professor?: ProfessorProfile;
+    aluno?: AlunoProfile;
+    encarregado?: EncarregadoProfile;
+}
+
+// ALUNO Profile - Student with turma and escola info
+export interface AlunoProfile extends Aluno {
+    user_profile: UserProfile;
+    turma?: Turma;
+    escola?: Escola;
+}
+
+// ENCARREGADO Profile - Guardian with associated students
+export interface EncarregadoProfile {
+    user_profile: UserProfile;
+    alunos_associados: AlunoProfile[];
+    escola?: Escola;
 }
 
 // ============================================

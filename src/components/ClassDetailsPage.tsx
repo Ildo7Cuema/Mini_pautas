@@ -153,20 +153,38 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
         setSuccess(null)
 
         try {
+            // Prepare data for the alunos table (exclude account-related fields)
+            const {
+                criar_conta_aluno,
+                email_aluno,
+                senha_aluno,
+                criar_conta_encarregado,
+                email_conta_encarregado,
+                senha_encarregado,
+                ...studentData
+            } = data
+
             const dataToSubmit = {
-                ...data,
+                ...studentData,
                 turma_id: turmaId,
                 genero: data.genero || null,
                 ano_ingresso: data.ano_ingresso ? parseInt(data.ano_ingresso) : null,
             }
 
+            // Insert the student record
             const { error: insertError } = await supabase
                 .from('alunos')
                 .insert(dataToSubmit)
 
             if (insertError) throw insertError
 
-            setSuccess('Aluno adicionado com sucesso!')
+            // Build success message
+            let successMsg = 'Aluno adicionado com sucesso!'
+            if (email_aluno || data.email_encarregado) {
+                successMsg += ' Use os botões de convite para gerar links de acesso.'
+            }
+
+            setSuccess(successMsg)
             setShowAddStudentModal(false)
             setStudentFormData({})
 
@@ -246,8 +264,19 @@ export const ClassDetailsPage: React.FC<ClassDetailsPageProps> = ({ turmaId, onN
         setSuccess(null)
 
         try {
+            // Exclude account creation fields - they don't exist in the alunos table
+            const {
+                criar_conta_aluno,
+                email_aluno,
+                senha_aluno,
+                criar_conta_encarregado,
+                email_conta_encarregado,
+                senha_encarregado,
+                ...studentData
+            } = data
+
             const dataToUpdate = {
-                ...data,
+                ...studentData,
                 genero: data.genero || null,
                 ano_ingresso: data.ano_ingresso ? parseInt(data.ano_ingresso) : null,
             }

@@ -11,15 +11,19 @@ import { ReportsPage } from './components/ReportsPage'
 import { SettingsPage } from './components/SettingsPage'
 import { TeachersPage } from './components/TeachersPage'
 import { ProfessorRegistration } from './components/ProfessorRegistration'
+import { StudentRegistration } from './components/StudentRegistration'
+import { GuardianRegistration } from './components/GuardianRegistration'
 import { ProfessorDashboard } from './components/ProfessorDashboard'
 import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { SuperAdminDashboard } from './components/SuperAdminDashboard'
 import { EscolaManagement } from './components/EscolaManagement'
 import { SuperAdminAuditLog } from './components/SuperAdminAuditLog'
+import { AlunoNotasPage } from './components/AlunoNotasPage'
+import { EncarregadoNotasPage } from './components/EncarregadoNotasPage'
 import { isSuperAdmin } from './utils/permissions'
 
 function App() {
-    const { user, loading, isProfessor, profile } = useAuth()
+    const { user, loading, isProfessor, isAluno, isEncarregado, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
@@ -39,6 +43,14 @@ function App() {
 
     if (window.location.pathname === '/register-professor') {
         return <ProfessorRegistration />
+    }
+
+    if (window.location.pathname === '/register-student') {
+        return <StudentRegistration />
+    }
+
+    if (window.location.pathname === '/register-guardian') {
+        return <GuardianRegistration />
     }
 
     if (window.location.pathname === '/reset-password') {
@@ -74,6 +86,28 @@ function App() {
                     return <SettingsPage />
                 default:
                     return <SuperAdminDashboard />
+            }
+        }
+
+        // ALUNO routes - read-only grade viewing
+        if (isAluno) {
+            switch (currentPage) {
+                case 'aluno-notas':
+                case 'dashboard':
+                    return <AlunoNotasPage />
+                default:
+                    return <AlunoNotasPage />
+            }
+        }
+
+        // ENCARREGADO routes - guardian grade viewing
+        if (isEncarregado) {
+            switch (currentPage) {
+                case 'encarregado-notas':
+                case 'dashboard':
+                    return <EncarregadoNotasPage />
+                default:
+                    return <EncarregadoNotasPage />
             }
         }
 

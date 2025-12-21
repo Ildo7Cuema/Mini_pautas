@@ -60,7 +60,7 @@ interface Turma {
     nome: string
 }
 
-type TabType = 'pessoal' | 'encarregado' | 'endereco' | 'academico'
+type TabType = 'pessoal' | 'encarregado' | 'endereco' | 'academico' | 'acesso'
 
 const initialFormData = {
     // Dados básicos
@@ -95,6 +95,14 @@ const initialFormData = {
     observacoes_academicas: '',
     frequencia_anual: '',
     tipo_exame: '',
+    // Conta de Acesso (ALUNO)
+    criar_conta_aluno: false,
+    email_aluno: '',
+    senha_aluno: '',
+    // Conta de Acesso (ENCARREGADO)
+    criar_conta_encarregado: false,
+    email_conta_encarregado: '',
+    senha_encarregado: '',
 }
 
 interface StudentsPageProps {
@@ -310,21 +318,39 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
         setSuccess(null)
 
         try {
+            // Prepare data for the alunos table (exclude account-related fields)
+            const {
+                criar_conta_aluno,
+                email_aluno,
+                senha_aluno,
+                criar_conta_encarregado,
+                email_conta_encarregado,
+                senha_encarregado,
+                ...studentData
+            } = formData
+
             const dataToSubmit = {
-                ...formData,
+                ...studentData,
                 genero: formData.genero || null,
                 ano_ingresso: formData.ano_ingresso ? parseInt(formData.ano_ingresso) : null,
                 frequencia_anual: formData.frequencia_anual ? parseFloat(formData.frequencia_anual) : null,
                 tipo_exame: formData.tipo_exame || null,
             }
 
+            // Insert the student record
             const { error: insertError } = await supabase
                 .from('alunos')
                 .insert(dataToSubmit)
 
             if (insertError) throw insertError
 
-            setSuccess('Aluno adicionado com sucesso!')
+            // Build success message
+            let successMsg = 'Aluno adicionado com sucesso!'
+            if (email_aluno || formData.email_encarregado) {
+                successMsg += ' Use os botões de convite para gerar links de acesso.'
+            }
+
+            setSuccess(successMsg)
             setShowModal(false)
             setFormData(initialFormData)
             setActiveTab('pessoal')
@@ -333,6 +359,47 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
             const errorMessage = err instanceof Error ? err.message : 'Erro ao adicionar aluno'
             setError(translateError(errorMessage))
         }
+    }
+
+    // Generate and copy student invite link
+    const handleCopyStudentInvite = (aluno: Aluno) => {
+        // Note: Using email_encarregado as a fallback since email_aluno is not stored in DB
+        // In a future update, we could add email_aluno to the alunos table
+        if (!aluno.email_encarregado) {
+            setError('Aluno não possui email cadastrado. Edite o aluno para adicionar email.')
+            setTimeout(() => setError(null), 4000)
+            return
+        }
+
+        const email = aluno.email_encarregado
+        const origin = window.location.origin
+        const inviteLink = `${origin}/register-student?email=${encodeURIComponent(email)}&aluno_id=${aluno.id}`
+
+        navigator.clipboard.writeText(inviteLink).then(() => {
+            setSuccess('Link de convite do aluno copiado!')
+            setTimeout(() => setSuccess(null), 3000)
+        }).catch(() => {
+            setError('Erro ao copiar link. Tente manualmente.')
+        })
+    }
+
+    // Generate and copy guardian invite link
+    const handleCopyGuardianInvite = (aluno: Aluno) => {
+        if (!aluno.email_encarregado) {
+            setError('Encarregado não possui email cadastrado. Edite o aluno na aba "Encarregado".')
+            setTimeout(() => setError(null), 4000)
+            return
+        }
+
+        const origin = window.location.origin
+        const inviteLink = `${origin}/register-guardian?email=${encodeURIComponent(aluno.email_encarregado)}&aluno_id=${aluno.id}`
+
+        navigator.clipboard.writeText(inviteLink).then(() => {
+            setSuccess('Link de convite do encarregado copiado!')
+            setTimeout(() => setSuccess(null), 3000)
+        }).catch(() => {
+            setError('Erro ao copiar link. Tente manualmente.')
+        })
     }
 
     const handleDeleteClick = (id: string) => {
@@ -393,6 +460,13 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
             observacoes_academicas: aluno.observacoes_academicas || '',
             frequencia_anual: aluno.frequencia_anual?.toString() || '',
             tipo_exame: aluno.tipo_exame || '',
+            // Account fields - default to false/empty for editing existing students
+            criar_conta_aluno: false,
+            email_aluno: '',
+            senha_aluno: '',
+            criar_conta_encarregado: false,
+            email_conta_encarregado: '',
+            senha_encarregado: '',
         })
         setActiveTab('pessoal')
         setShowEditModal(true)
@@ -406,8 +480,19 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
         setSuccess(null)
 
         try {
+            // Exclude account creation fields - they don't exist in the alunos table
+            const {
+                criar_conta_aluno,
+                email_aluno,
+                senha_aluno,
+                criar_conta_encarregado,
+                email_conta_encarregado,
+                senha_encarregado,
+                ...studentData
+            } = formData
+
             const dataToUpdate = {
-                ...formData,
+                ...studentData,
                 genero: formData.genero || null,
                 ano_ingresso: formData.ano_ingresso ? parseInt(formData.ano_ingresso) : null,
                 frequencia_anual: formData.frequencia_anual ? parseFloat(formData.frequencia_anual) : null,
@@ -1056,6 +1141,95 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                         </div>
                     </div>
                 )
+
+            case 'acesso':
+                return (
+                    <div className="space-y-6">
+                        {/* Conta do Aluno */}
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <input
+                                    type="checkbox"
+                                    id="criar_conta_aluno"
+                                    checked={formData.criar_conta_aluno}
+                                    onChange={(e) => setFormData({ ...formData, criar_conta_aluno: e.target.checked })}
+                                    className="w-5 h-5 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                />
+                                <label htmlFor="criar_conta_aluno" className="font-semibold text-slate-800">
+                                    Criar conta de acesso para o Aluno
+                                </label>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                O aluno poderá aceder ao sistema para visualizar as suas notas.
+                            </p>
+
+                            {formData.criar_conta_aluno && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Input
+                                        label="Email do Aluno"
+                                        type="email"
+                                        value={formData.email_aluno}
+                                        onChange={(e) => setFormData({ ...formData, email_aluno: e.target.value })}
+                                        placeholder="aluno@escola.ao"
+                                    />
+                                    <Input
+                                        label="Senha"
+                                        type="password"
+                                        value={formData.senha_aluno}
+                                        onChange={(e) => setFormData({ ...formData, senha_aluno: e.target.value })}
+                                        placeholder="Mínimo 6 caracteres"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Conta do Encarregado */}
+                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <input
+                                    type="checkbox"
+                                    id="criar_conta_encarregado"
+                                    checked={formData.criar_conta_encarregado}
+                                    onChange={(e) => setFormData({ ...formData, criar_conta_encarregado: e.target.checked })}
+                                    className="w-5 h-5 rounded border-slate-300 text-amber-600 focus:ring-amber-500"
+                                />
+                                <label htmlFor="criar_conta_encarregado" className="font-semibold text-slate-800">
+                                    Criar conta de acesso para o Encarregado
+                                </label>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                O encarregado poderá aceder ao sistema para visualizar as notas do educando.
+                            </p>
+
+                            {formData.criar_conta_encarregado && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <Input
+                                        label="Email do Encarregado"
+                                        type="email"
+                                        value={formData.email_conta_encarregado}
+                                        onChange={(e) => setFormData({ ...formData, email_conta_encarregado: e.target.value })}
+                                        placeholder="encarregado@email.com"
+                                    />
+                                    <Input
+                                        label="Senha"
+                                        type="password"
+                                        value={formData.senha_encarregado}
+                                        onChange={(e) => setFormData({ ...formData, senha_encarregado: e.target.value })}
+                                        placeholder="Mínimo 6 caracteres"
+                                    />
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 className="font-medium text-slate-700 mb-2">Informação</h4>
+                            <p className="text-sm text-slate-600">
+                                As contas criadas terão acesso apenas de leitura. Os utilizadores poderão ver as notas
+                                mas não poderão modificar nenhum dado no sistema.
+                            </p>
+                        </div>
+                    </div>
+                )
         }
     }
 
@@ -1224,6 +1398,24 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                                                         </svg>
                                                     </button>
                                                     <button
+                                                        onClick={() => handleCopyStudentInvite(aluno)}
+                                                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title="Copiar convite do aluno"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleCopyGuardianInvite(aluno)}
+                                                        className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
+                                                        title="Copiar convite do encarregado"
+                                                    >
+                                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                        </svg>
+                                                    </button>
+                                                    <button
                                                         onClick={() => handleDeleteClick(aluno.id)}
                                                         className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 min-h-touch min-w-touch flex items-center justify-center"
                                                         title="Remover aluno"
@@ -1279,7 +1471,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                                 <TabButton tab="pessoal" label="Pessoal" icon={<Icons.User />} />
                                 <TabButton tab="encarregado" label="Encarregado" icon={<Icons.Users />} />
                                 <TabButton tab="endereco" label="Endereço" icon={<Icons.Home />} />
-                                <TabButton tab="academico" label="Acadêmico" icon={<Icons.ClipboardList />} />
+                                <TabButton tab="academico" label="Académico" icon={<Icons.ClipboardList />} />
+                                <TabButton tab="acesso" label="Acesso" icon={
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                    </svg>
+                                } />
                             </div>
                         </CardHeader>
                         <CardBody className="flex-1 overflow-y-auto">
@@ -1327,7 +1524,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                                 <TabButton tab="pessoal" label="Pessoal" icon={<Icons.User />} />
                                 <TabButton tab="encarregado" label="Encarregado" icon={<Icons.Users />} />
                                 <TabButton tab="endereco" label="Endereço" icon={<Icons.Home />} />
-                                <TabButton tab="academico" label="Acadêmico" icon={<Icons.ClipboardList />} />
+                                <TabButton tab="academico" label="Académico" icon={<Icons.ClipboardList />} />
+                                <TabButton tab="acesso" label="Acesso" icon={
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                    </svg>
+                                } />
                             </div>
                         </CardHeader>
                         <CardBody className="flex-1 overflow-y-auto">

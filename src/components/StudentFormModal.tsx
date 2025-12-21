@@ -44,6 +44,14 @@ export interface StudentFormData {
     escola_anterior: string
     classe_anterior: string
     observacoes_academicas: string
+    // Conta de Acesso (ALUNO)
+    criar_conta_aluno: boolean
+    email_aluno: string
+    senha_aluno: string
+    // Conta de Acesso (ENCARREGADO)
+    criar_conta_encarregado: boolean
+    email_conta_encarregado: string
+    senha_encarregado: string
 }
 
 export const initialStudentFormData: StudentFormData = {
@@ -72,6 +80,13 @@ export const initialStudentFormData: StudentFormData = {
     escola_anterior: '',
     classe_anterior: '',
     observacoes_academicas: '',
+    // Conta de Acesso
+    criar_conta_aluno: false,
+    email_aluno: '',
+    senha_aluno: '',
+    criar_conta_encarregado: false,
+    email_conta_encarregado: '',
+    senha_encarregado: '',
 }
 
 interface StudentFormModalProps {
@@ -87,7 +102,7 @@ interface StudentFormModalProps {
     turmas?: Array<{ id: string; nome: string }>
 }
 
-type TabType = 'pessoal' | 'encarregado' | 'endereco' | 'academico'
+type TabType = 'pessoal' | 'encarregado' | 'endereco' | 'academico' | 'acesso'
 
 export const StudentFormModal: React.FC<StudentFormModalProps> = ({
     isOpen,
@@ -432,6 +447,70 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                         </div>
                     </div>
                 )
+
+            case 'acesso':
+                return (
+                    <div className="space-y-6">
+                        {/* Conta do Aluno */}
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                </svg>
+                                <h4 className="font-semibold text-slate-800">Acesso do Aluno</h4>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                Informe o email do aluno. Após salvar, poderá gerar um link de convite para que o aluno crie a própria conta.
+                            </p>
+                            <Input
+                                label="Email do Aluno"
+                                type="email"
+                                value={formData.email_aluno}
+                                onChange={(e) => setFormData({ ...formData, email_aluno: e.target.value })}
+                                placeholder="aluno@escola.ao"
+                            />
+                        </div>
+
+                        {/* Conta do Encarregado */}
+                        <div className="bg-amber-50 p-4 rounded-xl border border-amber-100">
+                            <div className="flex items-center gap-3 mb-4">
+                                <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <h4 className="font-semibold text-slate-800">Acesso do Encarregado</h4>
+                            </div>
+                            <p className="text-sm text-slate-600 mb-4">
+                                Use o email do encarregado (do separador Encarregado). Após salvar, poderá gerar um link de convite.
+                            </p>
+                            {formData.email_encarregado ? (
+                                <div className="p-3 bg-white rounded-lg border border-amber-200">
+                                    <p className="text-sm text-slate-700">
+                                        <span className="font-medium">Email:</span> {formData.email_encarregado}
+                                    </p>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-amber-700 italic">
+                                    Preencha o email do encarregado no separador "Encarregado".
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                            <h4 className="font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                                </svg>
+                                Como Funciona
+                            </h4>
+                            <ol className="text-sm text-slate-600 space-y-2 list-decimal list-inside">
+                                <li>Salve o registo do aluno com os emails preenchidos</li>
+                                <li>Na lista de alunos, clique em "Convite" para copiar o link</li>
+                                <li>Envie o link ao aluno/encarregado (WhatsApp, email, etc.)</li>
+                                <li>Eles acedem ao link e criam a própria senha</li>
+                            </ol>
+                        </div>
+                    </div>
+                )
         }
     }
 
@@ -456,7 +535,12 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                         <TabButton tab="pessoal" label="Pessoal" icon={<Icons.User />} />
                         <TabButton tab="encarregado" label="Encarregado" icon={<Icons.Users />} />
                         <TabButton tab="endereco" label="Endereço" icon={<Icons.Home />} />
-                        <TabButton tab="academico" label="Acadêmico" icon={<Icons.ClipboardList />} />
+                        <TabButton tab="academico" label="Académico" icon={<Icons.ClipboardList />} />
+                        <TabButton tab="acesso" label="Acesso" icon={
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                            </svg>
+                        } />
                     </div>
                 </CardHeader>
                 <CardBody className="flex-1 overflow-y-auto pb-24 md:pb-0">

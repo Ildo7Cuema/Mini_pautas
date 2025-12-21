@@ -7,9 +7,13 @@ import type {
     UserProfile,
     EscolaProfile,
     ProfessorProfile,
+    AlunoProfile,
+    EncarregadoProfile,
     TurmaProfessor,
     Escola,
-    Professor
+    Professor,
+    Aluno,
+    Turma
 } from '../types'
 
 interface AuthContextType {
@@ -17,8 +21,12 @@ interface AuthContextType {
     loading: boolean
     isEscola: boolean
     isProfessor: boolean
+    isAluno: boolean
+    isEncarregado: boolean
     escolaProfile: EscolaProfile | null
     professorProfile: ProfessorProfile | null
+    alunoProfile: AlunoProfile | null
+    encarregadoProfile: EncarregadoProfile | null
     profile: UserProfile | null  // Added for SUPERADMIN support
     signOut: () => Promise<void>
     refreshProfile: () => Promise<void>
@@ -43,8 +51,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [loading, setLoading] = useState(true)
     const [isEscola, setIsEscola] = useState(false)
     const [isProfessor, setIsProfessor] = useState(false)
+    const [isAluno, setIsAluno] = useState(false)
+    const [isEncarregado, setIsEncarregado] = useState(false)
     const [escolaProfile, setEscolaProfile] = useState<EscolaProfile | null>(null)
     const [professorProfile, setProfessorProfile] = useState<ProfessorProfile | null>(null)
+    const [alunoProfile, setAlunoProfile] = useState<AlunoProfile | null>(null)
+    const [encarregadoProfile, setEncarregadoProfile] = useState<EncarregadoProfile | null>(null)
 
     // Blocked school modal state
     const [showBlockedModal, setShowBlockedModal] = useState(false)
@@ -192,6 +204,87 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     return
                 }
 
+                // Try to find aluno directly
+                console.log('🔍 AuthContext: Checking if user is an aluno...')
+                const { data: alunoData, error: alunoError } = await supabase
+                    .from('alunos')
+                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, sigla, logo_url))')
+                    .eq('user_id', authUser.id)
+                    .eq('ativo', true)
+                    .maybeSingle()
+
+                if (alunoError) {
+                    console.error('❌ AuthContext: Error checking aluno:', alunoError)
+                }
+
+                if (alunoData) {
+                    console.log('✅ AuthContext: Found aluno record, setting up aluno profile')
+                    setIsAluno(true)
+                    setIsEscola(false)
+                    setIsProfessor(false)
+                    setIsEncarregado(false)
+
+                    // Extract escola from turma relation
+                    const turmaData = alunoData.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; sigla?: string; logo_url?: string } } | null
+                    const escolaData = turmaData?.escolas || null
+
+                    // Create inline aluno profile with escola
+                    const alunoProfile = {
+                        ...alunoData,
+                        turma: turmaData ? { id: turmaData.id, nome: turmaData.nome, escola_id: turmaData.escola_id } : undefined,
+                        escola: escolaData,
+                        user_profile: null as any
+                    }
+
+                    setAlunoProfile(alunoProfile)
+                    setUser({
+                        id: authUser.id,
+                        email: authUser.email || '',
+                        profile: null,
+                        aluno: alunoProfile
+                    })
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
+                // Try to find encarregado (user associated with a student as guardian)
+                console.log('🔍 AuthContext: Checking if user is an encarregado...')
+                const { data: encarregadoData, error: encarregadoError } = await supabase
+                    .from('alunos')
+                    .select('*, turmas(id, nome, escola_id)')
+                    .eq('encarregado_user_id', authUser.id)
+                    .eq('ativo', true)
+
+                if (encarregadoError) {
+                    console.error('❌ AuthContext: Error checking encarregado:', encarregadoError)
+                }
+
+                if (encarregadoData && encarregadoData.length > 0) {
+                    console.log('✅ AuthContext: Found encarregado association, setting up encarregado profile')
+                    setIsEncarregado(true)
+                    setIsEscola(false)
+                    setIsProfessor(false)
+                    setIsAluno(false)
+
+                    // Create inline encarregado profile
+                    const encarregadoProfile = {
+                        alunos_associados: encarregadoData,
+                        user_profile: null as any
+                    }
+
+                    setEncarregadoProfile(encarregadoProfile)
+                    setUser({
+                        id: authUser.id,
+                        email: authUser.email || '',
+                        profile: null,
+                        encarregado: encarregadoProfile
+                    })
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
                 // No profile found at all
                 console.warn('⚠️ AuthContext: User has no profile in any table')
                 console.log('🔄 AuthContext: Clearing invalid session...')
@@ -211,6 +304,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             // Set role flags
             setIsEscola(profile.tipo_perfil === 'ESCOLA')
             setIsProfessor(profile.tipo_perfil === 'PROFESSOR')
+            setIsAluno(profile.tipo_perfil === 'ALUNO')
+            setIsEncarregado(profile.tipo_perfil === 'ENCARREGADO')
 
             // Handle SUPERADMIN separately (no escola_id required)
             if (profile.tipo_perfil === 'SUPERADMIN') {
@@ -233,6 +328,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             } else if (profile.tipo_perfil === 'PROFESSOR') {
                 console.log('👨‍🏫 AuthContext: Loading professor profile...')
                 await loadProfessorProfile(authUser.id, profile)
+            } else if (profile.tipo_perfil === 'ALUNO') {
+                console.log('🎓 AuthContext: Loading aluno profile...')
+                await loadAlunoProfile(authUser.id, profile)
+            } else if (profile.tipo_perfil === 'ENCARREGADO') {
+                console.log('👨‍👩‍👧 AuthContext: Loading encarregado profile...')
+                await loadEncarregadoProfile(authUser.id, profile)
             }
 
             // CRITICAL: Always set loading to false, even if profile loading fails
@@ -498,6 +599,147 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     }
 
+    const loadAlunoProfile = async (userId: string, profile: UserProfile) => {
+        try {
+            console.log('🎓 AuthContext: Fetching aluno data for user_id:', userId)
+            // Get aluno data linked to this user
+            const { data: alunoData, error: alunoError } = await supabase
+                .from('alunos')
+                .select(`
+                    *,
+                    turma:turmas(
+                        *,
+                        escola:escolas(*)
+                    )
+                `)
+                .eq('user_id', userId)
+                .eq('ativo', true)
+                .maybeSingle()
+
+            if (alunoError) {
+                console.error('❌ AuthContext: Error loading aluno:', alunoError)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            if (!alunoData) {
+                console.warn('⚠️ AuthContext: No aluno found for user_id:', userId)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            console.log('✅ AuthContext: Aluno data loaded:', alunoData)
+            const aluno = alunoData as Aluno & { turma: Turma & { escola: Escola } }
+
+            // Build aluno profile
+            const alunoProfileData: AlunoProfile = {
+                ...aluno,
+                user_profile: profile,
+                turma: aluno.turma,
+                escola: aluno.turma?.escola
+            }
+
+            setAlunoProfile(alunoProfileData)
+            setUser({
+                id: userId,
+                email: alunoData.email_encarregado || profile.user_id || '',
+                profile,
+                aluno: alunoProfileData
+            })
+            console.log('✅ AuthContext: Aluno profile set successfully')
+
+        } catch (error) {
+            console.error('❌ AuthContext: Unexpected error in loadAlunoProfile:', error)
+            setUser({
+                id: userId,
+                email: profile.user_id || '',
+                profile
+            })
+        }
+    }
+
+    const loadEncarregadoProfile = async (userId: string, profile: UserProfile) => {
+        try {
+            console.log('👨‍👩‍👧 AuthContext: Fetching encarregado data for user_id:', userId)
+            // Get all alunos linked to this guardian
+            const { data: alunosData, error: alunosError } = await supabase
+                .from('alunos')
+                .select(`
+                    *,
+                    turma:turmas(
+                        *,
+                        escola:escolas(*)
+                    )
+                `)
+                .eq('encarregado_user_id', userId)
+                .eq('ativo', true)
+
+            if (alunosError) {
+                console.error('❌ AuthContext: Error loading alunos for encarregado:', alunosError)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            if (!alunosData || alunosData.length === 0) {
+                console.warn('⚠️ AuthContext: No alunos found for encarregado user_id:', userId)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            console.log('✅ AuthContext: Encarregado alunos loaded:', alunosData.length, 'students')
+
+            // Build aluno profiles for associated students
+            const alunosAssociados: AlunoProfile[] = alunosData.map((a: any) => ({
+                ...a,
+                user_profile: profile,
+                turma: a.turma,
+                escola: a.turma?.escola
+            }))
+
+            // Get escola from first aluno
+            const escola = alunosAssociados[0]?.escola
+
+            const encarregadoProfileData: EncarregadoProfile = {
+                user_profile: profile,
+                alunos_associados: alunosAssociados,
+                escola
+            }
+
+            setEncarregadoProfile(encarregadoProfileData)
+            setUser({
+                id: userId,
+                email: profile.user_id || '',
+                profile,
+                encarregado: encarregadoProfileData
+            })
+            console.log('✅ AuthContext: Encarregado profile set successfully')
+
+        } catch (error) {
+            console.error('❌ AuthContext: Unexpected error in loadEncarregadoProfile:', error)
+            setUser({
+                id: userId,
+                email: profile.user_id || '',
+                profile
+            })
+        }
+    }
+
     const refreshProfile = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
@@ -510,8 +752,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setUser(null)
         setIsEscola(false)
         setIsProfessor(false)
+        setIsAluno(false)
+        setIsEncarregado(false)
         setEscolaProfile(null)
         setProfessorProfile(null)
+        setAlunoProfile(null)
+        setEncarregadoProfile(null)
     }
 
     useEffect(() => {
@@ -571,8 +817,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setUser(null)
                     setIsEscola(false)
                     setIsProfessor(false)
+                    setIsAluno(false)
+                    setIsEncarregado(false)
                     setEscolaProfile(null)
                     setProfessorProfile(null)
+                    setAlunoProfile(null)
+                    setEncarregadoProfile(null)
                     isLoadingProfileRef.current = false
                     setLoading(false)
                 }
@@ -590,8 +840,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         loading,
         isEscola,
         isProfessor,
+        isAluno,
+        isEncarregado,
         escolaProfile,
         professorProfile,
+        alunoProfile,
+        encarregadoProfile,
         profile: user?.profile || null,  // Expose profile for SUPERADMIN checks
         signOut,
         refreshProfile

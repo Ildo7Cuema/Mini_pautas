@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { NotificationPanel } from './NotificationPanel'
 import { Notification, formatNotificationCount } from '../utils/notificationUtils'
 import { fetchNotifications, markAsRead, markAllAsRead } from '../utils/notificationApi'
-import { isSuperAdmin } from '../utils/permissions'
+import { isSuperAdmin, isAluno, isEncarregado } from '../utils/permissions'
 
 interface SidebarProps {
     children: ReactNode
@@ -34,7 +34,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const { user, isEscola, isProfessor, escolaProfile, professorProfile, profile } = useAuth()
+    const { user, isEscola, isProfessor, isAluno: isAlunoRole, isEncarregado: isEncarregadoRole, escolaProfile, professorProfile, alunoProfile, encarregadoProfile, profile } = useAuth()
 
     const isSuperAdminUser = profile ? isSuperAdmin(profile) : false
 
@@ -108,6 +108,8 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         if (isSuperAdminUser) return 'SUPERADMIN'
         if (isEscola) return 'Administrador'
         if (isProfessor) return 'Professor'
+        if (isAlunoRole) return 'Aluno'
+        if (isEncarregadoRole) return 'Encarregado'
         return 'Usuário'
     }
 
@@ -235,8 +237,46 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         return true
     })
 
+    // ALUNO navigation items
+    const alunoNavItems: NavItem[] = [
+        {
+            name: 'Minhas Notas',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+            ),
+            path: 'aluno-notas',
+            showInMobile: true,
+        },
+    ]
+
+    // ENCARREGADO navigation items
+    const encarregadoNavItems: NavItem[] = [
+        {
+            name: 'Notas dos Educandos',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            ),
+            path: 'encarregado-notas',
+            showInMobile: true,
+        },
+    ]
+
+    // Get final nav items based on role
+    const getFinalNavItems = (): NavItem[] => {
+        if (isSuperAdminUser) return superAdminNavItems
+        if (isAlunoRole) return alunoNavItems
+        if (isEncarregadoRole) return encarregadoNavItems
+        return navItems
+    }
+
+    const finalNavItems = getFinalNavItems()
+
     // Items for mobile bottom nav (max 5)
-    const mobileNavItems = navItems.filter(item => item.showInMobile)
+    const mobileNavItems = finalNavItems.filter(item => item.showInMobile)
     // Add "More" button for mobile
     const moreIcon = (
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,7 +285,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     )
 
     const getPageTitle = () => {
-        const item = navItems.find(i => i.path === currentPage)
+        const item = finalNavItems.find(i => i.path === currentPage)
         return item?.name || 'Dashboard'
     }
 
@@ -304,7 +344,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
 
                 {/* Navigation */}
                 <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto custom-scrollbar">
-                    {navItems.map((item) => (
+                    {finalNavItems.map((item) => (
                         <button
                             key={item.path}
                             onClick={() => onNavigate(item.path)}
@@ -501,7 +541,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                         <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-6 mt-2" />
 
                         <div className="space-y-1">
-                            {navItems.filter(item => !item.showInMobile).map((item) => (
+                            {finalNavItems.filter(item => !item.showInMobile).map((item) => (
                                 <button
                                     key={item.path}
                                     onClick={() => handleMobileNav(item.path)}
