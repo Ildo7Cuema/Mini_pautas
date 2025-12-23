@@ -617,6 +617,69 @@ export interface CreatePaymentResponse {
 }
 
 // ============================================
+// TUITION PAYMENT TYPES
+// ============================================
+
+export type MetodoPagamentoPropina = 'numerario' | 'transferencia' | 'deposito';
+export type MesReferencia = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
+
+export interface PropinasConfig {
+    id: string;
+    escola_id: string;
+    turma_id?: string;
+    ano_lectivo: number;
+    valor_mensalidade: number;
+    descricao?: string;
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
+    turma?: Turma;
+}
+
+export interface PagamentoPropina {
+    id: string;
+    aluno_id: string;
+    escola_id: string;
+    mes_referencia: MesReferencia;
+    ano_referencia: number;
+    valor: number;
+    data_pagamento: string;
+    metodo_pagamento: MetodoPagamentoPropina;
+    numero_recibo: string;
+    observacao?: string;
+    registado_por: string;
+    created_at: string;
+    updated_at: string;
+    aluno?: Aluno;
+}
+
+export interface PagamentoMesStatus {
+    mes: number;
+    pago: boolean;
+    valor: number;
+    data_pagamento?: string;
+    numero_recibo?: string;
+}
+
+export interface EstatisticasPropinas {
+    total_alunos: number;
+    total_previsto: number;
+    total_recebido: number;
+    total_em_falta: number;
+    percentagem_recebido: number;
+}
+
+export interface RegistarPagamentoRequest {
+    aluno_id: string;
+    escola_id: string;
+    mes_referencia: MesReferencia;
+    ano_referencia: number;
+    valor: number;
+    metodo_pagamento: MetodoPagamentoPropina;
+    observacao?: string;
+}
+
+// ============================================
 // UTILITY TYPES
 // ============================================
 

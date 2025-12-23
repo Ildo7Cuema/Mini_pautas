@@ -23,6 +23,7 @@ import { AlunoNotasPage } from './components/AlunoNotasPage'
 import { EncarregadoNotasPage } from './components/EncarregadoNotasPage'
 import { SubscriptionPage } from './components/SubscriptionPage'
 import { PublicPaymentPage } from './components/PublicPaymentPage'
+import { TuitionPaymentsPage } from './components/TuitionPaymentsPage'
 import { isSuperAdmin } from './utils/permissions'
 
 function App() {
@@ -146,6 +147,9 @@ function App() {
             case 'subscription':
             case 'escola-subscricao':
                 return <SubscriptionPage />
+            case 'propinas':
+            case 'tuition':
+                return <TuitionPaymentsPage searchQuery={searchQuery} />
             default:
                 return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
         }
