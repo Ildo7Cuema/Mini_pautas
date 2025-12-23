@@ -438,9 +438,19 @@ export const LicenseManagement: React.FC = () => {
                                     onChange={(e) => setSelectedPlano(e.target.value as PlanoLicenca)}
                                     className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500"
                                 >
-                                    <option value="trimestral">Trimestral (15.000 AOA)</option>
-                                    <option value="semestral">Semestral (27.000 AOA)</option>
-                                    <option value="anual">Anual (48.000 AOA)</option>
+                                    {prices.length > 0 ? (
+                                        prices.map(price => (
+                                            <option key={price.id} value={price.plano}>
+                                                {price.plano.charAt(0).toUpperCase() + price.plano.slice(1)} ({formatCurrency(price.valor)})
+                                            </option>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <option value="trimestral">Trimestral</option>
+                                            <option value="semestral">Semestral</option>
+                                            <option value="anual">Anual</option>
+                                        </>
+                                    )}
                                 </select>
                             </div>
 
