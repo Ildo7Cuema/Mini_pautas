@@ -111,13 +111,29 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({ reas
                         </div>
                     </div>
 
-                    {/* Action Button */}
-                    <button
-                        onClick={onClose}
-                        className={`w-full px-6 py-3 ${isBlocked ? 'bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800'} text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98]`}
-                    >
-                        Entendido
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="space-y-3">
+                        {/* Payment Button - Primary Action */}
+                        {isBlocked && (
+                            <button
+                                onClick={() => window.location.href = '/pagamento-escola'}
+                                className="w-full px-6 py-3 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-lg font-semibold transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                            >
+                                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                </svg>
+                                Pagar Online
+                            </button>
+                        )}
+
+                        {/* Close Button - Secondary Action */}
+                        <button
+                            onClick={onClose}
+                            className={`w-full px-6 py-3 ${isBlocked ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white'} rounded-lg font-semibold transition-all duration-200`}
+                        >
+                            Entendido
+                        </button>
+                    </div>
                 </div>
 
                 {/* Footer */}

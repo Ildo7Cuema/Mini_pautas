@@ -18,8 +18,11 @@ import { ResetPasswordPage } from './components/ResetPasswordPage'
 import { SuperAdminDashboard } from './components/SuperAdminDashboard'
 import { EscolaManagement } from './components/EscolaManagement'
 import { SuperAdminAuditLog } from './components/SuperAdminAuditLog'
+import { LicenseManagement } from './components/LicenseManagement'
 import { AlunoNotasPage } from './components/AlunoNotasPage'
 import { EncarregadoNotasPage } from './components/EncarregadoNotasPage'
+import { SubscriptionPage } from './components/SubscriptionPage'
+import { PublicPaymentPage } from './components/PublicPaymentPage'
 import { isSuperAdmin } from './utils/permissions'
 
 function App() {
@@ -39,6 +42,11 @@ function App() {
                 </div>
             </div>
         )
+    }
+
+    // Public routes - accessible without authentication
+    if (window.location.pathname === '/pagamento-escola') {
+        return <PublicPaymentPage />
     }
 
     if (window.location.pathname === '/register-professor') {
@@ -80,6 +88,8 @@ function App() {
                     return <SuperAdminDashboard />
                 case 'superadmin-escolas':
                     return <EscolaManagement />
+                case 'superadmin-licencas':
+                    return <LicenseManagement />
                 case 'superadmin-audit':
                     return <SuperAdminAuditLog />
                 case 'settings':
@@ -133,6 +143,9 @@ function App() {
                 return <SettingsPage />
             case 'teachers':
                 return <TeachersPage onNavigate={handleNavigate} searchQuery={searchQuery} />
+            case 'subscription':
+            case 'escola-subscricao':
+                return <SubscriptionPage />
             default:
                 return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
         }

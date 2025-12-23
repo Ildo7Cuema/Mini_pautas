@@ -511,6 +511,112 @@ export interface SuperAdminAction {
 }
 
 // ============================================
+// LICENSING TYPES
+// ============================================
+
+export type PlanoLicenca = 'trimestral' | 'semestral' | 'anual';
+export type EstadoLicenca = 'ativa' | 'expirada' | 'suspensa' | 'cancelada';
+export type EstadoTransacao = 'pendente' | 'processando' | 'sucesso' | 'falha' | 'cancelado' | 'reembolsado';
+export type PaymentProvider = 'emis_gpo' | 'proxypay' | 'appypay' | 'manual';
+export type MetodoPagamento = 'multicaixa_express' | 'referencia' | 'transferencia' | 'numerario';
+
+export interface Licenca {
+    id: string;
+    escola_id: string;
+    plano: PlanoLicenca;
+    data_inicio: string;
+    data_fim: string;
+    estado: EstadoLicenca;
+    valor: number;
+    data_ultimo_pagamento?: string;
+    criado_por?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined fields
+    escola?: Escola;
+}
+
+export interface TransacaoPagamento {
+    id: string;
+    licenca_id?: string;
+    escola_id: string;
+    provider: PaymentProvider;
+    provider_transaction_id?: string;
+    valor: number;
+    estado: EstadoTransacao;
+    metodo_pagamento?: MetodoPagamento;
+    moeda: string;
+    descricao?: string;
+    metadata?: Record<string, any>;
+    ip_address?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined fields
+    licenca?: Licenca;
+    escola?: Escola;
+}
+
+export interface HistoricoLicenca {
+    id: string;
+    licenca_id: string;
+    escola_id: string;
+    estado_anterior?: string;
+    estado_novo: string;
+    motivo?: string;
+    alterado_por?: string;
+    metadata?: Record<string, any>;
+    created_at: string;
+}
+
+export interface PrecoLicenca {
+    id: string;
+    plano: PlanoLicenca;
+    valor: number;
+    desconto_percentual: number;
+    descricao?: string;
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface LicenseStatus {
+    valid: boolean;
+    dias_restantes: number;
+    estado?: EstadoLicenca;
+    plano?: PlanoLicenca;
+    data_fim?: string;
+    licenca?: Licenca;
+}
+
+export interface LicenseStats {
+    total_licencas: number;
+    licencas_ativas: number;
+    licencas_expiradas: number;
+    licencas_suspensas: number;
+    escolas_bloqueadas_por_falta_pagamento: number;
+    receita_total: number;
+    receita_trimestre: number;
+    receita_semestre: number;
+    receita_ano: number;
+    receitas_por_mes: Array<{ mes: string; ano: number; total: number }>;
+}
+
+export interface CreatePaymentRequest {
+    escola_id: string;
+    plano: PlanoLicenca;
+    provider?: PaymentProvider;
+}
+
+export interface CreatePaymentResponse {
+    success: boolean;
+    transaction_id: string;
+    payment_url?: string;
+    reference?: string;
+    expires_at?: string;
+    error?: string;
+}
+
+// ============================================
 // UTILITY TYPES
 // ============================================
 
@@ -519,3 +625,4 @@ export type Genero = 'M' | 'F' | 'Outro';
 export type Turno = 'manhã' | 'tarde' | 'noite';
 export type Classificacao = 'Excelente' | 'Bom' | 'Suficiente' | 'Insuficiente';
 export type OperacaoAuditoria = 'INSERT' | 'UPDATE' | 'DELETE';
+
