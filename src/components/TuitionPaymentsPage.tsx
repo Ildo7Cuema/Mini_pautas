@@ -10,6 +10,10 @@ component-meta:
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabaseClient'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { HeaderConfig, loadHeaderConfig, getOrgaoEducacao } from '../utils/headerConfigUtils'
+import { ConfiguracaoCabecalhoModal } from './ConfiguracaoCabecalhoModal'
 import {
     fetchPropinasConfig,
     savePropinasConfig,
@@ -74,6 +78,14 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
     const [selectedMes, setSelectedMes] = useState<number>(currentMonth)
     const [selectedPagamento, setSelectedPagamento] = useState<PagamentoPropina | null>(null)
 
+    // PDF Export state
+    const [showExportModal, setShowExportModal] = useState(false)
+    const [showHeaderConfigModal, setShowHeaderConfigModal] = useState(false)
+    const [headerConfig, setHeaderConfig] = useState<HeaderConfig | null>(null)
+    const [exportLoading, setExportLoading] = useState(false)
+    const [exportMes, setExportMes] = useState<number>(currentMonth - 1 > 0 ? currentMonth - 1 : 12)
+    const [exportTurma, setExportTurma] = useState<string>('')
+
     // Form state
     const [paymentForm, setPaymentForm] = useState({
         valor: 0,
@@ -100,6 +112,287 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
             loadStudents()
         }
     }, [selectedTurma])
+
+    // Load header configuration for PDF export
+    useEffect(() => {
+        const loadHeaderConfiguration = async () => {
+            if (escolaId) {
+                const config = await loadHeaderConfig(escolaId)
+                setHeaderConfig(config)
+            }
+        }
+        loadHeaderConfiguration()
+    }, [escolaId])
+
+    // Helper function to add header to PDF
+    const addPDFHeader = async (
+        doc: jsPDF,
+        logoBase64: string | null
+    ): Promise<number> => {
+        const pageWidth = doc.internal.pageSize.getWidth()
+        const centerX = pageWidth / 2
+        let startY = 15
+
+        if (headerConfig) {
+            // Logo (if configured and loaded)
+            if (logoBase64) {
+                const logoWidth = headerConfig.logo_width || 18
+                const logoHeight = headerConfig.logo_height || 18
+                const logoX = centerX - (logoWidth / 2)
+                doc.addImage(logoBase64, 'PNG', logoX, 8, logoWidth, logoHeight)
+                startY = 8 + logoHeight + 3
+            }
+
+            // República de Angola
+            if (headerConfig.mostrar_republica && headerConfig.texto_republica) {
+                doc.setFontSize(10)
+                doc.setFont('helvetica', 'bold')
+                doc.text(headerConfig.texto_republica.toUpperCase(), centerX, startY, { align: 'center' })
+                startY += 5
+            }
+
+            // Governo Provincial
+            if (headerConfig.mostrar_governo_provincial && headerConfig.provincia) {
+                doc.setFontSize(9)
+                doc.setFont('helvetica', 'normal')
+                doc.text(`Governo Provincial da ${headerConfig.provincia}`, centerX, startY, { align: 'center' })
+                startY += 5
+            }
+
+            // Órgão de Educação
+            if (headerConfig.mostrar_orgao_educacao && headerConfig.nivel_ensino) {
+                const orgaoTexto = getOrgaoEducacao(
+                    headerConfig.nivel_ensino,
+                    headerConfig.provincia,
+                    headerConfig.municipio
+                )
+                doc.setFontSize(9)
+                doc.text(orgaoTexto, centerX, startY, { align: 'center' })
+                startY += 5
+            }
+
+            // Nome da Escola
+            if (headerConfig.nome_escola) {
+                doc.setFontSize(12)
+                doc.setFont('helvetica', 'bold')
+                doc.text(headerConfig.nome_escola, centerX, startY, { align: 'center' })
+                startY += 8
+            }
+
+            // Separator line
+            doc.setLineWidth(0.3)
+            doc.line(14, startY, pageWidth - 14, startY)
+            startY += 8
+        } else {
+            // If no header config, use escola profile name
+            if (escolaProfile?.nome) {
+                doc.setFontSize(14)
+                doc.setFont('helvetica', 'bold')
+                doc.text(escolaProfile.nome.toUpperCase(), centerX, startY, { align: 'center' })
+                startY += 10
+            }
+        }
+
+        return startY
+    }
+
+    // PDF Export function
+    const handleExportPaidStudentsList = async () => {
+        setExportLoading(true)
+        setError(null)
+
+        try {
+            // Fetch payments for the selected month
+            const pagamentosDoMes = await fetchPagamentosPropinas(escolaId, {
+                mesReferencia: exportMes as MesReferencia,
+                anoReferencia: currentYear,
+                turmaId: exportTurma || undefined
+            })
+
+            if (pagamentosDoMes.length === 0) {
+                setError(`Não há pagamentos registados para ${getNomeMes(exportMes)} ${currentYear}`)
+                setExportLoading(false)
+                return
+            }
+
+            // Group students by turma
+            const studentsByTurma: Record<string, typeof pagamentosDoMes> = {}
+            pagamentosDoMes.forEach(pag => {
+                const turmaId = (pag.aluno as any)?.turma_id || 'sem-turma'
+                if (!studentsByTurma[turmaId]) {
+                    studentsByTurma[turmaId] = []
+                }
+                studentsByTurma[turmaId].push(pag)
+            })
+
+            const doc = new jsPDF()
+
+            // Pre-load logo if configured
+            let logoBase64: string | null = null
+            if (headerConfig?.logo_url) {
+                try {
+                    const response = await fetch(headerConfig.logo_url)
+                    const blob = await response.blob()
+                    logoBase64 = await new Promise<string>((resolve) => {
+                        const reader = new FileReader()
+                        reader.onloadend = () => resolve(reader.result as string)
+                        reader.readAsDataURL(blob)
+                    })
+                } catch (logoError) {
+                    console.error('Error loading logo:', logoError)
+                }
+            }
+
+            let isFirstPage = true
+
+            // Generate pages for each turma
+            const turmaIds = exportTurma ? [exportTurma] : Object.keys(studentsByTurma)
+
+            for (const turmaId of turmaIds) {
+                const turmaPagamentos = studentsByTurma[turmaId]
+                if (!turmaPagamentos || turmaPagamentos.length === 0) continue
+
+                const turmaInfo = turmas.find(t => t.id === turmaId)
+                const turmaNome = turmaInfo?.nome || 'Sem Turma'
+
+                // Add new page if not first
+                if (!isFirstPage) {
+                    doc.addPage()
+                }
+                isFirstPage = false
+
+                // Add header
+                let startY = await addPDFHeader(doc, logoBase64)
+                const pageWidth = doc.internal.pageSize.getWidth()
+
+                // Document title
+                doc.setFontSize(14)
+                doc.setFont('helvetica', 'bold')
+                doc.text('LISTA DE ALUNOS COM PROPINAS LIQUIDADAS', pageWidth / 2, startY, { align: 'center' })
+                startY += 8
+
+                // Turma and month info
+                doc.setFontSize(10)
+                doc.setFont('helvetica', 'normal')
+                doc.text(`Turma: ${turmaNome}`, 14, startY)
+                startY += 5
+                doc.text(`Mês de Referência: ${getNomeMes(exportMes)} ${currentYear}`, 14, startY)
+                startY += 5
+                doc.text(`Total de Alunos: ${turmaPagamentos.length}`, 14, startY)
+                startY += 8
+
+                // Sort students alphabetically
+                const sortedPagamentos = [...turmaPagamentos].sort((a, b) => {
+                    const nomeA = a.aluno?.nome_completo || ''
+                    const nomeB = b.aluno?.nome_completo || ''
+                    return nomeA.localeCompare(nomeB, 'pt')
+                })
+
+                // Calculate total
+                const totalValor = sortedPagamentos.reduce((sum, p) => sum + p.valor, 0)
+
+                // Table data
+                const tableData = sortedPagamentos.map((pag, index) => [
+                    index + 1,
+                    pag.aluno?.nome_completo || '-',
+                    new Date(pag.data_pagamento).toLocaleDateString('pt-AO'),
+                    formatarValor(pag.valor)
+                ])
+
+                autoTable(doc, {
+                    startY: startY,
+                    head: [['Nº', 'Nome do Aluno', 'Data Pagamento', 'Valor']],
+                    body: tableData,
+                    foot: [['', '', 'Total:', formatarValor(totalValor)]],
+                    theme: 'plain',
+                    headStyles: {
+                        fillColor: [255, 255, 255],
+                        textColor: [0, 0, 0],
+                        fontSize: 10,
+                        fontStyle: 'bold',
+                        lineWidth: 0.1,
+                        lineColor: [150, 150, 150]
+                    },
+                    footStyles: {
+                        fillColor: [245, 245, 245],
+                        textColor: [0, 0, 0],
+                        fontSize: 10,
+                        fontStyle: 'bold',
+                        lineWidth: 0.1,
+                        lineColor: [150, 150, 150]
+                    },
+                    styles: {
+                        fontSize: 9,
+                        cellPadding: 2,
+                        lineWidth: 0.1,
+                        lineColor: [200, 200, 200]
+                    },
+                    columnStyles: {
+                        0: { cellWidth: 15, halign: 'center' },
+                        1: { cellWidth: 'auto', halign: 'left' },
+                        2: { cellWidth: 35, halign: 'center' },
+                        3: { cellWidth: 35, halign: 'right' }
+                    },
+                    tableLineWidth: 0.1,
+                    tableLineColor: [200, 200, 200]
+                })
+
+                // Get final Y position after table
+                const finalY = (doc as any).lastAutoTable.finalY || 200
+
+                // Signature section
+                const pageHeight = doc.internal.pageSize.getHeight()
+                if (finalY + 45 < pageHeight) {
+                    const signatureY = finalY + 30
+                    doc.setFontSize(10)
+                    doc.setLineWidth(0.3)
+
+                    // Left signature
+                    doc.line(20, signatureY, 90, signatureY)
+                    doc.text('Assinatura do Director', 55, signatureY + 5, { align: 'center' })
+
+                    // Right signature
+                    doc.line(120, signatureY, 190, signatureY)
+                    doc.text('Assinatura do Tesoureiro', 155, signatureY + 5, { align: 'center' })
+                }
+            }
+
+            // Footer with page numbers
+            const pageCount = doc.getNumberOfPages()
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i)
+                doc.setFontSize(8)
+                doc.text(
+                    `Página ${i} de ${pageCount}`,
+                    105,
+                    doc.internal.pageSize.height - 10,
+                    { align: 'center' }
+                )
+                doc.text(
+                    `Gerado em: ${new Date().toLocaleString('pt-AO')}`,
+                    105,
+                    doc.internal.pageSize.height - 5,
+                    { align: 'center' }
+                )
+            }
+
+            // Generate filename
+            const date = new Date().toISOString().split('T')[0]
+            const turmaNomeFile = exportTurma
+                ? turmas.find(t => t.id === exportTurma)?.nome.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'turma'
+                : 'todas-turmas'
+            doc.save(`propinas-pagas-${getNomeMesCurto(exportMes).toLowerCase()}-${currentYear}-${turmaNomeFile}_${date}.pdf`)
+
+            setSuccess('Lista exportada com sucesso!')
+            setShowExportModal(false)
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err) {
+            console.error('Error exporting PDF:', err)
+            setError('Erro ao exportar a lista em PDF')
+        } finally {
+            setExportLoading(false)
+        }
+    }
 
     const loadData = async () => {
         setLoading(true)
@@ -262,6 +555,15 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                     <p className="text-slate-500 mt-1">Controlo de pagamentos de mensalidades - {currentYear}</p>
                 </div>
                 <div className="flex gap-3">
+                    <button
+                        onClick={() => setShowExportModal(true)}
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        </svg>
+                        Imprimir Lista
+                    </button>
                     <button
                         onClick={() => setShowConfigModal(true)}
                         className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium"
@@ -1072,6 +1374,108 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                     </div>
                 </div>
             )}
+
+            {/* PDF Export Modal */}
+            {showExportModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowExportModal(false)} />
+                    <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up">
+                        <h3 className="text-lg font-bold text-slate-900 mb-1">Imprimir Lista de Propinas Pagas</h3>
+                        <p className="text-sm text-slate-500 mb-5">Exporte uma lista de alunos que pagaram propinas em PDF</p>
+
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Mês de Referência</label>
+                                <select
+                                    value={exportMes}
+                                    onChange={(e) => setExportMes(Number(e.target.value))}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                >
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(mes => (
+                                        <option key={mes} value={mes}>{getNomeMes(mes)} {mes > currentMonth ? currentYear - 1 : currentYear}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Turma</label>
+                                <select
+                                    value={exportTurma}
+                                    onChange={(e) => setExportTurma(e.target.value)}
+                                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                                >
+                                    <option value="">Todas as turmas</option>
+                                    {turmas.map(turma => (
+                                        <option key={turma.id} value={turma.id}>{turma.nome}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Header config button */}
+                            <div className="pt-2 border-t border-slate-100">
+                                <button
+                                    onClick={() => setShowHeaderConfigModal(true)}
+                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors font-medium text-sm"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    Configurar Cabeçalho do Documento
+                                </button>
+                                {headerConfig && (
+                                    <p className="text-xs text-slate-500 mt-2 text-center">
+                                        <svg className="w-3 h-3 inline mr-1 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        Cabeçalho configurado: {headerConfig.nome_escola}
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 mt-6">
+                            <button
+                                onClick={() => setShowExportModal(false)}
+                                className="flex-1 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleExportPaidStudentsList}
+                                disabled={exportLoading}
+                                className="flex-1 px-4 py-2.5 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                            >
+                                {exportLoading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        Gerando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                        Exportar PDF
+                                    </>
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Header Configuration Modal */}
+            <ConfiguracaoCabecalhoModal
+                isOpen={showHeaderConfigModal}
+                onClose={() => setShowHeaderConfigModal(false)}
+                onSave={async () => {
+                    const config = await loadHeaderConfig(escolaId)
+                    setHeaderConfig(config)
+                    setShowHeaderConfigModal(false)
+                }}
+                escolaId={escolaId}
+            />
         </div>
     )
 }
