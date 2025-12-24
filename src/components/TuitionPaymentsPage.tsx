@@ -29,12 +29,19 @@ import type {
     Aluno,
     PagamentoMesStatus,
     MesReferencia,
-    MetodoPagamentoPropina,
-    Turma
+    MetodoPagamentoPropina
 } from '../types'
 
 interface TuitionPaymentsPageProps {
     searchQuery?: string
+}
+
+// Minimal type for turma dropdown - only fields needed for display
+interface TurmaBasic {
+    id: string
+    nome: string
+    codigo_turma: string
+    ano_lectivo: number
 }
 
 export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ searchQuery = '' }) => {
@@ -46,7 +53,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
     // State
     const [loading, setLoading] = useState(true)
     const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'payments' | 'config'>('overview')
-    const [turmas, setTurmas] = useState<Turma[]>([])
+    const [turmas, setTurmas] = useState<TurmaBasic[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
     const [config, setConfig] = useState<PropinasConfig | null>(null)
     const [stats, setStats] = useState<EstatisticasPropinas>({
