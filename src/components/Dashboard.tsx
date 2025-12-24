@@ -488,7 +488,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
     ]
 
     return (
-        <div className="space-y-6 md:space-y-8 pb-8">
+        <div className="space-y-6 md:space-y-8 pb-24 md:pb-8">
             {/* Welcome Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 animate-fade-in">
                 <div>
