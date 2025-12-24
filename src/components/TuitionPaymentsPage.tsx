@@ -134,10 +134,10 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
         let startY = 15
 
         if (headerConfig) {
-            // Logo (if configured and loaded)
+            // Logo (if configured and loaded) - reduced size for better proportion
             if (logoBase64) {
-                const logoWidth = headerConfig.logo_width || 18
-                const logoHeight = headerConfig.logo_height || 18
+                const logoWidth = Math.min(headerConfig.logo_width || 12, 15)
+                const logoHeight = Math.min(headerConfig.logo_height || 12, 15)
                 const logoX = centerX - (logoWidth / 2)
                 doc.addImage(logoBase64, 'PNG', logoX, 8, logoWidth, logoHeight)
                 startY = 8 + logoHeight + 3
@@ -330,8 +330,8 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                     columnStyles: {
                         0: { cellWidth: 15, halign: 'center' },
                         1: { cellWidth: 'auto', halign: 'left' },
-                        2: { cellWidth: 35, halign: 'center' },
-                        3: { cellWidth: 35, halign: 'right' }
+                        2: { cellWidth: 35, halign: 'left' },
+                        3: { cellWidth: 35, halign: 'left' }
                     },
                     tableLineWidth: 0.1,
                     tableLineColor: [200, 200, 200]
