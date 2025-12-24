@@ -350,23 +350,34 @@
     @apply bg-red-100 text-red-700 border border-red-200;
   }
 
-  /* Tuition Stats Card */
+  /* Tuition Stats Card - Mobile Native Style */
   .tuition-stat-card {
-    @apply bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm;
+    @apply bg-white rounded-2xl border border-slate-200/60 shadow-sm;
     @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+    @apply p-3 sm:p-4 md:p-5;
+    @apply overflow-hidden;
+    min-height: 100px;
   }
 
   .tuition-stat-card .stat-icon {
-    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
-    @apply bg-gradient-to-br shadow-sm;
+    @apply w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center;
+    @apply bg-gradient-to-br shadow-sm flex-shrink-0;
+  }
+
+  .tuition-stat-card .stat-icon svg {
+    @apply w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6;
   }
 
   .tuition-stat-card .stat-value {
-    @apply text-2xl md:text-3xl font-bold tracking-tight;
+    @apply text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold tracking-tight;
+    @apply truncate;
+    line-height: 1.2;
   }
 
   .tuition-stat-card .stat-label {
-    @apply text-sm text-slate-500 font-medium;
+    @apply text-xs sm:text-sm text-slate-500 font-medium;
+    @apply truncate;
+    line-height: 1.3;
   }
 
   /* Tuition Mobile Card */
