@@ -297,53 +297,66 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
             )}
 
             {/* Statistics Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 stagger-children">
+                {/* Total Alunos */}
+                <div className="tuition-stat-card">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="stat-icon from-blue-500 to-indigo-600">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                             </svg>
                         </div>
-                        <span className="text-sm text-slate-500 font-medium">Total Alunos</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900">{stats.total_alunos}</p>
+                    <p className="stat-value text-slate-900">{stats.total_alunos}</p>
+                    <p className="stat-label mt-1">Total Alunos</p>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                            <svg className="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Recebido */}
+                <div className="tuition-stat-card">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="stat-icon from-emerald-500 to-green-600">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <span className="text-sm text-slate-500 font-medium">Recebido</span>
+                        <span className="text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">Recebido</span>
                     </div>
-                    <p className="text-2xl font-bold text-emerald-600">{formatarValor(stats.total_recebido)}</p>
+                    <p className="stat-value text-emerald-600">{formatarValor(stats.total_recebido)}</p>
+                    <p className="stat-label mt-1">Cobrado com sucesso</p>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Em Falta */}
+                <div className="tuition-stat-card">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="stat-icon from-amber-500 to-orange-600">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <span className="text-sm text-slate-500 font-medium">Em Falta</span>
+                        <span className="text-xs font-medium text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Pendente</span>
                     </div>
-                    <p className="text-2xl font-bold text-amber-600">{formatarValor(stats.total_em_falta)}</p>
+                    <p className="stat-value text-amber-600">{formatarValor(stats.total_em_falta)}</p>
+                    <p className="stat-label mt-1">Por regularizar</p>
                 </div>
 
-                <div className="bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-xl flex items-center justify-center">
-                            <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {/* Taxa de Cobrança */}
+                <div className="tuition-stat-card">
+                    <div className="flex items-start justify-between mb-3">
+                        <div className="stat-icon from-primary-500 to-indigo-600">
+                            <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                             </svg>
                         </div>
-                        <span className="text-sm text-slate-500 font-medium">Taxa Cobrança</span>
                     </div>
-                    <p className="text-2xl font-bold text-primary-600">{stats.percentagem_recebido.toFixed(1)}%</p>
+                    <p className="stat-value text-primary-600">{stats.percentagem_recebido.toFixed(1)}%</p>
+                    <p className="stat-label mt-1">Taxa de Cobrança</p>
+                    {/* Mini progress indicator */}
+                    <div className="mt-2 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-gradient-to-r from-primary-500 to-indigo-500 rounded-full transition-all duration-700"
+                            style={{ width: `${Math.min(stats.percentagem_recebido, 100)}%` }}
+                        />
+                    </div>
                 </div>
             </div>
 
@@ -367,23 +380,39 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
 
             {/* Tabs */}
             <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-                <div className="border-b border-slate-200">
-                    <div className="flex overflow-x-auto">
+                {/* Modern Pill Tabs */}
+                <div className="p-4 pb-0">
+                    <div className="tuition-tabs">
                         {[
-                            { id: 'overview', label: 'Visão Geral', icon: '📊' },
-                            { id: 'students', label: 'Por Aluno', icon: '👨‍🎓' },
-                            { id: 'payments', label: 'Pagamentos', icon: '💰' }
+                            {
+                                id: 'overview', label: 'Visão Geral', icon: (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                    </svg>
+                                )
+                            },
+                            {
+                                id: 'students', label: 'Por Aluno', icon: (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                    </svg>
+                                )
+                            },
+                            {
+                                id: 'payments', label: 'Pagamentos', icon: (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                )
+                            }
                         ].map(tab => (
                             <button
                                 key={tab.id}
                                 onClick={() => setActiveTab(tab.id as any)}
-                                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeTab === tab.id
-                                    ? 'border-primary-500 text-primary-600 bg-primary-50/50'
-                                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-50'
-                                    }`}
+                                className={`tuition-tab ${activeTab === tab.id ? 'tuition-tab-active' : ''}`}
                             >
-                                <span>{tab.icon}</span>
-                                {tab.label}
+                                {tab.icon}
+                                <span className="hidden sm:inline">{tab.label}</span>
                             </button>
                         ))}
                     </div>
@@ -406,92 +435,141 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
 
                     {/* Overview Tab - Month Matrix */}
                     {activeTab === 'overview' && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full min-w-[800px]">
-                                <thead>
-                                    <tr className="bg-slate-50">
-                                        <th className="text-left px-4 py-3 text-sm font-semibold text-slate-600">Aluno</th>
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(mes => (
-                                            <th key={mes} className="text-center px-2 py-3 text-xs font-semibold text-slate-600">
-                                                {getNomeMesCurto(mes)}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {filteredAlunos.slice(0, 15).map(aluno => (
-                                        <tr key={aluno.id} className="hover:bg-slate-50/50">
-                                            <td className="px-4 py-3">
+                        <>
+                            {/* Mobile: Card View */}
+                            <div className="md:hidden space-y-3">
+                                {filteredAlunos.slice(0, 10).map(aluno => {
+                                    const pendentes = aluno.pagamentos.filter(p => !p.pago && p.mes <= currentMonth).length
+
+                                    return (
+                                        <div key={aluno.id} className="tuition-student-card">
+                                            <div className="flex items-center justify-between mb-3">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                                    <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-indigo-500 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm">
                                                         {aluno.nome_completo.split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                     </div>
                                                     <div>
-                                                        <p className="text-sm font-medium text-slate-900 truncate max-w-[150px]">{aluno.nome_completo}</p>
+                                                        <p className="font-semibold text-slate-900">{aluno.nome_completo}</p>
                                                         <p className="text-xs text-slate-500">{aluno.numero_processo}</p>
                                                     </div>
                                                 </div>
-                                            </td>
-                                            {aluno.pagamentos.map(pag => (
-                                                <td key={pag.mes} className="text-center px-2 py-3">
-                                                    {pag.pago ? (
-                                                        <button
-                                                            onClick={() => {
-                                                                const pagamento = pagamentos.find(
-                                                                    p => p.aluno_id === aluno.id && p.mes_referencia === pag.mes
-                                                                )
-                                                                if (pagamento) handleViewReceipt(pagamento)
-                                                            }}
-                                                            className="w-7 h-7 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center mx-auto hover:bg-emerald-200 transition-colors"
-                                                            title="Pago - Ver recibo"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                                            </svg>
-                                                        </button>
-                                                    ) : pag.mes <= currentMonth ? (
-                                                        <button
-                                                            onClick={() => handleOpenPaymentModal(aluno, pag.mes)}
-                                                            className="w-7 h-7 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mx-auto hover:bg-amber-200 transition-colors"
-                                                            title="Pendente - Registar pagamento"
-                                                        >
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                            </svg>
-                                                        </button>
-                                                    ) : (
-                                                        <div className="w-7 h-7 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center mx-auto" title="Futuro">
-                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                                                            </svg>
-                                                        </div>
-                                                    )}
-                                                </td>
+                                                <span className={`payment-status ${pendentes === 0 ? 'payment-status-paid' : pendentes <= 2 ? 'payment-status-pending' : 'payment-status-overdue'}`}>
+                                                    {pendentes === 0 ? '✓ Em dia' : `${pendentes} pend.`}
+                                                </span>
+                                            </div>
+                                            {/* Month Pills Grid */}
+                                            <div className="grid grid-cols-6 gap-1.5">
+                                                {aluno.pagamentos.map(pag => (
+                                                    <button
+                                                        key={pag.mes}
+                                                        onClick={() => !pag.pago && pag.mes <= currentMonth && handleOpenPaymentModal(aluno, pag.mes)}
+                                                        disabled={pag.pago || pag.mes > currentMonth}
+                                                        className={`month-pill ${pag.pago ? 'month-pill-paid' : pag.mes <= currentMonth ? 'month-pill-pending' : 'month-pill-future'}`}
+                                                    >
+                                                        {getNomeMesCurto(pag.mes).substring(0, 3)}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )
+                                })}
+                                {filteredAlunos.length > 10 && (
+                                    <button
+                                        onClick={() => setActiveTab('students')}
+                                        className="w-full py-3 text-sm font-medium text-primary-600 bg-primary-50 rounded-xl hover:bg-primary-100 transition-colors"
+                                    >
+                                        Ver todos os {filteredAlunos.length} alunos →
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Desktop: Table View */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="table-excel">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-left px-4 py-3 min-w-[180px]">Aluno</th>
+                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(mes => (
+                                                <th key={mes} className="text-center px-2 py-3 w-12">
+                                                    {getNomeMesCurto(mes)}
+                                                </th>
                                             ))}
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {filteredAlunos.length > 15 && (
-                                <p className="text-center text-sm text-slate-500 py-4">
-                                    Mostrando 15 de {filteredAlunos.length} alunos. Use a aba "Por Aluno" para ver todos.
-                                </p>
-                            )}
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {filteredAlunos.slice(0, 15).map(aluno => (
+                                            <tr key={aluno.id}>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                                            {aluno.nome_completo.split(' ').map(n => n[0]).join('').substring(0, 2)}
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-sm font-medium text-slate-900 truncate max-w-[150px]">{aluno.nome_completo}</p>
+                                                            <p className="text-xs text-slate-500">{aluno.numero_processo}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                {aluno.pagamentos.map(pag => (
+                                                    <td key={pag.mes} className="text-center px-2 py-3">
+                                                        {pag.pago ? (
+                                                            <button
+                                                                onClick={() => {
+                                                                    const pagamento = pagamentos.find(
+                                                                        p => p.aluno_id === aluno.id && p.mes_referencia === pag.mes
+                                                                    )
+                                                                    if (pagamento) handleViewReceipt(pagamento)
+                                                                }}
+                                                                className="w-8 h-8 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center mx-auto hover:bg-emerald-200 hover:shadow-sm transition-all"
+                                                                title="Pago - Ver recibo"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                                </svg>
+                                                            </button>
+                                                        ) : pag.mes <= currentMonth ? (
+                                                            <button
+                                                                onClick={() => handleOpenPaymentModal(aluno, pag.mes)}
+                                                                className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mx-auto hover:bg-amber-200 hover:shadow-sm transition-all"
+                                                                title="Pendente - Registar pagamento"
+                                                            >
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                                </svg>
+                                                            </button>
+                                                        ) : (
+                                                            <div className="w-8 h-8 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center mx-auto" title="Futuro">
+                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+                                                                </svg>
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {filteredAlunos.length > 15 && (
+                                    <p className="text-center text-sm text-slate-500 py-4 border-t border-slate-100">
+                                        Mostrando 15 de {filteredAlunos.length} alunos. Use a aba "Por Aluno" para ver todos.
+                                    </p>
+                                )}
+                            </div>
+                        </>
                     )}
 
                     {/* Students Tab */}
                     {activeTab === 'students' && (
-                        <div className="space-y-3">
+                        <div className="space-y-3 stagger-children">
                             {filteredAlunos.map(aluno => {
-                                const totalPago = aluno.pagamentos.filter(p => p.pago).length
                                 const totalPendente = aluno.pagamentos.filter(p => !p.pago && p.mes <= currentMonth).length
 
                                 return (
-                                    <div key={aluno.id} className="bg-slate-50 rounded-xl p-4 hover:bg-slate-100 transition-colors">
+                                    <div key={aluno.id} className="tuition-student-card">
                                         <div className="flex items-center justify-between mb-3">
                                             <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                                <div className="w-11 h-11 bg-gradient-to-br from-primary-500 to-indigo-500 rounded-xl flex items-center justify-center text-white text-sm font-bold shadow-sm">
                                                     {aluno.nome_completo.split(' ').map(n => n[0]).join('').substring(0, 2)}
                                                 </div>
                                                 <div>
@@ -499,24 +577,34 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                                     <p className="text-sm text-slate-500">{aluno.numero_processo} • {(aluno as any).turma?.nome || 'Sem turma'}</p>
                                                 </div>
                                             </div>
-                                            <div className="text-right">
-                                                <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${totalPendente === 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
-                                                    }`}>
-                                                    {totalPendente === 0 ? '✓ Em dia' : `${totalPendente} pendentes`}
-                                                </span>
-                                            </div>
+                                            <span className={`payment-status ${totalPendente === 0
+                                                ? 'payment-status-paid'
+                                                : totalPendente <= 2
+                                                    ? 'payment-status-pending'
+                                                    : 'payment-status-overdue'
+                                                }`}>
+                                                {totalPendente === 0 ? (
+                                                    <>
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                        </svg>
+                                                        Em dia
+                                                    </>
+                                                ) : `${totalPendente} pend.`}
+                                            </span>
                                         </div>
-                                        <div className="flex gap-1 flex-wrap">
+                                        {/* Month Pills - Grid Layout */}
+                                        <div className="grid grid-cols-6 md:grid-cols-12 gap-1.5">
                                             {aluno.pagamentos.map(pag => (
                                                 <button
                                                     key={pag.mes}
                                                     onClick={() => !pag.pago && pag.mes <= currentMonth && handleOpenPaymentModal(aluno, pag.mes)}
                                                     disabled={pag.pago || pag.mes > currentMonth}
-                                                    className={`w-14 h-8 rounded-lg text-xs font-medium flex items-center justify-center transition-colors ${pag.pago
-                                                        ? 'bg-emerald-100 text-emerald-700'
+                                                    className={`month-pill ${pag.pago
+                                                        ? 'month-pill-paid'
                                                         : pag.mes <= currentMonth
-                                                            ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 cursor-pointer'
-                                                            : 'bg-slate-100 text-slate-400'
+                                                            ? 'month-pill-pending'
+                                                            : 'month-pill-future'
                                                         }`}
                                                 >
                                                     {getNomeMesCurto(pag.mes)}
@@ -526,65 +614,139 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                     </div>
                                 )
                             })}
+                            {filteredAlunos.length === 0 && (
+                                <div className="text-center py-12 text-slate-500">
+                                    <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    <p className="font-medium">Nenhum aluno encontrado</p>
+                                    <p className="text-sm mt-1">Tente ajustar os filtros de pesquisa</p>
+                                </div>
+                            )}
                         </div>
                     )}
 
                     {/* Payments Tab */}
                     {activeTab === 'payments' && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
-                                <thead>
-                                    <tr className="bg-slate-50">
-                                        <th className="text-left px-4 py-3 text-sm font-semibold text-slate-600">Aluno</th>
-                                        <th className="text-left px-4 py-3 text-sm font-semibold text-slate-600">Mês</th>
-                                        <th className="text-left px-4 py-3 text-sm font-semibold text-slate-600">Valor</th>
-                                        <th className="text-left px-4 py-3 text-sm font-semibold text-slate-600">Data</th>
-                                        <th className="text-left px-4 py-3 text-sm font-semibold text-slate-600">Recibo</th>
-                                        <th className="text-center px-4 py-3 text-sm font-semibold text-slate-600">Acções</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100">
-                                    {pagamentos.map(pag => (
-                                        <tr key={pag.id} className="hover:bg-slate-50/50">
-                                            <td className="px-4 py-3">
-                                                <p className="font-medium text-slate-900">{pag.aluno?.nome_completo || '-'}</p>
-                                                <p className="text-xs text-slate-500">{pag.aluno?.numero_processo}</p>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-600">
-                                                {getNomeMes(pag.mes_referencia)} {pag.ano_referencia}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                                                {formatarValor(pag.valor)}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-600">
-                                                {new Date(pag.data_pagamento).toLocaleDateString('pt-AO')}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-mono">
-                                                    {pag.numero_recibo}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                <button
-                                                    onClick={() => handleViewReceipt(pag)}
-                                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-medium hover:bg-primary-100 transition-colors"
-                                                >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                        <>
+                            {/* Mobile: Card View */}
+                            <div className="md:hidden space-y-3">
+                                {pagamentos.map(pag => (
+                                    <div key={pag.id} className="tuition-student-card">
+                                        <div className="flex items-start justify-between mb-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center text-white shadow-sm">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                                     </svg>
-                                                    Recibo
-                                                </button>
-                                            </td>
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-slate-900">{pag.aluno?.nome_completo || '-'}</p>
+                                                    <p className="text-xs text-slate-500">{pag.aluno?.numero_processo}</p>
+                                                </div>
+                                            </div>
+                                            <span className="text-lg font-bold text-emerald-600">{formatarValor(pag.valor)}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between text-sm">
+                                            <span className="text-slate-500">
+                                                {getNomeMes(pag.mes_referencia)} {pag.ano_referencia}
+                                            </span>
+                                            <span className="text-slate-500">
+                                                {new Date(pag.data_pagamento).toLocaleDateString('pt-AO')}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+                                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 rounded-md text-xs font-mono">
+                                                {pag.numero_recibo}
+                                            </span>
+                                            <button
+                                                onClick={() => handleViewReceipt(pag)}
+                                                className="inline-flex items-center gap-1.5 px-3 py-2 bg-primary-50 text-primary-600 rounded-xl text-sm font-medium hover:bg-primary-100 transition-colors min-h-touch"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                </svg>
+                                                Ver Recibo
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {pagamentos.length === 0 && (
+                                    <div className="text-center py-12 text-slate-500">
+                                        <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        <p className="font-medium">Nenhum pagamento registado</p>
+                                        <p className="text-sm mt-1">Os pagamentos aparecerão aqui</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Desktop: Table View */}
+                            <div className="hidden md:block overflow-x-auto">
+                                <table className="table-excel">
+                                    <thead>
+                                        <tr>
+                                            <th className="text-left px-4 py-3">Aluno</th>
+                                            <th className="text-left px-4 py-3">Mês</th>
+                                            <th className="text-right px-4 py-3">Valor</th>
+                                            <th className="text-center px-4 py-3">Data</th>
+                                            <th className="text-center px-4 py-3">Recibo</th>
+                                            <th className="text-center px-4 py-3">Acções</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {pagamentos.length === 0 && (
-                                <div className="text-center py-12 text-slate-500">
-                                    <p>Nenhum pagamento registado</p>
-                                </div>
-                            )}
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {pagamentos.map(pag => (
+                                            <tr key={pag.id}>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-medium text-slate-900">{pag.aluno?.nome_completo || '-'}</p>
+                                                            <p className="text-xs text-slate-500">{pag.aluno?.numero_processo}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-600">
+                                                    {getNomeMes(pag.mes_referencia)} {pag.ano_referencia}
+                                                </td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <span className="text-sm font-semibold text-emerald-600">{formatarValor(pag.valor)}</span>
+                                                </td>
+                                                <td className="px-4 py-3 text-center text-sm text-slate-600">
+                                                    {new Date(pag.data_pagamento).toLocaleDateString('pt-AO')}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-mono">
+                                                        {pag.numero_recibo}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <button
+                                                        onClick={() => handleViewReceipt(pag)}
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-medium hover:bg-primary-100 hover:shadow-sm transition-all"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                                        </svg>
+                                                        Recibo
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                {pagamentos.length === 0 && (
+                                    <div className="text-center py-12 text-slate-500 border-t border-slate-100">
+                                        <p>Nenhum pagamento registado</p>
+                                    </div>
+                                )}
+                            </div>
+                        </>
                     )}
                 </div>
             </div>

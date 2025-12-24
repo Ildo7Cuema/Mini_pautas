@@ -325,7 +325,134 @@
   .skeleton-avatar {
     @apply skeleton h-12 w-12 rounded-full;
   }
+
+  /* ============================================
+     TUITION PAGE - Payment Status Badges
+     ============================================ */
+
+  .payment-status {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold;
+  }
+
+  .payment-status-paid {
+    @apply bg-emerald-100 text-emerald-700 border border-emerald-200;
+  }
+
+  .payment-status-partial {
+    @apply bg-amber-100 text-amber-700 border border-amber-200;
+  }
+
+  .payment-status-pending {
+    @apply bg-orange-100 text-orange-700 border border-orange-200;
+  }
+
+  .payment-status-overdue {
+    @apply bg-red-100 text-red-700 border border-red-200;
+  }
+
+  /* Tuition Stats Card */
+  .tuition-stat-card {
+    @apply bg-white rounded-2xl p-5 border border-slate-200/60 shadow-sm;
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  .tuition-stat-card .stat-icon {
+    @apply w-12 h-12 rounded-2xl flex items-center justify-center;
+    @apply bg-gradient-to-br shadow-sm;
+  }
+
+  .tuition-stat-card .stat-value {
+    @apply text-2xl md:text-3xl font-bold tracking-tight;
+  }
+
+  .tuition-stat-card .stat-label {
+    @apply text-sm text-slate-500 font-medium;
+  }
+
+  /* Tuition Mobile Card */
+  .tuition-student-card {
+    @apply bg-white rounded-2xl p-4 shadow-sm border border-slate-100;
+    @apply transition-all duration-200 active:scale-[0.98];
+  }
+
+  .tuition-student-card:hover {
+    @apply shadow-md border-slate-200;
+  }
+
+  /* Month Payment Pills */
+  .month-pill {
+    @apply w-11 h-9 rounded-xl text-xs font-semibold flex items-center justify-center;
+    @apply transition-all duration-150;
+    @apply touch-feedback min-h-touch;
+  }
+
+  .month-pill-paid {
+    @apply bg-emerald-100 text-emerald-700;
+  }
+
+  .month-pill-paid:hover {
+    @apply bg-emerald-200;
+  }
+
+  .month-pill-pending {
+    @apply bg-amber-100 text-amber-700 cursor-pointer;
+  }
+
+  .month-pill-pending:hover {
+    @apply bg-amber-200 shadow-sm;
+  }
+
+  .month-pill-future {
+    @apply bg-slate-100 text-slate-400 cursor-not-allowed;
+  }
+
+  /* Tuition Tab Navigation */
+  .tuition-tabs {
+    @apply flex gap-1 p-1 bg-slate-100 rounded-2xl overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  .tuition-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tuition-tab {
+    @apply flex-1 flex items-center justify-center gap-2 px-4 py-3;
+    @apply text-sm font-medium text-slate-600 rounded-xl whitespace-nowrap;
+    @apply transition-all duration-200 min-w-[100px];
+  }
+
+  .tuition-tab:hover:not(.tuition-tab-active) {
+    @apply text-slate-800 bg-slate-50;
+  }
+
+  .tuition-tab-active {
+    @apply bg-white text-primary-600 shadow-sm;
+  }
+
+  /* Tuition Progress Bar */
+  .tuition-progress-bar {
+    @apply h-3 bg-slate-100 rounded-full overflow-hidden;
+  }
+
+  .tuition-progress-fill {
+    @apply h-full rounded-full transition-all duration-700 ease-out;
+    background: linear-gradient(90deg, var(--color-primary-500), var(--color-secondary-500));
+  }
+
+  /* Mobile Full-Screen Modal */
+  @media (max-width: 767px) {
+    .modal-fullscreen-mobile {
+      @apply fixed inset-0 rounded-none max-h-none;
+    }
+
+    .modal-fullscreen-mobile .modal-content {
+      @apply h-full flex flex-col;
+    }
+  }
 }
+
 
 /* ============================================
    UTILITY CLASSES
