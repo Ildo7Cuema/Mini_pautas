@@ -35,7 +35,7 @@ interface DashboardProps {
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = '' }) => {
-    const { user, isEscola, isProfessor, escolaProfile, professorProfile, loading: authLoading } = useAuth()
+    const { user, isEscola, isProfessor, isSecretario, escolaProfile, professorProfile, secretarioProfile, loading: authLoading } = useAuth()
     const [stats, setStats] = useState<DashboardStats>({
         totalTurmas: 0,
         totalAlunos: 0,
@@ -54,10 +54,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
     const [showHelpModal, setShowHelpModal] = useState(false)
 
     useEffect(() => {
-        if (!authLoading && user && (escolaProfile || professorProfile)) {
+        if (!authLoading && user && (escolaProfile || professorProfile || secretarioProfile)) {
             loadDashboardData()
         }
-    }, [authLoading, user, escolaProfile, professorProfile])
+    }, [authLoading, user, escolaProfile, professorProfile, secretarioProfile])
 
     const loadDashboardData = async () => {
         try {
@@ -91,6 +91,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
             } else if (isProfessor && professorProfile) {
                 escolaId = professorProfile.escola_id
                 console.log('Dashboard: Using professor profile, escola_id:', escolaId)
+            } else if (isSecretario && secretarioProfile) {
+                escolaId = secretarioProfile.escola_id
+                console.log('Dashboard: Using secretario profile, escola_id:', escolaId)
             }
 
             if (!escolaId) {
@@ -408,23 +411,55 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
             return escolaProfile.nome?.split(' ')[0] || 'Administrador'
         } else if (isProfessor && professorProfile) {
             return professorProfile.nome_completo?.split(' ')[0] || 'Professor'
+        } else if (isSecretario && secretarioProfile) {
+            return secretarioProfile.nome_completo?.split(' ')[0] || 'Secretário'
         }
         return user?.email?.split('@')[0] || 'Usuário'
     }
 
     if (loading || authLoading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                    <p className="mt-4 text-slate-600">Carregando dashboard...</p>
+            <div className="space-y-6 animate-fade-in">
+                {/* Stats Grid Skeleton */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="card p-4 md:p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="skeleton w-12 h-12 rounded-2xl"></div>
+                                <div className="skeleton h-6 w-12 rounded-lg"></div>
+                            </div>
+                            <div>
+                                <div className="skeleton h-4 w-20 mb-2 rounded"></div>
+                                <div className="skeleton h-8 w-16 rounded"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {/* Content Skeleton */}
+                <div className="card">
+                    <div className="border-b border-slate-100 p-5 md:p-6">
+                        <div className="skeleton h-6 w-40 mb-2 rounded"></div>
+                        <div className="skeleton h-4 w-56 rounded"></div>
+                    </div>
+                    <div className="p-4 space-y-4">
+                        {[1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center gap-4">
+                                <div className="skeleton w-10 h-10 rounded-xl"></div>
+                                <div className="flex-1">
+                                    <div className="skeleton h-4 w-32 mb-2 rounded"></div>
+                                    <div className="skeleton h-3 w-20 rounded"></div>
+                                </div>
+                                <div className="skeleton h-6 w-12 rounded-lg"></div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )
     }
 
     // If auth finished but no profile was loaded, show error
-    if (!authLoading && user && !escolaProfile && !professorProfile) {
+    if (!authLoading && user && !escolaProfile && !professorProfile && !secretarioProfile) {
         return (
             <div className="alert alert-error">
                 <span>Perfil não encontrado. Por favor, faça logout e login novamente.</span>
@@ -495,6 +530,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                     <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
                         Olá, {getUserDisplayName()}! 👋
                     </h2>
+                    {isSecretario && secretarioProfile?.escola && (
+                        <p className="text-primary-600 font-medium text-sm mt-0.5">
+                            {secretarioProfile.escola.nome}
+                        </p>
+                    )}
                     <p className="text-slate-500 mt-1">Aqui está o resumo das suas atividades hoje.</p>
                 </div>
                 <div className="flex gap-3">
@@ -708,37 +748,43 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                             </div>
                         </button>
 
-                        <button
-                            onClick={() => handleQuickAction('grades')}
-                            className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-green-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-green-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="relative z-10">
-                                <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                                    </svg>
+                        {/* Ocultar Lançar Notas para secretários */}
+                        {!isSecretario && (
+                            <button
+                                onClick={() => handleQuickAction('grades')}
+                                className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-green-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-green-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="relative z-10">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 text-sm group-hover:text-green-700 transition-colors">Lançar Notas</h4>
+                                    <p className="text-xs text-slate-500 mt-1">Registre as avaliações dos alunos</p>
                                 </div>
-                                <h4 className="font-bold text-slate-900 text-sm group-hover:text-green-700 transition-colors">Lançar Notas</h4>
-                                <p className="text-xs text-slate-500 mt-1">Registre as avaliações dos alunos</p>
-                            </div>
-                        </button>
+                            </button>
+                        )}
 
-                        <button
-                            onClick={() => handleQuickAction('reports')}
-                            className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-purple-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                            <div className="relative z-10">
-                                <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                    </svg>
+                        {/* Ocultar Relatórios para secretários */}
+                        {!isSecretario && (
+                            <button
+                                onClick={() => handleQuickAction('reports')}
+                                className="group p-4 bg-white border-0 shadow-sm hover:shadow-xl hover:shadow-purple-500/10 rounded-2xl text-left transition-all duration-300 hover:-translate-y-1 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-r from-purple-50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                                <div className="relative z-10">
+                                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-fuchsia-600 rounded-xl flex items-center justify-center text-white mb-3 shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                        </svg>
+                                    </div>
+                                    <h4 className="font-bold text-slate-900 text-sm group-hover:text-purple-700 transition-colors">Relatórios</h4>
+                                    <p className="text-xs text-slate-500 mt-1">Gere pautas e estatísticas</p>
                                 </div>
-                                <h4 className="font-bold text-slate-900 text-sm group-hover:text-purple-700 transition-colors">Relatórios</h4>
-                                <p className="text-xs text-slate-500 mt-1">Gere pautas e estatísticas</p>
-                            </div>
-                        </button>
+                            </button>
+                        )}
                     </div>
 
                     <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-5 text-white relative overflow-hidden">

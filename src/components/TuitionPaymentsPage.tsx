@@ -49,8 +49,8 @@ interface TurmaBasic {
 }
 
 export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ searchQuery = '' }) => {
-    const { escolaProfile } = useAuth()
-    const escolaId = escolaProfile?.id || ''
+    const { escolaProfile, secretarioProfile } = useAuth()
+    const escolaId = escolaProfile?.id || secretarioProfile?.escola_id || ''
     const currentYear = new Date().getFullYear()
     const currentMonth = new Date().getMonth() + 1
 
@@ -537,10 +537,52 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
-                    <p className="mt-3 text-slate-600">Carregando...</p>
+            <div className="space-y-6 animate-fade-in pb-24 md:pb-0">
+                {/* Header Skeleton */}
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <div className="skeleton h-8 w-48 mb-2 rounded-lg"></div>
+                        <div className="skeleton h-4 w-64 rounded"></div>
+                    </div>
+                    <div className="flex gap-3">
+                        <div className="skeleton h-10 w-32 rounded-xl"></div>
+                        <div className="skeleton h-10 w-28 rounded-xl"></div>
+                    </div>
+                </div>
+                {/* Stats Skeleton */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="bg-white rounded-xl p-4 border border-slate-200/60">
+                            <div className="skeleton w-10 h-10 rounded-xl mb-2"></div>
+                            <div className="skeleton h-7 w-20 mb-1 rounded"></div>
+                            <div className="skeleton h-4 w-16 rounded"></div>
+                        </div>
+                    ))}
+                </div>
+                {/* Table Skeleton */}
+                <div className="bg-white rounded-2xl border border-slate-200/60 p-5">
+                    <div className="flex gap-2 mb-4">
+                        <div className="skeleton h-10 w-24 rounded-xl"></div>
+                        <div className="skeleton h-10 w-24 rounded-xl"></div>
+                        <div className="skeleton h-10 w-24 rounded-xl"></div>
+                    </div>
+                    <div className="skeleton h-10 w-64 mb-5 rounded-xl"></div>
+                    <div className="space-y-3">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
+                                <div className="skeleton w-10 h-10 rounded-xl"></div>
+                                <div className="flex-1">
+                                    <div className="skeleton h-4 w-40 mb-2 rounded"></div>
+                                    <div className="skeleton h-3 w-24 rounded"></div>
+                                </div>
+                                <div className="flex gap-2">
+                                    {[1, 2, 3, 4, 5, 6].map((j) => (
+                                        <div key={j} className="skeleton w-8 h-8 rounded-lg"></div>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )

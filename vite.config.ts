@@ -37,5 +37,20 @@ export default defineConfig({
     build: {
         outDir: 'dist',
         sourcemap: true,
+        // Optimize chunk splitting for better caching
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    // Vendor chunks - cached separately from app code
+                    'vendor-react': ['react', 'react-dom'],
+                    'vendor-supabase': ['@supabase/supabase-js'],
+                    'vendor-charts': ['recharts'],
+                    'vendor-pdf': ['jspdf', 'jspdf-autotable'],
+                    'vendor-utils': ['date-fns', 'zustand', 'papaparse', 'xlsx', 'jszip'],
+                }
+            }
+        },
+        // Increase chunk size warning limit (we're intentionally splitting)
+        chunkSizeWarningLimit: 500,
     },
 })

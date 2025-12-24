@@ -33,10 +33,39 @@ export const SuperAdminDashboard: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Carregando estatísticas...</p>
+            <div className="p-6 space-y-6 animate-fade-in">
+                {/* Header Skeleton */}
+                <div className="flex items-center justify-between">
+                    <div>
+                        <div className="skeleton h-9 w-64 mb-2 rounded-lg"></div>
+                        <div className="skeleton h-5 w-48 rounded"></div>
+                    </div>
+                    <div className="skeleton h-10 w-28 rounded-lg"></div>
+                </div>
+                {/* Stats Cards Skeleton */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {[1, 2, 3, 4].map((i) => (
+                        <div key={i} className="rounded-lg border-2 border-slate-200 p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="skeleton h-4 w-24 mb-3 rounded"></div>
+                                    <div className="skeleton h-9 w-16 rounded"></div>
+                                </div>
+                                <div className="skeleton w-12 h-12 rounded-lg"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {/* Charts Skeleton */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="skeleton h-6 w-48 mb-4 rounded"></div>
+                        <div className="skeleton h-[300px] w-full rounded-lg"></div>
+                    </div>
+                    <div className="bg-white rounded-lg shadow-md p-6">
+                        <div className="skeleton h-6 w-48 mb-4 rounded"></div>
+                        <div className="skeleton h-[300px] w-full rounded-lg"></div>
+                    </div>
                 </div>
             </div>
         )

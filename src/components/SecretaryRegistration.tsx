@@ -49,12 +49,33 @@ export const SecretaryRegistration: React.FC = () => {
         }
 
         try {
-            const { error: signUpError } = await supabase.auth.signUp({
+            // 1. Create the auth user
+            const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
                 email,
                 password,
             })
 
             if (signUpError) throw signUpError
+
+            // 2. If signup successful, use RPC function to register secretario
+            // This function has SECURITY DEFINER and bypasses RLS
+            if (signUpData.user) {
+                const { data: rpcResult, error: rpcError } = await supabase.rpc(
+                    'register_secretario_account',
+                    {
+                        p_email: email,
+                        p_user_id: signUpData.user.id
+                    }
+                )
+
+                if (rpcError) {
+                    console.error('Erro ao registar secretário:', rpcError)
+                } else if (rpcResult && !rpcResult.success) {
+                    console.error('Erro RPC:', rpcResult.error)
+                } else {
+                    console.log('✅ Secretário registado com sucesso:', rpcResult)
+                }
+            }
 
             setSuccess(true)
         } catch (err: any) {

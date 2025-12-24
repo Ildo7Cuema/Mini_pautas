@@ -97,7 +97,7 @@ interface FieldSelection {
 }
 
 export const PautaGeralPage: React.FC = () => {
-    const { escolaProfile, professorProfile } = useAuth()
+    const { escolaProfile, professorProfile, secretarioProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
     const trimestre = 3 // Fixed to 3rd trimester for Pauta-Geral
@@ -496,6 +496,9 @@ export const PautaGeralPage: React.FC = () => {
             } else if (professorProfile) {
                 // For professors, use their escola_id
                 escola_id = professorProfile.escola_id
+            } else if (secretarioProfile) {
+                // For secretaries, use their escola_id
+                escola_id = secretarioProfile.escola_id
             }
 
             if (!escola_id) {
@@ -923,7 +926,7 @@ export const PautaGeralPage: React.FC = () => {
                     setShowHeaderConfigModal(false)
                     loadHeaderConfiguration()
                 }}
-                escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
+                escolaId={escolaProfile?.id || professorProfile?.escola_id || secretarioProfile?.escola_id || ''}
                 documentType="Pauta-Geral"
             />
 

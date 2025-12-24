@@ -1,32 +1,35 @@
-import { useState } from 'react'
+import { useState, lazy, Suspense } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { LoginScreen } from './components/LoginScreen'
 import { DashboardLayout } from './components/DashboardLayout'
-import { Dashboard } from './components/Dashboard'
-import { ClassesPage } from './components/ClassesPage'
-import { ClassDetailsPage } from './components/ClassDetailsPage'
-import { StudentsPage } from './components/StudentsPage'
-import { GradesPage } from './components/GradesPage'
-import { ReportsPage } from './components/ReportsPage'
-import { SettingsPage } from './components/SettingsPage'
-import { TeachersPage } from './components/TeachersPage'
-import { ProfessorRegistration } from './components/ProfessorRegistration'
-import { StudentRegistration } from './components/StudentRegistration'
-import { GuardianRegistration } from './components/GuardianRegistration'
-import { ProfessorDashboard } from './components/ProfessorDashboard'
-import { ResetPasswordPage } from './components/ResetPasswordPage'
-import { SuperAdminDashboard } from './components/SuperAdminDashboard'
-import { EscolaManagement } from './components/EscolaManagement'
-import { SuperAdminAuditLog } from './components/SuperAdminAuditLog'
-import { LicenseManagement } from './components/LicenseManagement'
-import { AlunoNotasPage } from './components/AlunoNotasPage'
-import { EncarregadoNotasPage } from './components/EncarregadoNotasPage'
-import { SubscriptionPage } from './components/SubscriptionPage'
-import { PublicPaymentPage } from './components/PublicPaymentPage'
-import { TuitionPaymentsPage } from './components/TuitionPaymentsPage'
-import { SecretariesPage } from './components/SecretariesPage'
-import { SecretaryRegistration } from './components/SecretaryRegistration'
+import { PageSkeleton } from './components/ui/PageSkeleton'
 import { isSuperAdmin } from './utils/permissions'
+
+// Lazy load all page components for code splitting
+const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })))
+const ClassesPage = lazy(() => import('./components/ClassesPage').then(m => ({ default: m.ClassesPage })))
+const ClassDetailsPage = lazy(() => import('./components/ClassDetailsPage').then(m => ({ default: m.ClassDetailsPage })))
+const StudentsPage = lazy(() => import('./components/StudentsPage').then(m => ({ default: m.StudentsPage })))
+const GradesPage = lazy(() => import('./components/GradesPage').then(m => ({ default: m.GradesPage })))
+const ReportsPage = lazy(() => import('./components/ReportsPage').then(m => ({ default: m.ReportsPage })))
+const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const TeachersPage = lazy(() => import('./components/TeachersPage').then(m => ({ default: m.TeachersPage })))
+const ProfessorRegistration = lazy(() => import('./components/ProfessorRegistration').then(m => ({ default: m.ProfessorRegistration })))
+const StudentRegistration = lazy(() => import('./components/StudentRegistration').then(m => ({ default: m.StudentRegistration })))
+const GuardianRegistration = lazy(() => import('./components/GuardianRegistration').then(m => ({ default: m.GuardianRegistration })))
+const ProfessorDashboard = lazy(() => import('./components/ProfessorDashboard').then(m => ({ default: m.ProfessorDashboard })))
+const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage').then(m => ({ default: m.ResetPasswordPage })))
+const SuperAdminDashboard = lazy(() => import('./components/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })))
+const EscolaManagement = lazy(() => import('./components/EscolaManagement').then(m => ({ default: m.EscolaManagement })))
+const SuperAdminAuditLog = lazy(() => import('./components/SuperAdminAuditLog').then(m => ({ default: m.SuperAdminAuditLog })))
+const LicenseManagement = lazy(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })))
+const AlunoNotasPage = lazy(() => import('./components/AlunoNotasPage').then(m => ({ default: m.AlunoNotasPage })))
+const EncarregadoNotasPage = lazy(() => import('./components/EncarregadoNotasPage').then(m => ({ default: m.EncarregadoNotasPage })))
+const SubscriptionPage = lazy(() => import('./components/SubscriptionPage').then(m => ({ default: m.SubscriptionPage })))
+const PublicPaymentPage = lazy(() => import('./components/PublicPaymentPage').then(m => ({ default: m.PublicPaymentPage })))
+const TuitionPaymentsPage = lazy(() => import('./components/TuitionPaymentsPage').then(m => ({ default: m.TuitionPaymentsPage })))
+const SecretariesPage = lazy(() => import('./components/SecretariesPage').then(m => ({ default: m.SecretariesPage })))
+const SecretaryRegistration = lazy(() => import('./components/SecretaryRegistration').then(m => ({ default: m.SecretaryRegistration })))
 
 function App() {
     const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, profile } = useAuth()
@@ -38,38 +41,59 @@ function App() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-slate-50">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                    <p className="mt-4 text-slate-600">Carregando...</p>
-                </div>
+            <div className="min-h-screen bg-slate-50 p-4 md:p-8">
+                <PageSkeleton variant="dashboard" />
             </div>
         )
     }
 
     // Public routes - accessible without authentication
     if (window.location.pathname === '/pagamento-escola') {
-        return <PublicPaymentPage />
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <PublicPaymentPage />
+            </Suspense>
+        )
     }
 
     if (window.location.pathname === '/register-professor') {
-        return <ProfessorRegistration />
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <ProfessorRegistration />
+            </Suspense>
+        )
     }
 
     if (window.location.pathname === '/register-student') {
-        return <StudentRegistration />
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <StudentRegistration />
+            </Suspense>
+        )
     }
 
     if (window.location.pathname === '/register-guardian') {
-        return <GuardianRegistration />
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <GuardianRegistration />
+            </Suspense>
+        )
     }
 
     if (window.location.pathname === '/register-secretary') {
-        return <SecretaryRegistration />
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <SecretaryRegistration />
+            </Suspense>
+        )
     }
 
     if (window.location.pathname === '/reset-password') {
-        return <ResetPasswordPage />
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <ResetPasswordPage />
+            </Suspense>
+        )
     }
 
     if (!user) {
@@ -184,7 +208,9 @@ function App() {
 
     return (
         <DashboardLayout currentPage={currentPage} onNavigate={handleNavigate} onSearch={handleSearch}>
-            {renderPage()}
+            <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                {renderPage()}
+            </Suspense>
         </DashboardLayout>
     )
 }

@@ -110,7 +110,7 @@ interface ReportsPageProps {
 }
 
 export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) => {
-    const { isProfessor, professorProfile, escolaProfile } = useAuth()
+    const { isProfessor, professorProfile, escolaProfile, secretarioProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
@@ -1607,6 +1607,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
             } else if (professorProfile) {
                 // For professors, use their escola_id
                 escola_id = professorProfile.escola_id
+            } else if (secretarioProfile) {
+                // For secretaries, use their escola_id
+                escola_id = secretarioProfile.escola_id
             }
 
             if (!escola_id) {
@@ -2310,7 +2313,7 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                             setShowHeaderConfigModal(false)
                             loadHeaderConfiguration()
                         }}
-                        escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
+                        escolaId={escolaProfile?.id || professorProfile?.escola_id || secretarioProfile?.escola_id || ''}
                     />
 
                     {/* Ordenar Disciplinas Modal */}

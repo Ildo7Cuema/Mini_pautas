@@ -810,11 +810,18 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                     </CardHeader>
                     <CardBody className="p-0">
                         {loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <div className="text-center">
-                                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                                    <p className="mt-4 text-slate-600">Carregando...</p>
-                                </div>
+                            <div className="p-4 space-y-3">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                    <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl animate-fade-in">
+                                        <div className="skeleton w-10 h-10 rounded-xl"></div>
+                                        <div className="flex-1">
+                                            <div className="skeleton h-4 w-40 mb-2 rounded"></div>
+                                            <div className="skeleton h-3 w-24 rounded"></div>
+                                        </div>
+                                        <div className="skeleton w-24 h-12 rounded-xl"></div>
+                                        <div className="skeleton w-16 h-6 rounded-lg"></div>
+                                    </div>
+                                ))}
                             </div>
                         ) : alunos.length === 0 ? (
                             <div className="text-center py-16">

@@ -13,11 +13,11 @@ import { Button } from './ui/Button'
 import { notifyNewStudent, notifyGradesPosted, notifyReportGenerated, notifySystem } from '../utils/notificationHelpers'
 
 export const NotificationTestPanel: React.FC = () => {
-    const { user, escolaProfile, professorProfile } = useAuth()
+    const { user, escolaProfile, professorProfile, secretarioProfile } = useAuth()
     const [creating, setCreating] = useState(false)
     const [message, setMessage] = useState<string | null>(null)
 
-    const escolaId = escolaProfile?.id || professorProfile?.escola_id
+    const escolaId = escolaProfile?.id || professorProfile?.escola_id || secretarioProfile?.escola_id
 
     const handleCreateNotification = async (type: string) => {
         if (!user || !escolaId) {

@@ -465,7 +465,14 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                 <p className="text-sm font-bold text-slate-800 truncate">
                                     {getDisplayName()}
                                 </p>
-                                <p className="text-xs text-slate-500 truncate font-medium">{getRoleLabel()}</p>
+                                {isSecretarioRole && secretarioProfile?.escola ? (
+                                    <>
+                                        <p className="text-xs text-primary-600 truncate font-medium">{secretarioProfile.escola.nome}</p>
+                                        <p className="text-[10px] text-slate-400 truncate">{getRoleLabel()}</p>
+                                    </>
+                                ) : (
+                                    <p className="text-xs text-slate-500 truncate font-medium">{getRoleLabel()}</p>
+                                )}
                             </div>
                         )}
                     </div>

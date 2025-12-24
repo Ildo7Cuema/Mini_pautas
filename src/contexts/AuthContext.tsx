@@ -214,7 +214,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.log('🔍 AuthContext: Checking if user is an aluno...')
                 const { data: alunoData, error: alunoError } = await supabase
                     .from('alunos')
-                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, sigla, logo_url))')
+                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola))')
                     .eq('user_id', authUser.id)
                     .eq('ativo', true)
                     .maybeSingle()
@@ -231,7 +231,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setIsEncarregado(false)
 
                     // Extract escola from turma relation
-                    const turmaData = alunoData.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; sigla?: string; logo_url?: string } } | null
+                    const turmaData = alunoData.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string } } | null
                     const escolaData = turmaData?.escolas || null
 
                     // Create inline aluno profile with escola
@@ -259,7 +259,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.log('🔍 AuthContext: Checking if user is an encarregado...')
                 const { data: encarregadoData, error: encarregadoError } = await supabase
                     .from('alunos')
-                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, sigla, logo_url))')
+                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola))')
                     .eq('encarregado_user_id', authUser.id)
                     .eq('ativo', true)
 
@@ -275,7 +275,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setIsAluno(false)
 
                     // Extract escola from first aluno's turma
-                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; sigla?: string; logo_url?: string } } | null
+                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string } } | null
                     const escolaData = firstAlunoTurma?.escolas || null
 
                     // Create inline encarregado profile with escola
@@ -297,6 +297,60 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                         email: authUser.email || '',
                         profile: null,
                         encarregado: encarregadoProfile
+                    })
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
+                // Try to find secretario directly (similar to professor fallback)
+                console.log('🔍 AuthContext: Checking if user is a secretario...')
+                const { data: secretarioData, error: secretarioError } = await supabase
+                    .from('secretarios')
+                    .select('*, escola:escolas(*)')
+                    .eq('user_id', authUser.id)
+                    .eq('ativo', true)
+                    .maybeSingle()
+
+                if (secretarioError) {
+                    console.error('❌ AuthContext: Error checking secretario:', secretarioError)
+                }
+
+                if (secretarioData) {
+                    console.log('✅ AuthContext: Found secretario record, creating profile')
+
+                    // Create user_profile if it doesn't exist
+                    const { error: profileCreateError } = await supabase
+                        .from('user_profiles')
+                        .upsert({
+                            user_id: authUser.id,
+                            tipo_perfil: 'SECRETARIO',
+                            escola_id: secretarioData.escola_id,
+                            ativo: true
+                        }, { onConflict: 'user_id' })
+
+                    if (profileCreateError) {
+                        console.error('❌ AuthContext: Error creating user_profile for secretario:', profileCreateError)
+                    }
+
+                    setIsSecretario(true)
+                    setIsEscola(false)
+                    setIsProfessor(false)
+                    setIsAluno(false)
+                    setIsEncarregado(false)
+
+                    const secretarioProfile = {
+                        ...secretarioData,
+                        user_profile: null as any,
+                        escola: secretarioData.escola
+                    }
+
+                    setSecretarioProfile(secretarioProfile)
+                    setUser({
+                        id: authUser.id,
+                        email: secretarioData.email,
+                        profile: null,
+                        secretario: secretarioProfile
                     })
                     isLoadingProfileRef.current = false
                     setLoading(false)

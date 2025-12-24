@@ -211,10 +211,38 @@ export const SecretariesPage: React.FC<SecretariesPageProps> = ({ onNavigate: _o
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
-                    <p className="mt-4 text-slate-600">Carregando secretários...</p>
+            <div className="space-y-6 animate-fade-in pb-24 md:pb-6">
+                {/* Header Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="skeleton w-12 h-12 rounded-xl"></div>
+                        <div>
+                            <div className="skeleton h-7 w-32 mb-2 rounded-lg"></div>
+                            <div className="skeleton h-4 w-48 rounded"></div>
+                        </div>
+                    </div>
+                    <div className="skeleton h-10 w-36 rounded-xl"></div>
+                </div>
+                {/* Grid Skeleton */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="card p-4">
+                            <div className="flex items-start gap-3 mb-4">
+                                <div className="skeleton w-12 h-12 rounded-xl"></div>
+                                <div className="flex-1">
+                                    <div className="skeleton h-5 w-32 mb-2 rounded"></div>
+                                    <div className="skeleton h-3 w-40 rounded"></div>
+                                </div>
+                            </div>
+                            <div className="space-y-2 mb-4">
+                                <div className="skeleton h-10 w-full rounded-lg"></div>
+                            </div>
+                            <div className="flex gap-2">
+                                <div className="skeleton h-10 flex-1 rounded-xl"></div>
+                                <div className="skeleton h-10 w-10 rounded-xl"></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         )

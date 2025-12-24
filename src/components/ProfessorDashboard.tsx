@@ -159,10 +159,42 @@ export const ProfessorDashboard: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                    <p className="mt-4 text-slate-600">Carregando dashboard...</p>
+            <div className="space-y-6 animate-fade-in">
+                {/* Header Skeleton */}
+                <div>
+                    <div className="skeleton h-8 w-64 mb-2 rounded-lg"></div>
+                    <div className="skeleton h-4 w-48 rounded"></div>
+                </div>
+                {/* Stats Cards Skeleton */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+                    {[1, 2, 3].map((i) => (
+                        <div key={i} className="card p-4 md:p-6">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="skeleton h-4 w-20 mb-2 rounded"></div>
+                                    <div className="skeleton h-8 w-12 rounded"></div>
+                                </div>
+                                <div className="skeleton w-12 h-12 rounded-full"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                {/* Disciplinas List Skeleton */}
+                <div className="card">
+                    <div className="border-b border-slate-100 p-4">
+                        <div className="skeleton h-6 w-40 rounded"></div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                        {[1, 2, 3, 4].map((i) => (
+                            <div key={i} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
+                                <div className="flex-1">
+                                    <div className="skeleton h-5 w-32 mb-2 rounded"></div>
+                                    <div className="skeleton h-3 w-24 rounded"></div>
+                                </div>
+                                <div className="skeleton h-5 w-20 rounded"></div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )

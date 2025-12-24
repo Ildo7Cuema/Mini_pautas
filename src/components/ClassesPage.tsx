@@ -249,10 +249,34 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center animate-fade-in">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-primary-600"></div>
-                    <p className="mt-4 text-slate-500 font-medium animate-pulse">Carregando turmas...</p>
+            <div className="space-y-8 animate-fade-in">
+                {/* Header Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <div className="skeleton h-8 w-40 mb-2 rounded-lg"></div>
+                        <div className="skeleton h-4 w-56 rounded"></div>
+                    </div>
+                    <div className="skeleton h-10 w-32 rounded-xl"></div>
+                </div>
+                {/* Grid Skeleton */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map((i) => (
+                        <div key={i} className="card p-6">
+                            <div className="flex items-start justify-between mb-4">
+                                <div className="skeleton w-12 h-12 rounded-xl"></div>
+                                <div className="skeleton h-6 w-20 rounded-lg"></div>
+                            </div>
+                            <div className="mb-6">
+                                <div className="skeleton h-6 w-32 mb-2 rounded"></div>
+                                <div className="skeleton h-4 w-24 rounded"></div>
+                            </div>
+                            <div className="skeleton h-10 w-full rounded-lg mb-4"></div>
+                            <div className="flex gap-2">
+                                <div className="skeleton h-10 flex-1 rounded-lg"></div>
+                                <div className="skeleton h-10 w-10 rounded-lg"></div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         )

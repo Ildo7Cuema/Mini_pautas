@@ -110,7 +110,7 @@ interface StudentsPageProps {
 }
 
 export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) => {
-    const { escolaProfile, professorProfile } = useAuth()
+    const { escolaProfile, professorProfile, secretarioProfile } = useAuth()
     const [alunos, setAlunos] = useState<Aluno[]>([])
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
@@ -145,7 +145,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
     // Load header configuration on mount
     useEffect(() => {
         loadHeaderConfiguration()
-    }, [escolaProfile, professorProfile])
+    }, [escolaProfile, professorProfile, secretarioProfile])
 
     const loadHeaderConfiguration = async () => {
         try {
@@ -155,6 +155,8 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                 escola_id = escolaProfile.id
             } else if (professorProfile) {
                 escola_id = professorProfile.escola_id
+            } else if (secretarioProfile) {
+                escola_id = secretarioProfile.escola_id
             }
 
             if (!escola_id) {
@@ -1235,10 +1237,42 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center py-12">
-                <div className="text-center">
-                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                    <p className="mt-4 text-slate-600">Carregando alunos...</p>
+            <div className="space-y-6 animate-fade-in">
+                {/* Header Skeleton */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <div className="skeleton h-8 w-32 mb-2 rounded-lg"></div>
+                        <div className="skeleton h-4 w-48 rounded"></div>
+                    </div>
+                    <div className="skeleton h-10 w-28 rounded-xl"></div>
+                </div>
+                {/* Filter Skeleton */}
+                <div className="card p-3 md:p-4">
+                    <div className="flex gap-3">
+                        <div className="skeleton h-10 w-36 rounded-lg"></div>
+                        <div className="skeleton h-10 w-48 rounded-lg"></div>
+                    </div>
+                </div>
+                {/* List Skeleton */}
+                <div className="card">
+                    <div className="border-b border-slate-100 p-4">
+                        <div className="skeleton h-6 w-32 rounded"></div>
+                    </div>
+                    <div className="p-4 space-y-3">
+                        {[1, 2, 3, 4, 5].map((i) => (
+                            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
+                                <div className="skeleton w-12 h-12 rounded-full"></div>
+                                <div className="flex-1">
+                                    <div className="skeleton h-4 w-40 mb-2 rounded"></div>
+                                    <div className="skeleton h-3 w-24 rounded"></div>
+                                </div>
+                                <div className="flex gap-2">
+                                    <div className="skeleton h-8 w-8 rounded-lg"></div>
+                                    <div className="skeleton h-8 w-8 rounded-lg"></div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )
@@ -1578,7 +1612,7 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                     setShowHeaderConfigModal(false)
                     loadHeaderConfiguration()
                 }}
-                escolaId={escolaProfile?.id || professorProfile?.escola_id || ''}
+                escolaId={escolaProfile?.id || professorProfile?.escola_id || secretarioProfile?.escola_id || ''}
             />
         </div>
     )
