@@ -25,6 +25,7 @@ import { SubscriptionPage } from './components/SubscriptionPage'
 import { PublicPaymentPage } from './components/PublicPaymentPage'
 import { TuitionPaymentsPage } from './components/TuitionPaymentsPage'
 import { SecretariesPage } from './components/SecretariesPage'
+import { SecretaryRegistration } from './components/SecretaryRegistration'
 import { isSuperAdmin } from './utils/permissions'
 
 function App() {
@@ -64,8 +65,6 @@ function App() {
     }
 
     if (window.location.pathname === '/register-secretary') {
-        // Dynamic import handled by component
-        const SecretaryRegistration = require('./components/SecretaryRegistration').SecretaryRegistration
         return <SecretaryRegistration />
     }
 
