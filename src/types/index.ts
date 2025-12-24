@@ -341,7 +341,7 @@ export interface ImportError {
 // USER ROLES AND PROFILES
 // ============================================
 
-export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO';
+export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO' | 'SECRETARIO';
 
 export interface UserProfile {
     id: string;
@@ -375,6 +375,25 @@ export interface ProfessorProfile extends Professor {
     escola?: Escola;
 }
 
+// SECRETARIO - School secretary with limited access
+export interface Secretario {
+    id: string;
+    escola_id: string;
+    user_id?: string;
+    nome_completo: string;
+    email: string;
+    telefone?: string;
+    numero_funcionario?: string;
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface SecretarioProfile extends Secretario {
+    user_profile: UserProfile;
+    escola?: Escola;
+}
+
 export interface AuthUser {
     id: string;
     email: string;
@@ -383,6 +402,7 @@ export interface AuthUser {
     professor?: ProfessorProfile;
     aluno?: AlunoProfile;
     encarregado?: EncarregadoProfile;
+    secretario?: SecretarioProfile;
 }
 
 // ALUNO Profile - Student with turma and escola info

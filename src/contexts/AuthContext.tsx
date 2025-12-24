@@ -9,11 +9,13 @@ import type {
     ProfessorProfile,
     AlunoProfile,
     EncarregadoProfile,
+    SecretarioProfile,
     TurmaProfessor,
     Escola,
     Professor,
     Aluno,
-    Turma
+    Turma,
+    Secretario
 } from '../types'
 
 interface AuthContextType {
@@ -23,10 +25,12 @@ interface AuthContextType {
     isProfessor: boolean
     isAluno: boolean
     isEncarregado: boolean
+    isSecretario: boolean
     escolaProfile: EscolaProfile | null
     professorProfile: ProfessorProfile | null
     alunoProfile: AlunoProfile | null
     encarregadoProfile: EncarregadoProfile | null
+    secretarioProfile: SecretarioProfile | null
     profile: UserProfile | null  // Added for SUPERADMIN support
     signOut: () => Promise<void>
     refreshProfile: () => Promise<void>
@@ -53,10 +57,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [isProfessor, setIsProfessor] = useState(false)
     const [isAluno, setIsAluno] = useState(false)
     const [isEncarregado, setIsEncarregado] = useState(false)
+    const [isSecretario, setIsSecretario] = useState(false)
     const [escolaProfile, setEscolaProfile] = useState<EscolaProfile | null>(null)
     const [professorProfile, setProfessorProfile] = useState<ProfessorProfile | null>(null)
     const [alunoProfile, setAlunoProfile] = useState<AlunoProfile | null>(null)
     const [encarregadoProfile, setEncarregadoProfile] = useState<EncarregadoProfile | null>(null)
+    const [secretarioProfile, setSecretarioProfile] = useState<SecretarioProfile | null>(null)
 
     // Blocked school modal state
     const [showBlockedModal, setShowBlockedModal] = useState(false)
@@ -318,6 +324,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsProfessor(profile.tipo_perfil === 'PROFESSOR')
             setIsAluno(profile.tipo_perfil === 'ALUNO')
             setIsEncarregado(profile.tipo_perfil === 'ENCARREGADO')
+            setIsSecretario(profile.tipo_perfil === 'SECRETARIO')
 
             // Handle SUPERADMIN separately (no escola_id required)
             if (profile.tipo_perfil === 'SUPERADMIN') {
@@ -346,6 +353,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             } else if (profile.tipo_perfil === 'ENCARREGADO') {
                 console.log('👨‍👩‍👧 AuthContext: Loading encarregado profile...')
                 await loadEncarregadoProfile(authUser.id, profile)
+            } else if (profile.tipo_perfil === 'SECRETARIO') {
+                console.log('📋 AuthContext: Loading secretario profile...')
+                await loadSecretarioProfile(authUser.id, profile)
             }
 
             // CRITICAL: Always set loading to false, even if profile loading fails
@@ -752,6 +762,102 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     }
 
+    const loadSecretarioProfile = async (userId: string, profile: UserProfile) => {
+        try {
+            console.log('📋 AuthContext: Fetching secretario data for user_id:', userId)
+            // Get secretario data linked to this user
+            const { data: secretarioData, error: secretarioError } = await supabase
+                .from('secretarios')
+                .select(`
+                    *,
+                    escola:escolas(*)
+                `)
+                .eq('user_id', userId)
+                .eq('ativo', true)
+                .maybeSingle()
+
+            if (secretarioError) {
+                console.error('❌ AuthContext: Error loading secretario:', secretarioError)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            if (!secretarioData) {
+                console.warn('⚠️ AuthContext: No secretario found for user_id:', userId)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            console.log('✅ AuthContext: Secretario data loaded:', secretarioData)
+            const secretario = secretarioData as Secretario & { escola: Escola }
+
+            // Check if escola is blocked or inactive
+            if (secretario.escola) {
+                console.log('✅ AuthContext: Escola data loaded:', secretario.escola.nome)
+
+                if (secretario.escola.bloqueado) {
+                    console.error('🚫 AuthContext: Escola is blocked:', secretario.escola.bloqueado_motivo)
+                    setBlockedModalData({
+                        reason: secretario.escola.bloqueado_motivo || undefined,
+                        type: 'blocked'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
+                if (!secretario.escola.ativo) {
+                    console.warn('⚠️ AuthContext: Escola is inactive')
+                    setBlockedModalData({
+                        reason: undefined,
+                        type: 'inactive'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+            }
+
+            // Build secretario profile
+            const secretarioProfileData: SecretarioProfile = {
+                ...secretario,
+                user_profile: profile,
+                escola: secretario.escola
+            }
+
+            setSecretarioProfile(secretarioProfileData)
+            setUser({
+                id: userId,
+                email: secretario.email || profile.user_id || '',
+                profile,
+                secretario: secretarioProfileData
+            })
+            console.log('✅ AuthContext: Secretario profile set successfully')
+
+        } catch (error) {
+            console.error('❌ AuthContext: Unexpected error in loadSecretarioProfile:', error)
+            setUser({
+                id: userId,
+                email: profile.user_id || '',
+                profile
+            })
+        }
+    }
+
     const refreshProfile = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
@@ -766,10 +872,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsProfessor(false)
         setIsAluno(false)
         setIsEncarregado(false)
+        setIsSecretario(false)
         setEscolaProfile(null)
         setProfessorProfile(null)
         setAlunoProfile(null)
         setEncarregadoProfile(null)
+        setSecretarioProfile(null)
     }
 
     useEffect(() => {
@@ -854,10 +962,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isProfessor,
         isAluno,
         isEncarregado,
+        isSecretario,
         escolaProfile,
         professorProfile,
         alunoProfile,
         encarregadoProfile,
+        secretarioProfile,
         profile: user?.profile || null,  // Expose profile for SUPERADMIN checks
         signOut,
         refreshProfile

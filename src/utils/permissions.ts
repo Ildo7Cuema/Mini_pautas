@@ -12,6 +12,13 @@ export const isSuperAdmin = (profile: UserProfile | null): boolean => {
 }
 
 /**
+ * Check if user is SECRETARIO
+ */
+export const isSecretario = (profile: UserProfile | null): boolean => {
+    return profile?.tipo_perfil === 'SECRETARIO' && profile.ativo
+}
+
+/**
  * Check if user can manage all escolas (SUPERADMIN only)
  */
 export const canManageEscolas = (profile: UserProfile | null): boolean => {
@@ -55,10 +62,20 @@ export const canCreateTeacher = (profile: UserProfile | null): boolean => {
 }
 
 /**
- * Check if user can create students
+ * Check if user can create students (ESCOLA and SECRETARIO)
  */
 export const canCreateStudent = (profile: UserProfile | null): boolean => {
     if (isSuperAdmin(profile)) return true
+    if (isSecretario(profile)) return true
+    return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
+}
+
+/**
+ * Check if user can manage tuition payments (ESCOLA and SECRETARIO)
+ */
+export const canManageTuitionPayments = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
+    if (isSecretario(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -156,18 +173,20 @@ export const canDeleteTurma = (profile: UserProfile | null): boolean => {
 }
 
 /**
- * Check if user can edit student details
+ * Check if user can edit student details (ESCOLA and SECRETARIO)
  */
 export const canEditStudent = (profile: UserProfile | null): boolean => {
     if (isSuperAdmin(profile)) return true
+    if (isSecretario(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
 /**
- * Check if user can delete student
+ * Check if user can delete student (ESCOLA and SECRETARIO)
  */
 export const canDeleteStudent = (profile: UserProfile | null): boolean => {
     if (isSuperAdmin(profile)) return true
+    if (isSecretario(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -209,18 +228,20 @@ export const canManageFormulas = (
 }
 
 /**
- * Check if user can view all turmas (not just assigned ones)
+ * Check if user can view all turmas (not just assigned ones) - ESCOLA and SECRETARIO
  */
 export const canViewAllTurmas = (profile: UserProfile | null): boolean => {
     if (isSuperAdmin(profile)) return true
+    if (isSecretario(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
 /**
- * Check if user can view all students (not just from assigned turmas)
+ * Check if user can view all students (not just from assigned turmas) - ESCOLA and SECRETARIO
  */
 export const canViewAllStudents = (profile: UserProfile | null): boolean => {
     if (isSuperAdmin(profile)) return true
+    if (isSecretario(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
 
@@ -228,6 +249,14 @@ export const canViewAllStudents = (profile: UserProfile | null): boolean => {
  * Check if user can access school settings
  */
 export const canAccessSchoolSettings = (profile: UserProfile | null): boolean => {
+    if (isSuperAdmin(profile)) return true
+    return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
+}
+
+/**
+ * Check if user can manage secretaries (ESCOLA only)
+ */
+export const canManageSecretaries = (profile: UserProfile | null): boolean => {
     if (isSuperAdmin(profile)) return true
     return profile?.tipo_perfil === 'ESCOLA' && profile.ativo
 }
@@ -301,9 +330,10 @@ export const isReadOnlyViewer = (profile: UserProfile | null): boolean => {
 }
 
 /**
- * Check if user can modify grades (ESCOLA, PROFESSOR only - not ALUNO/ENCARREGADO)
+ * Check if user can modify grades (ESCOLA, PROFESSOR only - not ALUNO/ENCARREGADO/SECRETARIO)
  */
 export const canModifyGrades = (profile: UserProfile | null): boolean => {
     if (!profile || !profile.ativo) return false
     return profile.tipo_perfil === 'ESCOLA' || profile.tipo_perfil === 'PROFESSOR'
 }
+

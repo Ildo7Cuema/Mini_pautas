@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { NotificationPanel } from './NotificationPanel'
 import { Notification, formatNotificationCount } from '../utils/notificationUtils'
 import { fetchNotifications, markAsRead, markAllAsRead } from '../utils/notificationApi'
-import { isSuperAdmin, isAluno, isEncarregado } from '../utils/permissions'
+import { isSuperAdmin, isAluno, isEncarregado, isSecretario } from '../utils/permissions'
 
 interface SidebarProps {
     children: ReactNode
@@ -34,7 +34,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const { user, isEscola, isProfessor, isAluno: isAlunoRole, isEncarregado: isEncarregadoRole, escolaProfile, professorProfile, alunoProfile, encarregadoProfile, profile } = useAuth()
+    const { user, isEscola, isProfessor, isAluno: isAlunoRole, isEncarregado: isEncarregadoRole, isSecretario: isSecretarioRole, escolaProfile, professorProfile, alunoProfile, encarregadoProfile, secretarioProfile, profile } = useAuth()
 
     const isSuperAdminUser = profile ? isSuperAdmin(profile) : false
 
@@ -55,6 +55,8 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             // Get name from first associated student or use email
             const primeiroEducando = encarregadoProfile.alunos_associados?.[0]
             return primeiroEducando?.nome_encarregado || 'Encarregado'
+        } else if (isSecretarioRole && secretarioProfile) {
+            return secretarioProfile.nome_completo || 'Secretário'
         }
         return user?.email?.split('@')[0] || 'Usuário'
     }
@@ -207,6 +209,16 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             showInMobile: true,
         },
         {
+            name: 'Secretários',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            ),
+            path: 'secretaries',
+            showInMobile: false,
+        },
+        {
             name: 'Alunos',
             icon: (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -269,6 +281,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         },
     ].filter(item => {
         if (item.path === 'teachers') return isEscola // Only show teachers menu for School Admins
+        if (item.path === 'secretaries') return isEscola // Only show secretaries menu for School Admins
         if (item.path === 'classes' || item.path === 'students' || item.path === 'propinas') return isEscola // Hide for professors
         return true
     })
@@ -301,11 +314,46 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         },
     ]
 
+    // SECRETARIO navigation items - limited to students and payments
+    const secretarioNavItems: NavItem[] = [
+        {
+            name: 'Dashboard',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                </svg>
+            ),
+            path: 'dashboard',
+            showInMobile: true,
+        },
+        {
+            name: 'Alunos',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+            ),
+            path: 'students',
+            showInMobile: true,
+        },
+        {
+            name: 'Pagamentos',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+            ),
+            path: 'propinas',
+            showInMobile: true,
+        },
+    ]
+
     // Get final nav items based on role
     const getFinalNavItems = (): NavItem[] => {
         if (isSuperAdminUser) return superAdminNavItems
         if (isAlunoRole) return alunoNavItems
         if (isEncarregadoRole) return encarregadoNavItems
+        if (isSecretarioRole) return secretarioNavItems
         return navItems
     }
 

@@ -24,10 +24,11 @@ import { EncarregadoNotasPage } from './components/EncarregadoNotasPage'
 import { SubscriptionPage } from './components/SubscriptionPage'
 import { PublicPaymentPage } from './components/PublicPaymentPage'
 import { TuitionPaymentsPage } from './components/TuitionPaymentsPage'
+import { SecretariesPage } from './components/SecretariesPage'
 import { isSuperAdmin } from './utils/permissions'
 
 function App() {
-    const { user, loading, isProfessor, isAluno, isEncarregado, profile } = useAuth()
+    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
@@ -60,6 +61,12 @@ function App() {
 
     if (window.location.pathname === '/register-guardian') {
         return <GuardianRegistration />
+    }
+
+    if (window.location.pathname === '/register-secretary') {
+        // Dynamic import handled by component
+        const SecretaryRegistration = require('./components/SecretaryRegistration').SecretaryRegistration
+        return <SecretaryRegistration />
     }
 
     if (window.location.pathname === '/reset-password') {
@@ -122,6 +129,21 @@ function App() {
             }
         }
 
+        // SECRETARIO routes - limited to students and payments
+        if (isSecretario) {
+            switch (currentPage) {
+                case 'dashboard':
+                    return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
+                case 'students':
+                    return <StudentsPage searchQuery={searchQuery} />
+                case 'propinas':
+                case 'tuition':
+                    return <TuitionPaymentsPage searchQuery={searchQuery} />
+                default:
+                    return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
+            }
+        }
+
         // Regular user routes
         switch (currentPage) {
             case 'dashboard':
@@ -150,6 +172,8 @@ function App() {
             case 'propinas':
             case 'tuition':
                 return <TuitionPaymentsPage searchQuery={searchQuery} />
+            case 'secretaries':
+                return <SecretariesPage searchQuery={searchQuery} />
             default:
                 return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
         }
