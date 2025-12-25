@@ -4,6 +4,7 @@ import { LoginScreen } from './components/LoginScreen'
 import { DashboardLayout } from './components/DashboardLayout'
 import { PageSkeleton } from './components/ui/PageSkeleton'
 import { isSuperAdmin } from './utils/permissions'
+import { PWAInstallPrompt } from './components/PWAInstallPrompt'
 
 // Lazy load all page components for code splitting
 const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -207,11 +208,14 @@ function App() {
     }
 
     return (
-        <DashboardLayout currentPage={currentPage} onNavigate={handleNavigate} onSearch={handleSearch}>
-            <Suspense fallback={<PageSkeleton variant="dashboard" />}>
-                {renderPage()}
-            </Suspense>
-        </DashboardLayout>
+        <>
+            <DashboardLayout currentPage={currentPage} onNavigate={handleNavigate} onSearch={handleSearch}>
+                <Suspense fallback={<PageSkeleton variant="dashboard" />}>
+                    {renderPage()}
+                </Suspense>
+            </DashboardLayout>
+            <PWAInstallPrompt />
+        </>
     )
 }
 

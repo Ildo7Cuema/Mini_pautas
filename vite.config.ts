@@ -10,8 +10,8 @@ export default defineConfig({
             registerType: 'autoUpdate',
             includeAssets: ['favicon.ico', 'robots.txt', 'apple-touch-icon.png'],
             manifest: {
-                name: 'Mini-Pautas',
-                short_name: 'Mini-Pautas',
+                name: 'EduGest Angola',
+                short_name: 'EduGest',
                 description: 'Sistema de Gestão de Notas para Professores Angolanos',
                 theme_color: '#2563eb',
                 background_color: '#ffffff',
