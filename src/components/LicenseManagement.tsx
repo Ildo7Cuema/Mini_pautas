@@ -1,6 +1,9 @@
 /**
  * @component LicenseManagement
- * @description Modern mobile-first license management for SUPERADMIN
+ * @description Gestão de licenças moderna mobile-first para SUPERADMIN
+ * @tokens [--color-primary, --gradient-primary, --shadow-elevation-2]
+ * @responsive true
+ * @tested-on [375x667, 768x1024, 1440x900]
  */
 
 import React, { useEffect, useState } from 'react'
@@ -150,8 +153,20 @@ export const LicenseManagement: React.FC = () => {
     const formatCurrency = (value: number) => {
         return new Intl.NumberFormat('pt-AO', {
             style: 'currency',
-            currency: 'AOA'
+            currency: 'AOA',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
         }).format(value)
+    }
+
+    const formatCurrencyShort = (value: number) => {
+        if (value >= 1000000) {
+            return `${(value / 1000000).toFixed(1)}M Kz`
+        }
+        if (value >= 1000) {
+            return `${(value / 1000).toFixed(0)}K Kz`
+        }
+        return `${value} Kz`
     }
 
     const formatDate = (dateStr: string) => {
@@ -164,10 +179,26 @@ export const LicenseManagement: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-center">
-                    <div className="w-16 h-16 border-4 border-primary-200 border-t-primary-600 rounded-full animate-spin mx-auto"></div>
-                    <p className="mt-4 text-neutral-600">A carregar licenças...</p>
+            <div className="min-h-screen bg-neutral-50 pb-24 md:pb-8">
+                {/* Header Skeleton */}
+                <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 text-white px-4 py-6 md:px-8">
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                            <div className="h-8 w-48 bg-white/20 rounded-lg animate-pulse mb-2"></div>
+                            <div className="h-4 w-32 bg-white/10 rounded animate-pulse"></div>
+                        </div>
+                        <div className="h-10 w-32 bg-white/20 rounded-xl animate-pulse"></div>
+                    </div>
+                </div>
+                <div className="px-4 md:px-8 -mt-4 space-y-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        {[1, 2, 3, 4, 5].map(i => (
+                            <div key={i} className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 animate-pulse">
+                                <div className="h-4 w-16 bg-neutral-200 rounded mb-2"></div>
+                                <div className="h-8 w-12 bg-neutral-200 rounded"></div>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
         )
@@ -175,16 +206,26 @@ export const LicenseManagement: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-neutral-50 pb-24 md:pb-8">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-primary-700 to-primary-800 text-white px-4 py-6 md:px-8">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl md:text-3xl font-bold">Gestão de Licenças</h1>
-                        <p className="text-primary-200 mt-1 text-sm">Gerir licenças de todas as escolas</p>
+            {/* Header with Gradient */}
+            <div className="bg-gradient-to-r from-emerald-600 via-teal-700 to-cyan-800 text-white px-4 py-6 md:px-8 relative overflow-hidden">
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full translate-y-1/2 -translate-x-1/2"></div>
+                </div>
+
+                <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="animate-fade-in">
+                        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
+                            <span className="text-3xl">📋</span>
+                            <span className="truncate">Gestão de Licenças</span>
+                        </h1>
+                        <p className="text-emerald-100 mt-1 text-sm md:text-base">
+                            Gerir licenças e subscrições
+                        </p>
                     </div>
                     <button
                         onClick={handleOpenCreateModal}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition-all touch-feedback backdrop-blur-sm"
+                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition-all touch-feedback backdrop-blur-sm self-start md:self-auto"
                     >
                         <span className="text-lg">+</span>
                         <span>Nova Licença</span>
@@ -192,34 +233,41 @@ export const LicenseManagement: React.FC = () => {
                 </div>
             </div>
 
-            <div className="px-4 md:px-8 -mt-4 space-y-6">
+            <div className="px-4 md:px-8 -mt-4 space-y-4">
                 {error && (
-                    <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-fade-in">
-                        <p className="text-red-800 text-sm">{error}</p>
+                    <div className="bg-red-50 border border-red-200 rounded-2xl p-4 animate-fade-in">
+                        <div className="flex items-center gap-3">
+                            <span className="text-xl">⚠️</span>
+                            <p className="text-red-800 text-sm flex-1">{error}</p>
+                            <button onClick={loadData} className="text-red-600 font-medium text-sm">Retry</button>
+                        </div>
                     </div>
                 )}
 
-                {/* Stats Dashboard */}
+                {/* Stats Dashboard - Improved Mobile Layout */}
                 {stats && (
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 animate-slide-up">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 md:gap-3 animate-slide-up">
                         <StatCard icon="📊" title="Total" value={stats.total_licencas} color="primary" />
                         <StatCard icon="✅" title="Activas" value={stats.licencas_ativas} color="green" />
                         <StatCard icon="⏰" title="Expiradas" value={stats.licencas_expiradas} color="yellow" />
                         <StatCard icon="🚫" title="Suspensas" value={stats.licencas_suspensas} color="red" />
                         <div className="col-span-2 md:col-span-1">
-                            <StatCard icon="💰" title="Receita (Ano)" value={formatCurrency(stats.receita_ano)} color="purple" isText />
+                            <StatCard icon="💰" title="Receita" value={formatCurrencyShort(stats.receita_ano)} color="purple" isText />
                         </div>
                     </div>
                 )}
 
-                {/* Pricing Configuration */}
+                {/* Pricing Configuration - Improved Cards */}
                 <div className="animate-slide-up" style={{ animationDelay: '100ms' }}>
-                    <h2 className="text-lg font-bold text-neutral-800 mb-4">Configuração de Preços</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <h2 className="text-base md:text-lg font-bold text-neutral-800 mb-3 flex items-center gap-2">
+                        <span>💳</span>
+                        Planos de Preços
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                         {prices.map((price, index) => (
                             <div
                                 key={price.id}
-                                className="relative bg-white rounded-2xl p-5 border-2 border-neutral-100 hover:border-primary-200 hover:shadow-lg transition-all"
+                                className="relative bg-white rounded-2xl p-4 border-2 border-neutral-100 hover:border-emerald-200 hover:shadow-lg transition-all"
                                 style={{ animationDelay: `${index * 50}ms` }}
                             >
                                 <button
@@ -227,43 +275,44 @@ export const LicenseManagement: React.FC = () => {
                                         setEditingPrice(price)
                                         setShowPriceEditModal(true)
                                     }}
-                                    className="absolute top-3 right-3 p-2 text-neutral-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                    className="absolute top-3 right-3 p-2 text-neutral-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
                                     title="Editar preço"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                                     </svg>
                                 </button>
-                                <h3 className="text-lg font-bold text-neutral-800 capitalize">{price.plano}</h3>
-                                <p className="text-2xl font-extrabold text-primary-600 mt-2">{formatCurrency(price.valor)}</p>
+                                <h3 className="text-base font-bold text-neutral-800 capitalize">{price.plano}</h3>
+                                <p className="text-xl md:text-2xl font-extrabold text-emerald-600 mt-1 truncate">{formatCurrency(price.valor)}</p>
                                 {price.desconto_percentual > 0 && (
-                                    <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
-                                        💰 {price.desconto_percentual}% desconto
+                                    <span className="inline-block mt-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-bold rounded-full">
+                                        -{price.desconto_percentual}%
                                     </span>
                                 )}
-                                <p className="text-sm text-neutral-500 mt-2">{price.descricao}</p>
+                                <p className="text-xs text-neutral-500 mt-2 line-clamp-2">{price.descricao}</p>
                             </div>
                         ))}
                     </div>
                 </div>
 
-                {/* Filters */}
-                <div className="bg-white rounded-xl p-4 shadow-sm border border-neutral-100 animate-slide-up" style={{ animationDelay: '150ms' }}>
-                    <div className="flex flex-col md:flex-row gap-3">
-                        <div className="flex-1">
+                {/* Filters - Improved Mobile */}
+                <div className="bg-white rounded-2xl p-3 shadow-sm border border-neutral-100 animate-slide-up" style={{ animationDelay: '150ms' }}>
+                    <div className="flex flex-col gap-3">
+                        <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400">🔍</span>
                             <input
                                 type="text"
-                                placeholder="🔍 Pesquisar escola..."
+                                placeholder="Pesquisar escola..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full px-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all"
+                                className="w-full pl-11 pr-4 py-2.5 border-0 bg-neutral-50 rounded-xl focus:ring-2 focus:ring-emerald-500 transition-all text-sm"
                             />
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-hide">
                             <select
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
-                                className="px-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500"
+                                className="flex-1 min-w-[120px] px-3 py-2 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm bg-white"
                             >
                                 <option value="all">Todos Estados</option>
                                 <option value="ativa">✅ Activas</option>
@@ -274,7 +323,7 @@ export const LicenseManagement: React.FC = () => {
                             <select
                                 value={filterPlano}
                                 onChange={(e) => setFilterPlano(e.target.value)}
-                                className="px-4 py-2.5 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-primary-500"
+                                className="flex-1 min-w-[120px] px-3 py-2 border border-neutral-200 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm bg-white"
                             >
                                 <option value="all">Todos Planos</option>
                                 <option value="trimestral">Trimestral</option>
@@ -287,32 +336,36 @@ export const LicenseManagement: React.FC = () => {
 
                 {/* License List */}
                 <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-                    {/* Mobile Cards */}
+                    {/* Mobile Cards - Improved Layout */}
                     <div className="md:hidden space-y-3">
-                        {filteredLicenses.map((license) => {
+                        {filteredLicenses.map((license, index) => {
                             const escola = (license as any).escolas
                             return (
-                                <div key={license.id} className="bg-white rounded-xl p-4 shadow-sm border border-neutral-100">
-                                    <div className="flex justify-between items-start mb-3">
-                                        <div>
-                                            <p className="font-bold text-neutral-800">{escola?.nome || 'N/A'}</p>
-                                            <p className="text-xs text-neutral-500">{escola?.codigo_escola}</p>
+                                <div
+                                    key={license.id}
+                                    className="bg-white rounded-2xl p-4 shadow-sm border border-neutral-100 animate-slide-up"
+                                    style={{ animationDelay: `${index * 30}ms` }}
+                                >
+                                    <div className="flex justify-between items-start gap-2 mb-3">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-neutral-800 truncate">{escola?.nome || 'N/A'}</p>
+                                            <p className="text-xs text-neutral-500 font-mono">{escola?.codigo_escola}</p>
                                         </div>
                                         <EstadoBadge estado={license.estado} />
                                     </div>
-                                    <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                                        <div>
+                                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                                        <div className="bg-neutral-50 rounded-lg p-2">
                                             <p className="text-neutral-500 text-xs">Plano</p>
-                                            <p className="font-semibold capitalize">{license.plano}</p>
+                                            <p className="font-semibold capitalize text-sm">{license.plano}</p>
                                         </div>
-                                        <div>
+                                        <div className="bg-neutral-50 rounded-lg p-2">
                                             <p className="text-neutral-500 text-xs">Valor</p>
-                                            <p className="font-semibold">{formatCurrency(license.valor)}</p>
+                                            <p className="font-semibold text-sm truncate">{formatCurrencyShort(license.valor)}</p>
                                         </div>
-                                        <div className="col-span-2">
-                                            <p className="text-neutral-500 text-xs">Validade</p>
-                                            <p className="font-medium">{formatDate(license.data_inicio)} - {formatDate(license.data_fim)}</p>
-                                        </div>
+                                    </div>
+                                    <div className="bg-neutral-50 rounded-lg p-2 mb-3">
+                                        <p className="text-neutral-500 text-xs">Validade</p>
+                                        <p className="font-medium text-sm">{formatDate(license.data_inicio)} → {formatDate(license.data_fim)}</p>
                                     </div>
                                     <div className="flex gap-2 pt-3 border-t border-neutral-100">
                                         {license.estado === 'ativa' ? (
@@ -321,14 +374,14 @@ export const LicenseManagement: React.FC = () => {
                                                     setSuspendingLicense(license)
                                                     setShowSuspendModal(true)
                                                 }}
-                                                className="flex-1 py-2 text-sm text-red-600 bg-red-50 rounded-lg font-medium"
+                                                className="flex-1 py-2.5 text-sm text-red-600 bg-red-50 rounded-xl font-medium touch-feedback"
                                             >
                                                 Suspender
                                             </button>
                                         ) : license.estado === 'suspensa' ? (
                                             <button
                                                 onClick={() => handleReactivate(license)}
-                                                className="flex-1 py-2 text-sm text-green-600 bg-green-50 rounded-lg font-medium"
+                                                className="flex-1 py-2.5 text-sm text-green-600 bg-green-50 rounded-xl font-medium touch-feedback"
                                             >
                                                 Reactivar
                                             </button>
@@ -337,70 +390,84 @@ export const LicenseManagement: React.FC = () => {
                                 </div>
                             )
                         })}
+
+                        {filteredLicenses.length === 0 && (
+                            <div className="text-center py-12 bg-white rounded-2xl shadow-sm border border-neutral-100">
+                                <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
+                                    <span className="text-3xl">📋</span>
+                                </div>
+                                <p className="text-neutral-500">Nenhuma licença encontrada</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Desktop Table */}
-                    <div className="hidden md:block bg-white rounded-xl shadow-sm border border-neutral-100 overflow-hidden">
-                        <table className="min-w-full">
-                            <thead className="bg-neutral-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Escola</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Plano</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Validade</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Valor</th>
-                                    <th className="px-6 py-3 text-left text-xs font-semibold text-neutral-500 uppercase tracking-wider">Estado</th>
-                                    <th className="px-6 py-3 text-right text-xs font-semibold text-neutral-500 uppercase tracking-wider">Acções</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-neutral-100">
-                                {filteredLicenses.map((license) => {
-                                    const escola = (license as any).escolas
-                                    return (
-                                        <tr key={license.id} className="hover:bg-neutral-50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="font-medium text-neutral-800">{escola?.nome || 'N/A'}</div>
-                                                <div className="text-xs text-neutral-500">{escola?.codigo_escola}</div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <PlanoBadge plano={license.plano} />
-                                            </td>
-                                            <td className="px-6 py-4 text-sm text-neutral-600">
-                                                {formatDate(license.data_inicio)} - {formatDate(license.data_fim)}
-                                            </td>
-                                            <td className="px-6 py-4 text-sm font-semibold text-neutral-800">
-                                                {formatCurrency(license.valor)}
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <EstadoBadge estado={license.estado} />
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                {license.estado === 'ativa' ? (
-                                                    <button
-                                                        onClick={() => {
-                                                            setSuspendingLicense(license)
-                                                            setShowSuspendModal(true)
-                                                        }}
-                                                        className="text-red-600 hover:text-red-800 font-medium text-sm"
-                                                    >
-                                                        Suspender
-                                                    </button>
-                                                ) : license.estado === 'suspensa' ? (
-                                                    <button
-                                                        onClick={() => handleReactivate(license)}
-                                                        className="text-green-600 hover:text-green-800 font-medium text-sm"
-                                                    >
-                                                        Reactivar
-                                                    </button>
-                                                ) : null}
-                                            </td>
-                                        </tr>
-                                    )
-                                })}
-                            </tbody>
-                        </table>
+                    <div className="hidden md:block bg-white rounded-2xl shadow-sm border border-neutral-100 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="table-excel w-full">
+                                <thead>
+                                    <tr>
+                                        <th className="text-left">Escola</th>
+                                        <th className="text-center">Plano</th>
+                                        <th className="text-left">Validade</th>
+                                        <th className="text-right">Valor</th>
+                                        <th className="text-center">Estado</th>
+                                        <th className="text-right">Acções</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredLicenses.map((license) => {
+                                        const escola = (license as any).escolas
+                                        return (
+                                            <tr key={license.id} className="hover:bg-neutral-50 transition-colors">
+                                                <td className="text-left">
+                                                    <div className="font-medium text-neutral-800">{escola?.nome || 'N/A'}</div>
+                                                    <div className="text-xs text-neutral-500 font-mono">{escola?.codigo_escola}</div>
+                                                </td>
+                                                <td className="text-center">
+                                                    <PlanoBadge plano={license.plano} />
+                                                </td>
+                                                <td className="text-left text-sm text-neutral-600">
+                                                    {formatDate(license.data_inicio)} - {formatDate(license.data_fim)}
+                                                </td>
+                                                <td className="text-right text-sm font-semibold text-neutral-800">
+                                                    {formatCurrency(license.valor)}
+                                                </td>
+                                                <td className="text-center">
+                                                    <EstadoBadge estado={license.estado} />
+                                                </td>
+                                                <td className="text-right">
+                                                    {license.estado === 'ativa' ? (
+                                                        <button
+                                                            onClick={() => {
+                                                                setSuspendingLicense(license)
+                                                                setShowSuspendModal(true)
+                                                            }}
+                                                            className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors"
+                                                        >
+                                                            Suspender
+                                                        </button>
+                                                    ) : license.estado === 'suspensa' ? (
+                                                        <button
+                                                            onClick={() => handleReactivate(license)}
+                                                            className="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg font-medium transition-colors"
+                                                        >
+                                                            Reactivar
+                                                        </button>
+                                                    ) : null}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
                         {filteredLicenses.length === 0 && (
-                            <div className="text-center py-12 text-neutral-500">
-                                📋 Nenhuma licença encontrada
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
+                                    <span className="text-3xl">📋</span>
+                                </div>
+                                <p className="text-neutral-500">Nenhuma licença encontrada</p>
                             </div>
                         )}
                     </div>
@@ -412,7 +479,16 @@ export const LicenseManagement: React.FC = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
                     <div className="bg-white w-full md:max-w-lg md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up max-h-[90vh] overflow-y-auto">
                         <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
-                        <h2 className="text-xl font-bold text-neutral-800 mb-6">✨ Nova Licença Manual</h2>
+
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                <span className="text-2xl">✨</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-neutral-800">Nova Licença</h2>
+                                <p className="text-sm text-neutral-500">Criar licença manualmente</p>
+                            </div>
+                        </div>
 
                         <div className="space-y-4">
                             <div>
@@ -420,7 +496,7 @@ export const LicenseManagement: React.FC = () => {
                                 <select
                                     value={selectedEscola}
                                     onChange={(e) => setSelectedEscola(e.target.value)}
-                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500"
+                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm"
                                 >
                                     <option value="">Seleccione uma escola</option>
                                     {escolas.map(escola => (
@@ -436,7 +512,7 @@ export const LicenseManagement: React.FC = () => {
                                 <select
                                     value={selectedPlano}
                                     onChange={(e) => setSelectedPlano(e.target.value as PlanoLicenca)}
-                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500"
+                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm"
                                 >
                                     {prices.length > 0 ? (
                                         prices.map(price => (
@@ -461,7 +537,7 @@ export const LicenseManagement: React.FC = () => {
                                     value={customValor}
                                     onChange={(e) => setCustomValor(e.target.value)}
                                     placeholder="Usar valor padrão do plano"
-                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500"
+                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm"
                                 />
                             </div>
 
@@ -472,7 +548,7 @@ export const LicenseManagement: React.FC = () => {
                                     onChange={(e) => setCreateMotivo(e.target.value)}
                                     placeholder="Motivo da criação manual..."
                                     rows={2}
-                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500"
+                                    className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-emerald-500 text-sm"
                                 />
                             </div>
                         </div>
@@ -480,16 +556,16 @@ export const LicenseManagement: React.FC = () => {
                         <div className="flex gap-3 mt-6">
                             <button
                                 onClick={() => setShowCreateModal(false)}
-                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50"
+                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleCreateLicense}
                                 disabled={creating || !selectedEscola}
-                                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold disabled:opacity-50"
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all touch-feedback"
                             >
-                                {creating ? 'Criando...' : '✓ Criar Licença'}
+                                {creating ? 'A criar...' : '✓ Criar'}
                             </button>
                         </div>
                     </div>
@@ -501,20 +577,34 @@ export const LicenseManagement: React.FC = () => {
                 <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
                     <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
                         <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
-                        <h2 className="text-xl font-bold text-neutral-800 mb-2">🚫 Suspender Licença</h2>
-                        <p className="text-neutral-600 mb-4">
-                            Escola: <strong>{(suspendingLicense as any).escolas?.nome}</strong>
-                        </p>
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                <span className="text-2xl">🚫</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-neutral-800">Suspender Licença</h2>
+                                <p className="text-sm text-neutral-500 truncate max-w-[200px]">{(suspendingLicense as any).escolas?.nome}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+                            <p className="text-sm text-red-800">
+                                ⚠️ A escola perderá acesso ao sistema até a licença ser reactivada.
+                            </p>
+                        </div>
+
                         <div className="mb-4">
-                            <label className="block text-sm font-medium text-neutral-700 mb-2">Motivo da Suspensão *</label>
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">Motivo *</label>
                             <textarea
                                 value={suspendMotivo}
                                 onChange={(e) => setSuspendMotivo(e.target.value)}
                                 rows={3}
-                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-red-500"
+                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-red-500 text-sm"
                                 placeholder="Descreva o motivo..."
                             />
                         </div>
+
                         <div className="flex gap-3">
                             <button
                                 onClick={() => {
@@ -522,13 +612,14 @@ export const LicenseManagement: React.FC = () => {
                                     setSuspendingLicense(null)
                                     setSuspendMotivo('')
                                 }}
-                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50"
+                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
                             >
                                 Cancelar
                             </button>
                             <button
                                 onClick={handleSuspend}
-                                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold"
+                                disabled={!suspendMotivo.trim()}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all touch-feedback"
                             >
                                 Suspender
                             </button>
@@ -558,20 +649,20 @@ export const LicenseManagement: React.FC = () => {
 // Helper Components
 const StatCard: React.FC<{ icon: string; title: string; value: number | string; color: string; isText?: boolean }> = ({ icon, title, value, color }) => {
     const colorMap: Record<string, string> = {
-        primary: 'from-primary-500 to-primary-600',
-        green: 'from-green-500 to-green-600',
-        yellow: 'from-yellow-500 to-amber-600',
+        primary: 'from-blue-500 to-blue-600',
+        green: 'from-emerald-500 to-emerald-600',
+        yellow: 'from-amber-500 to-amber-600',
         red: 'from-red-500 to-red-600',
         purple: 'from-purple-500 to-purple-600'
     }
 
     return (
-        <div className="bg-white rounded-xl p-4 shadow-sm border border-neutral-100 hover:shadow-md transition-shadow">
-            <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{icon}</span>
-                <span className="text-xs text-neutral-500 font-medium">{title}</span>
+        <div className="bg-white rounded-2xl p-3 md:p-4 shadow-sm border border-neutral-100 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 mb-1">
+                <span className="text-base md:text-lg">{icon}</span>
+                <span className="text-xs text-neutral-500 font-medium truncate">{title}</span>
             </div>
-            <p className={`text-xl md:text-2xl font-bold bg-gradient-to-r ${colorMap[color]} bg-clip-text text-transparent`}>
+            <p className={`text-lg md:text-xl font-bold bg-gradient-to-r ${colorMap[color]} bg-clip-text text-transparent truncate`}>
                 {value}
             </p>
         </div>
@@ -582,7 +673,7 @@ const PlanoBadge: React.FC<{ plano: string }> = ({ plano }) => {
     const colors: Record<string, string> = {
         trimestral: 'bg-blue-100 text-blue-700',
         semestral: 'bg-purple-100 text-purple-700',
-        anual: 'bg-green-100 text-green-700'
+        anual: 'bg-emerald-100 text-emerald-700'
     }
 
     return (
@@ -594,8 +685,8 @@ const PlanoBadge: React.FC<{ plano: string }> = ({ plano }) => {
 
 const EstadoBadge: React.FC<{ estado: string }> = ({ estado }) => {
     const config: Record<string, { bg: string, text: string, icon: string }> = {
-        ativa: { bg: 'bg-green-100', text: 'text-green-700', icon: '✅' },
-        expirada: { bg: 'bg-yellow-100', text: 'text-yellow-700', icon: '⏰' },
+        ativa: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: '✅' },
+        expirada: { bg: 'bg-amber-100', text: 'text-amber-700', icon: '⏰' },
         suspensa: { bg: 'bg-red-100', text: 'text-red-700', icon: '🚫' },
         cancelada: { bg: 'bg-neutral-100', text: 'text-neutral-600', icon: '❌' }
     }
@@ -603,9 +694,9 @@ const EstadoBadge: React.FC<{ estado: string }> = ({ estado }) => {
     const { bg, text, icon } = config[estado] || config.cancelada
 
     return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${bg} ${text} text-xs font-semibold rounded-full`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 ${bg} ${text} text-xs font-semibold rounded-full whitespace-nowrap`}>
             <span>{icon}</span>
-            {estado.charAt(0).toUpperCase() + estado.slice(1)}
+            <span className="hidden sm:inline">{estado.charAt(0).toUpperCase() + estado.slice(1)}</span>
         </span>
     )
 }
