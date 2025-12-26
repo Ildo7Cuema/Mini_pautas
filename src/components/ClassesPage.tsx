@@ -43,7 +43,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
     const [turmaToDelete, setTurmaToDelete] = useState<string | null>(null)
     const [formData, setFormData] = useState({
         nome: '',
-        ano_lectivo: new Date().getFullYear(),
+        ano_lectivo: String(new Date().getFullYear()),
         trimestre: 1,
         nivel_ensino: 'Ensino Secundário',
     })
@@ -141,7 +141,8 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
 
                 // Auto-generate codigo_turma (e.g., "10A-2025-T1")
                 const nomeSimplificado = formData.nome.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)
-                const codigo_turma = `${nomeSimplificado}-${formData.ano_lectivo}-T${formData.trimestre}`
+                const anoSimplificado = formData.ano_lectivo.replace('/', '-')
+                const codigo_turma = `${nomeSimplificado}-${anoSimplificado}-T${formData.trimestre}`
 
                 // Create turma
                 const { error: insertError } = await supabase
@@ -167,7 +168,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
             setSelectedTurmaId(null)
             setFormData({
                 nome: '',
-                ano_lectivo: new Date().getFullYear(),
+                ano_lectivo: String(new Date().getFullYear()),
                 trimestre: 1,
                 nivel_ensino: 'Ensino Secundário',
             })
@@ -186,7 +187,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
         setSelectedTurmaId(turma.id)
         setFormData({
             nome: turma.nome,
-            ano_lectivo: parseInt(turma.ano_lectivo),
+            ano_lectivo: turma.ano_lectivo,
             trimestre: turma.trimestre,
             nivel_ensino: 'Ensino Secundário', // Default since we don't store this in the Turma interface
         })
@@ -232,7 +233,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
         setSelectedTurmaId(null)
         setFormData({
             nome: '',
-            ano_lectivo: new Date().getFullYear(),
+            ano_lectivo: String(new Date().getFullYear()),
             trimestre: 1,
             nivel_ensino: 'Ensino Secundário',
         })
@@ -476,10 +477,10 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                     <div className="input-glow rounded-xl">
                                         <Input
                                             label="Ano Lectivo"
-                                            type="number"
+                                            type="text"
                                             value={formData.ano_lectivo}
-                                            onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
-                                            placeholder="2025"
+                                            onChange={(e) => setFormData({ ...formData, ano_lectivo: e.target.value })}
+                                            placeholder="Ex: 2025 ou 2025/2026"
                                             required
                                         />
                                     </div>
