@@ -14,7 +14,6 @@ import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
-import { ProfileSetupModal } from './ProfileSetupModal'
 import { ConfirmModal } from './ui/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -32,11 +31,10 @@ interface ClassesPageProps {
 }
 
 export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuery = '' }) => {
-    const { isProfessor } = useAuth()
+    const { isProfessor, isEscola, escolaProfile, professorProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [loading, setLoading] = useState(true)
     const [showModal, setShowModal] = useState(false)
-    const [showProfileSetup, setShowProfileSetup] = useState(false)
     const [showConfirmDelete, setShowConfirmDelete] = useState(false)
     const [editMode, setEditMode] = useState(false)
     const [selectedTurmaId, setSelectedTurmaId] = useState<string | null>(null)
@@ -50,6 +48,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
+
 
     useEffect(() => {
         loadTurmas()
@@ -117,26 +116,56 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                 console.log('🔍 DEBUG - User:', user)
                 if (!user) throw new Error('Usuário não autenticado')
 
-                // Get professor profile with escola_id
-                console.log('🔍 DEBUG - Buscando professor com user_id:', user.id)
-                const { data: professor, error: profError } = await supabase
-                    .from('professores')
-                    .select('id, escola_id')
-                    .eq('user_id', user.id)
-                    .maybeSingle()
+                // Determine professor_id and escola_id based on user type
+                let professorId: string | null = null
+                let escolaId: string | null = null
 
-                console.log('🔍 DEBUG - Resposta professor:', { professor, profError })
+                if (isEscola && escolaProfile) {
+                    // Escola creating turma - need to get a professor from this escola
+                    escolaId = escolaProfile.id
+                    console.log('🔍 DEBUG - Escola criando turma, escola_id:', escolaId)
 
-                if (profError) {
-                    console.error('❌ ERRO ao buscar professor:', profError)
-                    throw profError
-                }
+                    // Get the first active professor of this escola
+                    const { data: firstProfessor, error: profError } = await supabase
+                        .from('professores')
+                        .select('id')
+                        .eq('escola_id', escolaId)
+                        .eq('ativo', true)
+                        .limit(1)
+                        .single()
 
-                if (!professor) {
-                    // Show profile setup modal instead of throwing error
-                    setShowProfileSetup(true)
-                    setShowModal(false)
-                    return
+                    if (profError || !firstProfessor) {
+                        throw new Error('É necessário cadastrar pelo menos um professor antes de criar turmas.')
+                    }
+                    professorId = firstProfessor.id
+                    console.log('🔍 DEBUG - Professor encontrado:', professorId)
+                } else if (isProfessor && professorProfile) {
+                    // Professor creating turma - use their own profile
+                    professorId = professorProfile.id
+                    escolaId = professorProfile.escola_id
+                    console.log('🔍 DEBUG - Professor criando turma:', { professorId, escolaId })
+                } else {
+                    // Fallback: try to get professor profile from database
+                    console.log('🔍 DEBUG - Buscando professor com user_id:', user.id)
+                    const { data: professor, error: profError } = await supabase
+                        .from('professores')
+                        .select('id, escola_id')
+                        .eq('user_id', user.id)
+                        .maybeSingle()
+
+                    console.log('🔍 DEBUG - Resposta professor:', { professor, profError })
+
+                    if (profError) {
+                        console.error('❌ ERRO ao buscar professor:', profError)
+                        throw profError
+                    }
+
+                    if (!professor) {
+                        throw new Error('Perfil não encontrado. Por favor, complete seu perfil nas configurações.')
+                    }
+
+                    professorId = professor.id
+                    escolaId = professor.escola_id
                 }
 
                 // Auto-generate codigo_turma (e.g., "10A-2025-T1")
@@ -153,8 +182,8 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                         trimestre: formData.trimestre,
                         nivel_ensino: formData.nivel_ensino,
                         codigo_turma: codigo_turma,
-                        professor_id: professor.id,
-                        escola_id: professor.escola_id,
+                        professor_id: professorId,
+                        escola_id: escolaId,
                         capacidade_maxima: 40,
                     })
 
@@ -177,6 +206,8 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
             console.error('❌ Erro ao criar/atualizar turma:', err)
             const errorMessage = err instanceof Error ? err.message : editMode ? 'Erro ao atualizar turma' : 'Erro ao criar turma'
             setError(translateError(errorMessage))
+            // Keep modal open so user can see the error
+            // setShowModal(false) - removed to keep modal open on error
         } finally {
             setSubmitting(false)
         }
@@ -451,6 +482,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                         setShowModal(false)
                                         setEditMode(false)
                                         setSelectedTurmaId(null)
+                                        setError(null)
                                     }}
                                     className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
                                 >
@@ -461,6 +493,50 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                             </div>
                         </CardHeader>
                         <CardBody className="p-6 space-y-6">
+                            {/* Error Message */}
+                            {error && (
+                                <div className="bg-red-50 border border-red-200 rounded-xl p-4 animate-slide-down">
+                                    <div className="flex items-start gap-3">
+                                        <div className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-500">
+                                            <svg className="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                            </svg>
+                                        </div>
+                                        <div className="flex-1">
+                                            <h4 className="text-sm font-semibold text-red-800 mb-1">Erro ao criar turma</h4>
+                                            <p className="text-sm text-red-700">{error}</p>
+                                            {error.includes('professor') && (
+                                                <div className="mt-3 pt-3 border-t border-red-200">
+                                                    <p className="text-sm text-red-600 mb-2">
+                                                        <strong>O que fazer:</strong>
+                                                    </p>
+                                                    <ol className="text-sm text-red-700 space-y-1 ml-4 list-decimal">
+                                                        <li>Cadastre pelo menos um professor</li>
+                                                        <li>Depois volte aqui para criar a turma</li>
+                                                    </ol>
+                                                    {onNavigate && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowModal(false)
+                                                                setError(null)
+                                                                onNavigate('teachers')
+                                                            }}
+                                                            className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-red-700 hover:text-red-800 hover:underline"
+                                                        >
+                                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                                            </svg>
+                                                            Ir para Professores agora
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <form onSubmit={handleSubmit} className="space-y-5">
                                 <div className="space-y-4">
                                     <div className="input-glow rounded-xl">
@@ -482,6 +558,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                             onChange={(e) => setFormData({ ...formData, ano_lectivo: e.target.value })}
                                             placeholder="Ex: 2025 ou 2025/2026"
                                             required
+                                            helpText="Ano ou período lectivo (ex: 2025 ou 2025/2026)"
                                         />
                                     </div>
 
@@ -515,6 +592,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                             setShowModal(false)
                                             setEditMode(false)
                                             setSelectedTurmaId(null)
+                                            setError(null)
                                         }}
                                         className="flex-1"
                                     >
@@ -534,17 +612,6 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                         </CardBody>
                     </Card>
                 </div>
-            )}
-
-            {/* Profile Setup Modal */}
-            {showProfileSetup && (
-                <ProfileSetupModal
-                    onComplete={() => {
-                        setShowProfileSetup(false)
-                        setSuccess('Perfil criado com sucesso! Agora pode criar turmas.')
-                        loadTurmas()
-                    }}
-                />
             )}
 
             {/* Confirm Delete Modal */}

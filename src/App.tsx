@@ -1,10 +1,11 @@
-import { useState, lazy, Suspense } from 'react'
+import { useState, useEffect, lazy, Suspense } from 'react'
 import { useAuth } from './contexts/AuthContext'
 import { LoginScreen } from './components/LoginScreen'
 import { DashboardLayout } from './components/DashboardLayout'
 import { PageSkeleton } from './components/ui/PageSkeleton'
 import { isSuperAdmin } from './utils/permissions'
 import { PWAInstallPrompt } from './components/PWAInstallPrompt'
+import { EscolaProfileSetupModal } from './components/EscolaProfileSetupModal'
 
 // Lazy load all page components for code splitting
 const Dashboard = lazy(() => import('./components/Dashboard').then(m => ({ default: m.Dashboard })))
@@ -33,10 +34,21 @@ const SecretariesPage = lazy(() => import('./components/SecretariesPage').then(m
 const SecretaryRegistration = lazy(() => import('./components/SecretaryRegistration').then(m => ({ default: m.SecretaryRegistration })))
 
 function App() {
-    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, profile } = useAuth()
+    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, escolaProfile, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
+    const [showEscolaSetup, setShowEscolaSetup] = useState(false)
+
+    // Check if escola needs to complete profile setup
+    useEffect(() => {
+        if (user && isEscola && escolaProfile) {
+            const config = escolaProfile.configuracoes as Record<string, any> | null
+            if (!config?.perfil_configurado) {
+                setShowEscolaSetup(true)
+            }
+        }
+    }, [user, isEscola, escolaProfile])
 
     const isSuperAdminUser = profile ? isSuperAdmin(profile) : false
 
@@ -205,6 +217,15 @@ function App() {
 
     const handleSearch = (query: string) => {
         setSearchQuery(query)
+    }
+
+    // Show profile setup modal if escola profile is not configured - blocks access to dashboard
+    if (showEscolaSetup) {
+        return (
+            <EscolaProfileSetupModal
+                onComplete={() => setShowEscolaSetup(false)}
+            />
+        )
     }
 
     return (
