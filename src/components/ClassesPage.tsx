@@ -496,8 +496,6 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                             >
                                                 <option value="Ensino Primário">Ensino Primário</option>
                                                 <option value="Ensino Secundário">Ensino Secundário</option>
-                                                <option value="Ensino Médio">Ensino Médio</option>
-                                                <option value="Ensino Técnico">Ensino Técnico</option>
                                             </select>
                                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
                                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
