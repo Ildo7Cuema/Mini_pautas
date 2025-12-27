@@ -79,16 +79,23 @@ export async function fetchAllEscolas(filters?: {
     provincia?: string
     municipio?: string
     search?: string
+    needsAttention?: boolean
 }): Promise<Escola[]> {
     try {
         let query = supabase.from('escolas').select('*')
 
-        if (filters?.ativo !== undefined) {
-            query = query.eq('ativo', filters.ativo)
-        }
+        // If needsAttention filter is active, we need to fetch schools that are inactive OR blocked
+        if (filters?.needsAttention) {
+            // Use OR filter: ativo = false OR bloqueado = true
+            query = query.or('ativo.eq.false,bloqueado.eq.true')
+        } else {
+            if (filters?.ativo !== undefined) {
+                query = query.eq('ativo', filters.ativo)
+            }
 
-        if (filters?.bloqueado !== undefined) {
-            query = query.eq('bloqueado', filters.bloqueado)
+            if (filters?.bloqueado !== undefined) {
+                query = query.eq('bloqueado', filters.bloqueado)
+            }
         }
 
         if (filters?.provincia) {
@@ -113,6 +120,7 @@ export async function fetchAllEscolas(filters?: {
         throw error
     }
 }
+
 
 /**
  * Activate a school

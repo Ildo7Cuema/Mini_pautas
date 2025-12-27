@@ -10,12 +10,16 @@ import React, { useEffect, useState } from 'react'
 import { fetchAllEscolas, activateEscola, deactivateEscola, blockEscola, unblockEscola } from '../utils/superadmin'
 import type { Escola } from '../types'
 
-export const EscolaManagement: React.FC = () => {
+interface EscolaManagementProps {
+    initialFilter?: 'all' | 'active' | 'inactive' | 'blocked' | 'attention'
+}
+
+export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilter }) => {
     const [escolas, setEscolas] = useState<Escola[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [searchQuery, setSearchQuery] = useState('')
-    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'blocked'>('all')
+    const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'inactive' | 'blocked' | 'attention'>(initialFilter || 'all')
     const [selectedEscola, setSelectedEscola] = useState<Escola | null>(null)
     const [showBlockModal, setShowBlockModal] = useState(false)
     const [blockReason, setBlockReason] = useState('')
@@ -38,8 +42,12 @@ export const EscolaManagement: React.FC = () => {
                 filters.bloqueado = false
             } else if (filterStatus === 'inactive') {
                 filters.ativo = false
+                filters.bloqueado = false
             } else if (filterStatus === 'blocked') {
                 filters.bloqueado = true
+            } else if (filterStatus === 'attention') {
+                // Attention filter: fetch all and filter client-side for inactive OR blocked
+                filters.needsAttention = true
             }
 
             const data = await fetchAllEscolas(filters)
@@ -135,7 +143,8 @@ export const EscolaManagement: React.FC = () => {
         total: escolas.length,
         active: escolas.filter(e => e.ativo && !e.bloqueado).length,
         inactive: escolas.filter(e => !e.ativo && !e.bloqueado).length,
-        blocked: escolas.filter(e => e.bloqueado).length
+        blocked: escolas.filter(e => e.bloqueado).length,
+        attention: escolas.filter(e => !e.ativo || e.bloqueado).length
     }
 
     return (
@@ -169,11 +178,12 @@ export const EscolaManagement: React.FC = () => {
 
             <div className="px-4 md:px-8 -mt-4 space-y-4">
                 {/* Mini Stats Cards */}
-                <div className="grid grid-cols-4 gap-2 md:gap-3">
+                <div className="grid grid-cols-5 gap-2 md:gap-3">
                     <MiniStatCard label="Total" value={statsCount.total} color="blue" active={filterStatus === 'all'} onClick={() => setFilterStatus('all')} />
                     <MiniStatCard label="Activas" value={statsCount.active} color="green" active={filterStatus === 'active'} onClick={() => setFilterStatus('active')} />
                     <MiniStatCard label="Inactivas" value={statsCount.inactive} color="yellow" active={filterStatus === 'inactive'} onClick={() => setFilterStatus('inactive')} />
                     <MiniStatCard label="Bloqueadas" value={statsCount.blocked} color="red" active={filterStatus === 'blocked'} onClick={() => setFilterStatus('blocked')} />
+                    <MiniStatCard label="Atenção" value={statsCount.attention} color="orange" active={filterStatus === 'attention'} onClick={() => setFilterStatus('attention')} />
                 </div>
 
                 {/* Search */}
@@ -493,7 +503,7 @@ export const EscolaManagement: React.FC = () => {
 interface MiniStatCardProps {
     label: string
     value: number
-    color: 'blue' | 'green' | 'yellow' | 'red'
+    color: 'blue' | 'green' | 'yellow' | 'red' | 'orange'
     active: boolean
     onClick: () => void
 }
@@ -503,7 +513,8 @@ const MiniStatCard: React.FC<MiniStatCardProps> = ({ label, value, color, active
         blue: { bg: 'bg-blue-500', activeBg: 'bg-blue-600', text: 'text-blue-600', border: 'border-blue-200' },
         green: { bg: 'bg-emerald-500', activeBg: 'bg-emerald-600', text: 'text-emerald-600', border: 'border-emerald-200' },
         yellow: { bg: 'bg-amber-500', activeBg: 'bg-amber-600', text: 'text-amber-600', border: 'border-amber-200' },
-        red: { bg: 'bg-red-500', activeBg: 'bg-red-600', text: 'text-red-600', border: 'border-red-200' }
+        red: { bg: 'bg-red-500', activeBg: 'bg-red-600', text: 'text-red-600', border: 'border-red-200' },
+        orange: { bg: 'bg-orange-500', activeBg: 'bg-orange-600', text: 'text-orange-600', border: 'border-orange-200' }
     }
 
     const colors = colorMap[color]
@@ -512,8 +523,8 @@ const MiniStatCard: React.FC<MiniStatCardProps> = ({ label, value, color, active
         <button
             onClick={onClick}
             className={`p-3 rounded-2xl transition-all touch-feedback ${active
-                    ? `${colors.activeBg} text-white shadow-lg`
-                    : `bg-white border-2 ${colors.border} hover:shadow-md`
+                ? `${colors.activeBg} text-white shadow-lg`
+                : `bg-white border-2 ${colors.border} hover:shadow-md`
                 }`}
         >
             <p className={`text-xl md:text-2xl font-bold ${active ? 'text-white' : colors.text}`}>

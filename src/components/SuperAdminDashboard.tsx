@@ -186,8 +186,12 @@ export const SuperAdminDashboard: React.FC = () => {
 
                 {/* Alert Banner - Native Style */}
                 {alertCount > 0 && (
-                    <div
-                        className="rounded-2xl p-4 animate-slide-up flex items-center gap-3"
+                    <button
+                        onClick={() => {
+                            const event = new CustomEvent('navigate', { detail: { page: 'superadmin-escolas', filter: 'attention' } })
+                            window.dispatchEvent(event)
+                        }}
+                        className="w-full rounded-2xl p-4 animate-slide-up flex items-center gap-3 text-left transition-all active:scale-[0.98] hover:ring-2 hover:ring-amber-400/50"
                         style={{
                             animationDelay: '200ms',
                             background: 'linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(239,68,68,0.15) 100%)',
@@ -206,8 +210,9 @@ export const SuperAdminDashboard: React.FC = () => {
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.1)' }}>
                             <span className="text-amber-200 text-sm">→</span>
                         </div>
-                    </div>
+                    </button>
                 )}
+
 
                 {/* Chart Tabs - iOS Style Segmented Control */}
                 <div className="animate-slide-up" style={{ animationDelay: '250ms' }}>

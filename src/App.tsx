@@ -36,7 +36,7 @@ const SecretaryRegistration = lazy(() => import('./components/SecretaryRegistrat
 function App() {
     const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, escolaProfile, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
-    const [navigationParams, setNavigationParams] = useState<{ turmaId?: string }>({})
+    const [navigationParams, setNavigationParams] = useState<{ turmaId?: string; filter?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
     const [showEscolaSetup, setShowEscolaSetup] = useState(false)
 
@@ -131,7 +131,7 @@ function App() {
                 case 'superadmin-dashboard':
                     return <SuperAdminDashboard />
                 case 'superadmin-escolas':
-                    return <EscolaManagement />
+                    return <EscolaManagement initialFilter={navigationParams.filter as any} />
                 case 'superadmin-licencas':
                     return <LicenseManagement />
                 case 'superadmin-audit':

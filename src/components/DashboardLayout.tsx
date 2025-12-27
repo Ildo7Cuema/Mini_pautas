@@ -18,7 +18,7 @@ import { isSuperAdmin, isAluno, isEncarregado, isSecretario } from '../utils/per
 interface SidebarProps {
     children: ReactNode
     currentPage: string
-    onNavigate: (page: string) => void
+    onNavigate: (page: string, params?: { filter?: string }) => void
     onSearch?: (query: string) => void
 }
 
@@ -77,9 +77,11 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     // Listen for navigate CustomEvent from SuperAdminDashboard quick actions
     useEffect(() => {
         const handleNavigateEvent = (event: Event) => {
-            const customEvent = event as CustomEvent<{ page: string }>
+            const customEvent = event as CustomEvent<{ page: string; filter?: string }>
             if (customEvent.detail?.page) {
-                onNavigate(customEvent.detail.page)
+                // Pass filter as params if provided
+                const params = customEvent.detail.filter ? { filter: customEvent.detail.filter } : undefined
+                onNavigate(customEvent.detail.page, params)
             }
         }
 
@@ -88,6 +90,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
             window.removeEventListener('navigate', handleNavigateEvent)
         }
     }, [onNavigate])
+
 
     const loadNotifications = async () => {
         if (!user) return
