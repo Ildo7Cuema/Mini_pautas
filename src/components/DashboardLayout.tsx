@@ -74,6 +74,21 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         }
     }, [user])
 
+    // Listen for navigate CustomEvent from SuperAdminDashboard quick actions
+    useEffect(() => {
+        const handleNavigateEvent = (event: Event) => {
+            const customEvent = event as CustomEvent<{ page: string }>
+            if (customEvent.detail?.page) {
+                onNavigate(customEvent.detail.page)
+            }
+        }
+
+        window.addEventListener('navigate', handleNavigateEvent)
+        return () => {
+            window.removeEventListener('navigate', handleNavigateEvent)
+        }
+    }, [onNavigate])
+
     const loadNotifications = async () => {
         if (!user) return
 
