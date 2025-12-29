@@ -767,6 +767,130 @@ export const LicenseManagement: React.FC = () => {
                     setPrices(updatedPrices)
                 }}
             />
+
+            {/* Approval Modal */}
+            {showApprovalModal && approvingTransaction && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
+                        <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                        <h2 className="text-xl font-bold text-neutral-800 mb-4">✓ Aprovar Assinatura</h2>
+
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                            <p className="text-sm text-green-800 mb-2">
+                                <strong>Escola:</strong> {(approvingTransaction as any).escolas?.nome}
+                            </p>
+                            <p className="text-sm text-green-800 mb-2">
+                                <strong>Referência:</strong> {approvingTransaction.metadata?.reference}
+                            </p>
+                            <p className="text-sm text-green-800">
+                                <strong>Valor:</strong> {formatCurrency(approvingTransaction.valor)}
+                            </p>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                Plano
+                            </label>
+                            <select
+                                value={approvalPlano}
+                                onChange={(e) => setApprovalPlano(e.target.value as PlanoLicenca)}
+                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                            >
+                                <option value="trimestral">Trimestral</option>
+                                <option value="semestral">Semestral</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                Observações (opcional)
+                            </label>
+                            <textarea
+                                value={approvalMotivo}
+                                onChange={(e) => setApprovalMotivo(e.target.value)}
+                                placeholder="Ex: Pagamento confirmado via transferência bancária"
+                                rows={3}
+                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowApprovalModal(false)
+                                    setApprovingTransaction(null)
+                                    setApprovalMotivo('')
+                                }}
+                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleApprove}
+                                disabled={approving}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all"
+                            >
+                                {approving ? 'Aprovando...' : '✓ Aprovar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Reject Modal */}
+            {showRejectModal && rejectingTransaction && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
+                        <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                        <h2 className="text-xl font-bold text-neutral-800 mb-4">✗ Rejeitar Solicitação</h2>
+
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                            <p className="text-sm text-red-800 mb-2">
+                                <strong>Escola:</strong> {(rejectingTransaction as any).escolas?.nome}
+                            </p>
+                            <p className="text-sm text-red-800">
+                                <strong>Referência:</strong> {rejectingTransaction.metadata?.reference}
+                            </p>
+                        </div>
+
+                        <div className="mb-6">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                Motivo da Rejeição *
+                            </label>
+                            <textarea
+                                value={rejectMotivo}
+                                onChange={(e) => setRejectMotivo(e.target.value)}
+                                placeholder="Ex: Comprovativo inválido, valor incorreto, etc."
+                                rows={3}
+                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                            />
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowRejectModal(false)
+                                    setRejectingTransaction(null)
+                                    setRejectMotivo('')
+                                }}
+                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleReject}
+                                disabled={!rejectMotivo.trim()}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all"
+                            >
+                                ✗ Rejeitar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }
@@ -823,134 +947,6 @@ const EstadoBadge: React.FC<{ estado: string }> = ({ estado }) => {
             <span>{icon}</span>
             <span className="hidden sm:inline">{estado.charAt(0).toUpperCase() + estado.slice(1)}</span>
         </span>
-    )
-}
-
-{/* Approval Modal */ }
-{
-    showApprovalModal && approvingTransaction && (
-        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
-            <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
-                <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
-
-                <h2 className="text-xl font-bold text-neutral-800 mb-4">✓ Aprovar Assinatura</h2>
-
-                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
-                    <p className="text-sm text-green-800 mb-2">
-                        <strong>Escola:</strong> {(approvingTransaction as any).escolas?.nome}
-                    </p>
-                    <p className="text-sm text-green-800 mb-2">
-                        <strong>Referência:</strong> {approvingTransaction.metadata?.reference}
-                    </p>
-                    <p className="text-sm text-green-800">
-                        <strong>Valor:</strong> {formatCurrency(approvingTransaction.valor)}
-                    </p>
-                </div>
-
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Plano
-                    </label>
-                    <select
-                        value={approvalPlano}
-                        onChange={(e) => setApprovalPlano(e.target.value as PlanoLicenca)}
-                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-                    >
-                        <option value="trimestral">Trimestral</option>
-                        <option value="semestral">Semestral</option>
-                        <option value="anual">Anual</option>
-                    </select>
-                </div>
-
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Observações (opcional)
-                    </label>
-                    <textarea
-                        value={approvalMotivo}
-                        onChange={(e) => setApprovalMotivo(e.target.value)}
-                        placeholder="Ex: Pagamento confirmado via transferência bancária"
-                        rows={3}
-                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
-                    />
-                </div>
-
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => {
-                            setShowApprovalModal(false)
-                            setApprovingTransaction(null)
-                            setApprovalMotivo('')
-                        }}
-                        className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={handleApprove}
-                        disabled={approving}
-                        className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all"
-                    >
-                        {approving ? 'Aprovando...' : '✓ Aprovar'}
-                    </button>
-                </div>
-            </div>
-        </div>
-    )
-}
-
-{/* Reject Modal */ }
-{
-    showRejectModal && rejectingTransaction && (
-        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
-            <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
-                <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
-
-                <h2 className="text-xl font-bold text-neutral-800 mb-4">✗ Rejeitar Solicitação</h2>
-
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
-                    <p className="text-sm text-red-800 mb-2">
-                        <strong>Escola:</strong> {(rejectingTransaction as any).escolas?.nome}
-                    </p>
-                    <p className="text-sm text-red-800">
-                        <strong>Referência:</strong> {rejectingTransaction.metadata?.reference}
-                    </p>
-                </div>
-
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Motivo da Rejeição *
-                    </label>
-                    <textarea
-                        value={rejectMotivo}
-                        onChange={(e) => setRejectMotivo(e.target.value)}
-                        placeholder="Ex: Comprovativo inválido, valor incorreto, etc."
-                        rows={3}
-                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
-                    />
-                </div>
-
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => {
-                            setShowRejectModal(false)
-                            setRejectingTransaction(null)
-                            setRejectMotivo('')
-                        }}
-                        className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
-                    >
-                        Cancelar
-                    </button>
-                    <button
-                        onClick={handleReject}
-                        disabled={!rejectMotivo.trim()}
-                        className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all"
-                    >
-                        ✗ Rejeitar
-                    </button>
-                </div>
-            </div>
-        </div>
     )
 }
 
