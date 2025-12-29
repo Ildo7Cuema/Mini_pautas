@@ -422,3 +422,341 @@ export async function runExpirationCheck(): Promise<void> {
         throw error
     }
 }
+
+// ============================================
+// MANUAL SUBSCRIPTION WORKFLOW
+// ============================================
+
+export interface SuperAdminContact {
+    numero: string
+    nome: string
+    mensagem_padrao?: string
+}
+
+export interface DadosBancarios {
+    banco: string
+    conta: string
+    iban: string
+    titular: string
+    instrucoes?: string
+}
+
+export interface PaymentModeConfig {
+    modo_atual: 'manual' | 'online'
+    pagamento_online_habilitado: boolean
+    providers_configurados: string[]
+    mensagem_modo_manual?: string
+}
+
+/**
+ * Get SuperAdmin WhatsApp contact for payment proofs
+ */
+export async function getSuperAdminContact(): Promise<SuperAdminContact | null> {
+    try {
+        const { data, error } = await supabase
+            .from('configuracoes_sistema')
+            .select('valor')
+            .eq('chave', 'superadmin_whatsapp')
+            .single()
+
+        if (error) {
+            console.warn('Error fetching SuperAdmin contact:', error)
+            return null
+        }
+
+        return data?.valor as SuperAdminContact
+    } catch (error) {
+        console.error('Error fetching SuperAdmin contact:', error)
+        return null
+    }
+}
+
+/**
+ * Get bank details for manual transfers
+ */
+export async function getDadosBancarios(): Promise<DadosBancarios | null> {
+    try {
+        const { data, error } = await supabase
+            .from('configuracoes_sistema')
+            .select('valor')
+            .eq('chave', 'dados_bancarios')
+            .single()
+
+        if (error) {
+            console.warn('Error fetching bank details:', error)
+            return null
+        }
+
+        return data?.valor as DadosBancarios
+    } catch (error) {
+        console.error('Error fetching bank details:', error)
+        return null
+    }
+}
+
+/**
+ * Get payment mode configuration
+ */
+export async function getPaymentModeConfig(): Promise<PaymentModeConfig | null> {
+    try {
+        const { data, error } = await supabase
+            .from('configuracoes_sistema')
+            .select('valor')
+            .eq('chave', 'modo_pagamento')
+            .single()
+
+        if (error) {
+            console.warn('Error fetching payment mode:', error)
+            return null
+        }
+
+        return data?.valor as PaymentModeConfig
+    } catch (error) {
+        console.error('Error fetching payment mode:', error)
+        return null
+    }
+}
+
+/**
+ * Check if online payment is enabled
+ */
+export async function isOnlinePaymentEnabled(): Promise<boolean> {
+    const config = await getPaymentModeConfig()
+    return config?.pagamento_online_habilitado ?? false
+}
+
+/**
+ * Generate a unique reference code for manual subscription request
+ */
+function generateReferenceCode(escolaCode: string): string {
+    const timestamp = Date.now().toString(36).toUpperCase()
+    const random = Math.random().toString(36).substring(2, 6).toUpperCase()
+    return `${escolaCode}-${timestamp}-${random}`
+}
+
+/**
+ * Request a manual subscription (creates pending transaction)
+ */
+export async function requestManualSubscription(
+    escolaId: string,
+    escolaCodigo: string,
+    plano: PlanoLicenca
+): Promise<{ success: boolean; reference: string; transaction_id?: string; error?: string }> {
+    try {
+        // Check if school has an active license
+        const { data: activeLicense, error: licenseError } = await supabase
+            .from('licencas')
+            .select('id, estado, data_fim')
+            .eq('escola_id', escolaId)
+            .eq('estado', 'ativa')
+            .single()
+
+        if (activeLicense && !licenseError) {
+            return {
+                success: false,
+                reference: '',
+                error: 'Você já possui uma licença activa. Aguarde a expiração para renovar.'
+            }
+        }
+
+        // Check if school has a pending manual subscription request
+        const { data: pendingTransaction, error: pendingError } = await supabase
+            .from('transacoes_pagamento')
+            .select('id, metadata')
+            .eq('escola_id', escolaId)
+            .eq('provider', 'manual')
+            .eq('estado', 'pendente')
+            .single()
+
+        if (pendingTransaction && !pendingError) {
+            return {
+                success: false,
+                reference: '',
+                error: 'Você já tem uma solicitação pendente. Aguarde a aprovação ou entre em contacto com o suporte.'
+            }
+        }
+
+        // Get price for the plan
+        const { data: priceData, error: priceError } = await supabase
+            .from('precos_licenca')
+            .select('valor')
+            .eq('plano', plano)
+            .eq('ativo', true)
+            .single()
+
+        if (priceError || !priceData) {
+            throw new Error('Plano não encontrado')
+        }
+
+        const reference = generateReferenceCode(escolaCodigo)
+
+        // Create pending transaction
+        const { data: transaction, error: transError } = await supabase
+            .from('transacoes_pagamento')
+            .insert({
+                escola_id: escolaId,
+                provider: 'manual',
+                valor: priceData.valor,
+                estado: 'pendente',
+                metodo_pagamento: 'transferencia',
+                descricao: `Solicitação de assinatura ${plano} - Aguardando comprovativo`,
+                metadata: {
+                    plano,
+                    reference,
+                    solicitado_em: new Date().toISOString(),
+                    tipo: 'manual_subscription_request'
+                }
+            })
+            .select()
+            .single()
+
+        if (transError) {
+            throw transError
+        }
+
+        return {
+            success: true,
+            reference,
+            transaction_id: transaction.id
+        }
+    } catch (error) {
+        console.error('Error requesting manual subscription:', error)
+        return {
+            success: false,
+            reference: '',
+            error: error instanceof Error ? error.message : 'Erro ao solicitar assinatura'
+        }
+    }
+}
+
+/**
+ * Fetch pending subscription approvals (SUPERADMIN only)
+ */
+export async function fetchPendingApprovals(): Promise<TransacaoPagamento[]> {
+    try {
+        const { data, error } = await supabase
+            .from('transacoes_pagamento')
+            .select('*, escolas(id, nome, codigo_escola, provincia, municipio)')
+            .eq('provider', 'manual')
+            .eq('estado', 'pendente')
+            .order('created_at', { ascending: false })
+
+        if (error) throw error
+        return data || []
+    } catch (error) {
+        console.error('Error fetching pending approvals:', error)
+        throw error
+    }
+}
+
+/**
+ * Approve a manual subscription request (SUPERADMIN only)
+ */
+export async function approveManualSubscription(
+    transactionId: string,
+    plano: PlanoLicenca,
+    motivo?: string
+): Promise<{ success: boolean; licenca?: Licenca; error?: string }> {
+    try {
+        // Get transaction details
+        const { data: transaction, error: transError } = await supabase
+            .from('transacoes_pagamento')
+            .select('*, escolas(id, nome)')
+            .eq('id', transactionId)
+            .single()
+
+        if (transError || !transaction) {
+            throw new Error('Transação não encontrada')
+        }
+
+        // Create license using RPC
+        const { data: licenca, error: licError } = await supabase.rpc('criar_licenca_manual', {
+            p_escola_id: transaction.escola_id,
+            p_plano: plano,
+            p_valor: transaction.valor,
+            p_motivo: motivo || `Pagamento manual aprovado - Ref: ${transaction.metadata?.reference || 'N/A'}`
+        })
+
+        if (licError) {
+            throw licError
+        }
+
+        // Update transaction to success and link to license
+        await supabase
+            .from('transacoes_pagamento')
+            .update({
+                estado: 'sucesso',
+                licenca_id: licenca.id,
+                updated_at: new Date().toISOString(),
+                metadata: {
+                    ...transaction.metadata,
+                    aprovado_em: new Date().toISOString()
+                }
+            })
+            .eq('id', transactionId)
+
+        return {
+            success: true,
+            licenca: licenca as Licenca
+        }
+    } catch (error) {
+        console.error('Error approving manual subscription:', error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : 'Erro ao aprovar assinatura'
+        }
+    }
+}
+
+/**
+ * Reject a manual subscription request (SUPERADMIN only)
+ */
+export async function rejectManualSubscription(
+    transactionId: string,
+    motivo: string
+): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('transacoes_pagamento')
+            .update({
+                estado: 'cancelado',
+                descricao: `Rejeitado: ${motivo}`,
+                updated_at: new Date().toISOString(),
+                metadata: {
+                    rejeitado_em: new Date().toISOString(),
+                    motivo_rejeicao: motivo
+                }
+            })
+            .eq('id', transactionId)
+
+        if (error) throw error
+    } catch (error) {
+        console.error('Error rejecting manual subscription:', error)
+        throw error
+    }
+}
+
+/**
+ * Generate WhatsApp link with pre-filled message
+ */
+export function generateWhatsAppLink(
+    phoneNumber: string,
+    escolaNome: string,
+    escolaCodigo: string,
+    plano: string,
+    reference: string
+): string {
+    const message = encodeURIComponent(
+        `Olá! Gostaria de enviar o comprovativo de pagamento.\n\n` +
+        `📋 Escola: ${escolaNome}\n` +
+        `🔢 Código: ${escolaCodigo}\n` +
+        `📦 Plano: ${plano}\n` +
+        `🔖 Referência: ${reference}\n\n` +
+        `Segue em anexo o comprovativo de pagamento.`
+    )
+
+    // Clean phone number (remove spaces, dashes, etc)
+    const cleanPhone = phoneNumber.replace(/[^\d+]/g, '')
+
+    return `https://wa.me/${cleanPhone}?text=${message}`
+}

@@ -14,11 +14,14 @@ import {
     suspendLicense,
     reactivateLicense,
     fetchPrices,
-    updatePrice
+    updatePrice,
+    fetchPendingApprovals,
+    approveManualSubscription,
+    rejectManualSubscription
 } from '../utils/license'
 import { fetchAllEscolas } from '../utils/superadmin'
 import { PriceEditModal } from './PriceEditModal'
-import type { Licenca, LicenseStats, PlanoLicenca, Escola, PrecoLicenca } from '../types'
+import type { Licenca, LicenseStats, PlanoLicenca, Escola, PrecoLicenca, TransacaoPagamento } from '../types'
 
 export const LicenseManagement: React.FC = () => {
     const [licenses, setLicenses] = useState<Licenca[]>([])
@@ -50,6 +53,19 @@ export const LicenseManagement: React.FC = () => {
     const [showPriceEditModal, setShowPriceEditModal] = useState(false)
     const [editingPrice, setEditingPrice] = useState<PrecoLicenca | null>(null)
 
+    // Pending Approvals
+    const [pendingApprovals, setPendingApprovals] = useState<TransacaoPagamento[]>([])
+    const [showApprovalModal, setShowApprovalModal] = useState(false)
+    const [approvingTransaction, setApprovingTransaction] = useState<TransacaoPagamento | null>(null)
+    const [approvalPlano, setApprovalPlano] = useState<PlanoLicenca>('anual')
+    const [approvalMotivo, setApprovalMotivo] = useState('')
+    const [approving, setApproving] = useState(false)
+
+    // Reject Modal
+    const [showRejectModal, setShowRejectModal] = useState(false)
+    const [rejectingTransaction, setRejectingTransaction] = useState<TransacaoPagamento | null>(null)
+    const [rejectMotivo, setRejectMotivo] = useState('')
+
     useEffect(() => {
         loadData()
     }, [filterStatus, filterPlano])
@@ -63,14 +79,16 @@ export const LicenseManagement: React.FC = () => {
             if (filterStatus !== 'all') filters.estado = filterStatus
             if (filterPlano !== 'all') filters.plano = filterPlano
 
-            const [licensesData, statsData, pricesData] = await Promise.all([
+            const [licensesData, statsData, pricesData, pendingData] = await Promise.all([
                 fetchAllLicenses(filters),
                 fetchLicenseStats(),
-                fetchPrices()
+                fetchPrices(),
+                fetchPendingApprovals()
             ])
             setPrices(pricesData)
             setLicenses(licensesData)
             setStats(statsData)
+            setPendingApprovals(pendingData)
         } catch (err) {
             console.error('Error loading data:', err)
             setError('Erro ao carregar dados de licenciamento')
@@ -137,6 +155,49 @@ export const LicenseManagement: React.FC = () => {
             await loadData()
         } catch (err) {
             alert('Erro ao reactivar licença')
+        }
+    }
+
+    const handleApprove = async () => {
+        if (!approvingTransaction) return
+
+        try {
+            setApproving(true)
+            const result = await approveManualSubscription(
+                approvingTransaction.id,
+                approvalPlano,
+                approvalMotivo
+            )
+
+            if (result.success) {
+                setShowApprovalModal(false)
+                setApprovingTransaction(null)
+                setApprovalMotivo('')
+                await loadData()
+            } else {
+                alert(result.error || 'Erro ao aprovar assinatura')
+            }
+        } catch (err) {
+            alert('Erro ao aprovar assinatura')
+        } finally {
+            setApproving(false)
+        }
+    }
+
+    const handleReject = async () => {
+        if (!rejectingTransaction || !rejectMotivo.trim()) {
+            alert('Por favor, forneça um motivo')
+            return
+        }
+
+        try {
+            await rejectManualSubscription(rejectingTransaction.id, rejectMotivo)
+            setShowRejectModal(false)
+            setRejectingTransaction(null)
+            setRejectMotivo('')
+            await loadData()
+        } catch (err) {
+            alert('Erro ao rejeitar solicitação')
         }
     }
 
@@ -240,6 +301,70 @@ export const LicenseManagement: React.FC = () => {
                             <span className="text-xl">⚠️</span>
                             <p className="text-red-800 text-sm flex-1">{error}</p>
                             <button onClick={loadData} className="text-red-600 font-medium text-sm">Retry</button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Pending Approvals Section */}
+                {pendingApprovals.length > 0 && (
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-5 animate-slide-up">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                                    <span className="text-2xl">⏳</span>
+                                </div>
+                                <div>
+                                    <h3 className="font-bold text-amber-900">Aprovações Pendentes</h3>
+                                    <p className="text-sm text-amber-700">{pendingApprovals.length} solicitação(ões) aguardando aprovação</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            {pendingApprovals.map((trans) => {
+                                const escola = (trans as any).escolas
+                                return (
+                                    <div key={trans.id} className="bg-white rounded-xl p-4 border border-amber-200">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                            <div className="flex-1">
+                                                <p className="font-bold text-neutral-800">{escola?.nome || 'N/A'}</p>
+                                                <p className="text-sm text-neutral-500 font-mono">{escola?.codigo_escola}</p>
+                                                <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full font-medium capitalize">
+                                                        {trans.metadata?.plano || 'N/A'}
+                                                    </span>
+                                                    <span className="px-2 py-1 bg-neutral-100 text-neutral-700 rounded-full font-mono">
+                                                        {trans.metadata?.reference || 'N/A'}
+                                                    </span>
+                                                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full font-semibold">
+                                                        {formatCurrency(trans.valor)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        setApprovingTransaction(trans)
+                                                        setApprovalPlano((trans.metadata?.plano as PlanoLicenca) || 'anual')
+                                                        setShowApprovalModal(true)
+                                                    }}
+                                                    className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium text-sm transition-colors"
+                                                >
+                                                    ✓ Aprovar
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        setRejectingTransaction(trans)
+                                                        setShowRejectModal(true)
+                                                    }}
+                                                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium text-sm transition-colors"
+                                                >
+                                                    ✗ Rejeitar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            })}
                         </div>
                     </div>
                 )}
@@ -701,4 +826,133 @@ const EstadoBadge: React.FC<{ estado: string }> = ({ estado }) => {
     )
 }
 
+{/* Approval Modal */ }
+{
+    showApprovalModal && approvingTransaction && (
+        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+            <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
+                <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                <h2 className="text-xl font-bold text-neutral-800 mb-4">✓ Aprovar Assinatura</h2>
+
+                <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-4">
+                    <p className="text-sm text-green-800 mb-2">
+                        <strong>Escola:</strong> {(approvingTransaction as any).escolas?.nome}
+                    </p>
+                    <p className="text-sm text-green-800 mb-2">
+                        <strong>Referência:</strong> {approvingTransaction.metadata?.reference}
+                    </p>
+                    <p className="text-sm text-green-800">
+                        <strong>Valor:</strong> {formatCurrency(approvingTransaction.valor)}
+                    </p>
+                </div>
+
+                <div className="mb-4">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Plano
+                    </label>
+                    <select
+                        value={approvalPlano}
+                        onChange={(e) => setApprovalPlano(e.target.value as PlanoLicenca)}
+                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    >
+                        <option value="trimestral">Trimestral</option>
+                        <option value="semestral">Semestral</option>
+                        <option value="anual">Anual</option>
+                    </select>
+                </div>
+
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Observações (opcional)
+                    </label>
+                    <textarea
+                        value={approvalMotivo}
+                        onChange={(e) => setApprovalMotivo(e.target.value)}
+                        placeholder="Ex: Pagamento confirmado via transferência bancária"
+                        rows={3}
+                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                    />
+                </div>
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => {
+                            setShowApprovalModal(false)
+                            setApprovingTransaction(null)
+                            setApprovalMotivo('')
+                        }}
+                        className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleApprove}
+                        disabled={approving}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all"
+                    >
+                        {approving ? 'Aprovando...' : '✓ Aprovar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+{/* Reject Modal */ }
+{
+    showRejectModal && rejectingTransaction && (
+        <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+            <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
+                <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                <h2 className="text-xl font-bold text-neutral-800 mb-4">✗ Rejeitar Solicitação</h2>
+
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-4">
+                    <p className="text-sm text-red-800 mb-2">
+                        <strong>Escola:</strong> {(rejectingTransaction as any).escolas?.nome}
+                    </p>
+                    <p className="text-sm text-red-800">
+                        <strong>Referência:</strong> {rejectingTransaction.metadata?.reference}
+                    </p>
+                </div>
+
+                <div className="mb-6">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Motivo da Rejeição *
+                    </label>
+                    <textarea
+                        value={rejectMotivo}
+                        onChange={(e) => setRejectMotivo(e.target.value)}
+                        placeholder="Ex: Comprovativo inválido, valor incorreto, etc."
+                        rows={3}
+                        className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-red-500 resize-none"
+                    />
+                </div>
+
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => {
+                            setShowRejectModal(false)
+                            setRejectingTransaction(null)
+                            setRejectMotivo('')
+                        }}
+                        className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleReject}
+                        disabled={!rejectMotivo.trim()}
+                        className="flex-1 px-4 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold disabled:opacity-50 transition-all"
+                    >
+                        ✗ Rejeitar
+                    </button>
+                </div>
+            </div>
+        </div>
+    )
+}
+
 export default LicenseManagement
+
