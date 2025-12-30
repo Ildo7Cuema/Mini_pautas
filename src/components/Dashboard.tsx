@@ -48,7 +48,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
     const [showCreateModal, setShowCreateModal] = useState(false)
     const [formData, setFormData] = useState({
         nome: '',
-        ano_lectivo: new Date().getFullYear(),
+        ano_lectivo: new Date().getFullYear().toString(),
         nivel_ensino: 'Ensino Secundário',
     })
     const [showHelpModal, setShowHelpModal] = useState(false)
@@ -393,7 +393,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
             setShowCreateModal(false)
             setFormData({
                 nome: '',
-                ano_lectivo: new Date().getFullYear(),
+                ano_lectivo: new Date().getFullYear().toString(),
                 nivel_ensino: 'Ensino Secundário',
             })
             loadDashboardData()
@@ -859,9 +859,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ onNavigate, searchQuery = 
                                     <div className="input-glow rounded-xl">
                                         <Input
                                             label="Ano Lectivo"
-                                            type="number"
+                                            type="text"
                                             value={formData.ano_lectivo}
-                                            onChange={(e) => setFormData({ ...formData, ano_lectivo: parseInt(e.target.value) })}
+                                            onChange={(e) => setFormData({ ...formData, ano_lectivo: e.target.value })}
+                                            placeholder="Ex: 2025 ou 2025/2026"
                                             required
                                         />
                                     </div>
