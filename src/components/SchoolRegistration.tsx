@@ -7,13 +7,14 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Card, CardBody } from './ui/Card'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
+import { generateUniqueSchoolCode } from '../utils/schoolCodeGenerator'
 
 interface SchoolRegistrationForm {
     // Dados da Escola
@@ -39,6 +40,27 @@ const PROVINCIAS_ANGOLA = [
     'Namibe', 'Uíge', 'Zaire'
 ]
 
+const PROVINCE_CODES: Record<string, string> = {
+    'Bengo': 'BGO',
+    'Benguela': 'BGU',
+    'Bié': 'BIE',
+    'Cabinda': 'CAB',
+    'Cuando Cubango': 'CCU',
+    'Cuanza Norte': 'CNO',
+    'Cuanza Sul': 'CSU',
+    'Cunene': 'CNN',
+    'Huambo': 'HUA',
+    'Huíla': 'HUI',
+    'Luanda': 'LUA',
+    'Lunda Norte': 'LNO',
+    'Lunda Sul': 'LSU',
+    'Malanje': 'MAL',
+    'Moxico': 'MOX',
+    'Namibe': 'NAM',
+    'Uíge': 'UIG',
+    'Zaire': 'ZAI'
+}
+
 interface SchoolRegistrationProps {
     onSuccess?: () => void
     onCancel?: () => void
@@ -63,10 +85,41 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState(false)
     const [step, setStep] = useState(1) // 1: Dados da Escola, 2: Dados do Responsável
+    const [generatingCode, setGeneratingCode] = useState(false)
 
-    const handleChange = (field: keyof SchoolRegistrationForm, value: string) => {
+    const handleChange = async (field: keyof SchoolRegistrationForm, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
         setError(null)
+
+        // Auto-generate school code when province is selected
+        if (field === 'provincia' && value) {
+            await generateCode(value)
+        }
+    }
+
+    const generateCode = async (provincia: string) => {
+        if (!provincia) return
+
+        setGeneratingCode(true)
+        setError(null)
+
+        try {
+            const code = await generateUniqueSchoolCode(provincia)
+            setFormData(prev => ({ ...prev, codigo_escola: code }))
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Erro ao gerar código'
+            setError(errorMessage)
+        } finally {
+            setGeneratingCode(false)
+        }
+    }
+
+    const handleRegenerateCode = async () => {
+        if (!formData.provincia) {
+            setError('Por favor, selecione uma província primeiro')
+            return
+        }
+        await generateCode(formData.provincia)
     }
 
     const validateStep1 = (): boolean => {
@@ -75,7 +128,7 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
             return false
         }
         if (!formData.codigo_escola.trim()) {
-            setError('Código da escola é obrigatório')
+            setError('Código da escola não foi gerado. Por favor, selecione uma província.')
             return false
         }
         if (!formData.provincia) {
@@ -329,16 +382,40 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
                                     </div>
 
                                     <div className="input-glow rounded-xl">
-                                        <Input
-                                            label="Código da Escola"
-                                            type="text"
-                                            value={formData.codigo_escola}
-                                            onChange={(e) => handleChange('codigo_escola', e.target.value)}
-                                            placeholder="Ex: ESC001"
-                                            required
-                                            helpText="Código único de identificação no sistema"
-                                            inputSize="md"
-                                        />
+                                        <label className="form-label mb-2 block text-sm font-medium text-slate-700">
+                                            Código da Escola (Gerado Automaticamente) <span className="text-error ml-1">*</span>
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="text"
+                                                value={formData.codigo_escola}
+                                                readOnly
+                                                placeholder="Selecione uma província para gerar"
+                                                className="w-full px-4 py-3 pr-12 border border-neutral-300 rounded-xl bg-slate-50 text-base font-mono text-slate-700 cursor-not-allowed focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200"
+                                                required
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleRegenerateCode}
+                                                disabled={!formData.provincia || generatingCode}
+                                                className="absolute right-2 top-1/2 transform -translate-y-1/2 p-2 text-primary-600 hover:text-primary-700 hover:bg-primary-50 rounded-lg transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                                                title="Gerar novo código"
+                                            >
+                                                {generatingCode ? (
+                                                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                ) : (
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                    </svg>
+                                                )}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-slate-500 mt-1.5">
+                                            Formato: {formData.provincia ? PROVINCE_CODES[formData.provincia] || 'XXX' : 'XXX'}AAAA#### (Província + Ano + Aleatório)
+                                        </p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
