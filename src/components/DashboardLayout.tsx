@@ -34,7 +34,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     const [sidebarOpen, setSidebarOpen] = useState(true)
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState('')
-    const { user, isEscola, isProfessor, isAluno: isAlunoRole, isEncarregado: isEncarregadoRole, isSecretario: isSecretarioRole, escolaProfile, professorProfile, alunoProfile, encarregadoProfile, secretarioProfile, profile } = useAuth()
+    const { user, isEscola, isProfessor, isAluno: isAlunoRole, isEncarregado: isEncarregadoRole, isSecretario: isSecretarioRole, escolaProfile, professorProfile, alunoProfile, encarregadoProfile, secretarioProfile, profile, signOut } = useAuth()
 
     const isSuperAdminUser = profile ? isSuperAdmin(profile) : false
 
@@ -578,10 +578,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                             <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block" />
 
                             <button
-                                onClick={async () => {
-                                    const { supabase } = await import('../lib/supabaseClient')
-                                    await supabase.auth.signOut()
-                                }}
+                                onClick={() => signOut()}
                                 className="hidden md:flex p-2.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200 active:scale-95 tooltip-trigger"
                                 title="Sair"
                             >
@@ -680,9 +677,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
 
                             {/* Logout */}
                             <button
-                                onClick={async () => {
-                                    await supabase.auth.signOut()
-                                }}
+                                onClick={() => signOut()}
                                 className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-red-600 hover:bg-red-50 transition-all active:scale-[0.98]"
                             >
                                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { isSuperAdmin } from '../utils/permissions'
 
 export const SettingsPage: React.FC = () => {
-    const { profile } = useAuth()
+    const { profile, signOut } = useAuth()
     const [fullName, setFullName] = useState('')
     const [email, setEmail] = useState('')
     const [newPassword, setNewPassword] = useState('')
@@ -91,8 +91,8 @@ export const SettingsPage: React.FC = () => {
         }
     }
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut()
+    const handleLogout = () => {
+        signOut()
     }
 
     return (
