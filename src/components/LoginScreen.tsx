@@ -255,7 +255,16 @@ export const LoginScreen: React.FC = () => {
                 </div>
 
                 {/* Footer */}
-                <div className="mt-8 text-center space-y-2">
+                <div className="mt-8 text-center space-y-3">
+                    {/* Tutorials Link */}
+                    <a
+                        href="/tutoriais"
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-xl text-sm font-medium text-primary-600 hover:text-primary-700 shadow-sm hover:shadow transition-all"
+                    >
+                        <span>📹</span>
+                        Ver Tutoriais
+                    </a>
+
                     <p className="text-slate-500 text-sm">
                         © 2025 EduGest Angola · Sistema de Gestão Educacional
                     </p>

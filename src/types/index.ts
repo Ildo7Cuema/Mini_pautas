@@ -700,6 +700,35 @@ export interface RegistarPagamentoRequest {
 }
 
 // ============================================
+// TUTORIAL TYPES
+// ============================================
+
+export type CategoriaTutorial = 'geral' | 'login' | 'turmas' | 'notas' | 'relatorios' | 'configuracoes';
+
+export interface Tutorial {
+    id: string;
+    titulo: string;
+    descricao?: string;
+    url_video: string;
+    thumbnail_url?: string;
+    categoria: CategoriaTutorial;
+    ordem: number;
+    publico: boolean;
+    ativo: boolean;
+    created_by?: string;
+    created_at: string;
+    updated_at: string;
+    perfis?: TutorialPerfil[];
+}
+
+export interface TutorialPerfil {
+    id: string;
+    tutorial_id: string;
+    perfil: UserRole;
+    created_at?: string;
+}
+
+// ============================================
 // UTILITY TYPES
 // ============================================
 

@@ -5,6 +5,7 @@ import { DashboardLayout } from './components/DashboardLayout'
 import { PageSkeleton } from './components/ui/PageSkeleton'
 import { isSuperAdmin } from './utils/permissions'
 import { PWAInstallPrompt } from './components/PWAInstallPrompt'
+import { SystemUpdateAlert } from './components/SystemUpdateAlert'
 import { EscolaProfileSetupModal } from './components/EscolaProfileSetupModal'
 
 // Lazy load all page components for code splitting
@@ -32,6 +33,8 @@ const PublicPaymentPage = lazy(() => import('./components/PublicPaymentPage').th
 const TuitionPaymentsPage = lazy(() => import('./components/TuitionPaymentsPage').then(m => ({ default: m.TuitionPaymentsPage })))
 const SecretariesPage = lazy(() => import('./components/SecretariesPage').then(m => ({ default: m.SecretariesPage })))
 const SecretaryRegistration = lazy(() => import('./components/SecretaryRegistration').then(m => ({ default: m.SecretaryRegistration })))
+const TutoriaisPublicosPage = lazy(() => import('./components/TutoriaisPublicosPage').then(m => ({ default: m.TutoriaisPublicosPage })))
+const TutoriaisManagementPage = lazy(() => import('./components/TutoriaisManagementPage').then(m => ({ default: m.TutoriaisManagementPage })))
 
 function App() {
     const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, escolaProfile, profile } = useAuth()
@@ -109,6 +112,15 @@ function App() {
         )
     }
 
+    // Public tutorials page - accessible without login
+    if (window.location.pathname === '/tutoriais') {
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <TutoriaisPublicosPage onBack={() => window.location.href = '/'} />
+            </Suspense>
+        )
+    }
+
     if (!user) {
         return <LoginScreen />
     }
@@ -136,6 +148,8 @@ function App() {
                     return <LicenseManagement />
                 case 'superadmin-audit':
                     return <SuperAdminAuditLog />
+                case 'superadmin-tutoriais':
+                    return <TutoriaisManagementPage />
                 case 'settings':
                     return <SettingsPage />
                 default:
@@ -236,6 +250,7 @@ function App() {
                 </Suspense>
             </DashboardLayout>
             <PWAInstallPrompt />
+            <SystemUpdateAlert />
         </>
     )
 }
