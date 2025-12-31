@@ -289,8 +289,8 @@ export const TutoriaisManagementPage: React.FC = () => {
                                 key={stat.filter}
                                 onClick={() => setActiveFilter(stat.filter)}
                                 className={`p-3 rounded-xl text-center transition-all active:scale-95 ${activeFilter === stat.filter
-                                        ? 'bg-white text-purple-600 shadow-lg'
-                                        : 'bg-white/10 text-white hover:bg-white/20'
+                                    ? 'bg-white text-purple-600 shadow-lg'
+                                    : 'bg-white/10 text-white hover:bg-white/20'
                                     }`}
                             >
                                 <div className="text-xl font-bold">{stat.value}</div>
@@ -418,6 +418,23 @@ export const TutoriaisManagementPage: React.FC = () => {
                                         ))}
                                     </div>
                                 )}
+
+                                {/* Stats Row */}
+                                <div className="flex items-center gap-4 mt-3 text-xs text-slate-500">
+                                    <span className="flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        {(tutorial.visualizacoes || 0).toLocaleString()}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <svg className="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                                            <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                        </svg>
+                                        {(tutorial.likes || 0).toLocaleString()}
+                                    </span>
+                                </div>
 
                                 {/* Actions */}
                                 <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-100">
@@ -599,8 +616,8 @@ export const TutoriaisManagementPage: React.FC = () => {
                                             type="button"
                                             onClick={() => togglePerfil(perfil.value)}
                                             className={`flex items-center gap-2 p-3 rounded-xl text-sm font-medium transition-all active:scale-95 ${formData.perfis.includes(perfil.value)
-                                                    ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25'
-                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                ? 'bg-primary-600 text-white shadow-lg shadow-primary-500/25'
+                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                                                 }`}
                                         >
                                             <span className="text-lg">{perfil.icon}</span>

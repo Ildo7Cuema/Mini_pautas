@@ -715,6 +715,8 @@ export interface Tutorial {
     ordem: number;
     publico: boolean;
     ativo: boolean;
+    visualizacoes: number;
+    likes: number;
     created_by?: string;
     created_at: string;
     updated_at: string;

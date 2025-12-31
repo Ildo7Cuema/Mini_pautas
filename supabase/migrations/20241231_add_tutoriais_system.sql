@@ -176,7 +176,7 @@ GRANT INSERT, UPDATE, DELETE ON tutorial_perfis TO authenticated;
 -- Uncomment to add example tutorials
 /*
 INSERT INTO tutoriais (titulo, descricao, url_video, categoria, ordem, publico) VALUES
-('Bem-vindo ao EduGest Angola', 'Introdução ao sistema de gestão de notas', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'geral', 1, true),
+('Bem-vindo ao EduGest Angola', 'Introdução ao sistema de gestão escolar', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'geral', 1, true),
 ('Como Fazer Login', 'Tutorial sobre como acessar o sistema', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'login', 2, true),
 ('Cadastro de Escola', 'Como cadastrar sua escola no sistema', 'https://www.youtube.com/embed/dQw4w9WgXcQ', 'login', 3, true);
 */

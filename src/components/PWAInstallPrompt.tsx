@@ -44,7 +44,7 @@ export const PWAInstallPrompt: React.FC = () => {
                         EduGest Angola
                     </h2>
                     <p className="text-blue-100 text-sm relative">
-                        Sistema de Gestão Educacional
+                        Sistema de Gestão Escolar
                     </p>
                 </div>
 

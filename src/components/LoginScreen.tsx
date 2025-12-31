@@ -117,7 +117,7 @@ export const LoginScreen: React.FC = () => {
                         EduGest Angola
                     </h1>
                     <p className="text-slate-500 text-sm sm:text-base font-medium">
-                        Sistema de Gestão de Notas
+                        Sistema de Gestão Escolar
                     </p>
                 </div>
 
@@ -266,7 +266,7 @@ export const LoginScreen: React.FC = () => {
                     </a>
 
                     <p className="text-slate-500 text-sm">
-                        © 2025 EduGest Angola · Sistema de Gestão Educacional
+                        © 2025 EduGest Angola · Sistema de Gestão Escolar
                     </p>
                     <p className="text-slate-400 text-xs flex items-center justify-center gap-1">
                         Desenvolvido com

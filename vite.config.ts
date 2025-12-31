@@ -13,7 +13,7 @@ export default defineConfig({
             manifest: {
                 name: 'EduGest Angola',
                 short_name: 'EduGest',
-                description: 'Sistema de Gestão de Notas para Professores Angolanos',
+                description: 'Sistema de Gestão Escolar para Professores Angolanos',
                 theme_color: '#2563eb',
                 background_color: '#ffffff',
                 display: 'standalone',
