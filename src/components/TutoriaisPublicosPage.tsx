@@ -48,6 +48,9 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
     const [categoriaFiltro, setCategoriaFiltro] = useState<CategoriaTutorial | 'todos'>('todos')
     const [tutorialSelecionado, setTutorialSelecionado] = useState<Tutorial | null>(null)
     const [likedTutorials, setLikedTutorials] = useState<Set<string>>(new Set())
+    const [likingInProgress, setLikingInProgress] = useState<Set<string>>(new Set())
+    const [likeAnimations, setLikeAnimations] = useState<Set<string>>(new Set())
+    const [viewsRegistered, setViewsRegistered] = useState<Set<string>>(new Set())
 
     useEffect(() => {
         loadTutoriais()
@@ -123,6 +126,13 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
     // Toggle like
     const toggleLike = async (e: React.MouseEvent, tutorialId: string) => {
         e.stopPropagation()
+
+        // Evitar múltiplos cliques simultâneos
+        if (likingInProgress.has(tutorialId)) return
+
+        // Mostrar estado de carregamento
+        setLikingInProgress(prev => new Set(prev).add(tutorialId))
+
         try {
             const sessionId = getSessionId()
             const { data: { user } } = await supabase.auth.getUser()
@@ -135,6 +145,18 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
 
             if (data && data[0]) {
                 const { liked, total_likes } = data[0]
+
+                // Disparar animação do coração
+                if (liked) {
+                    setLikeAnimations(prev => new Set(prev).add(tutorialId))
+                    setTimeout(() => {
+                        setLikeAnimations(prev => {
+                            const newSet = new Set(prev)
+                            newSet.delete(tutorialId)
+                            return newSet
+                        })
+                    }, 600)
+                }
 
                 // Atualizar estado de likes
                 setLikedTutorials(prev => {
@@ -151,16 +173,37 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
                 setTutoriais(prev => prev.map(t =>
                     t.id === tutorialId ? { ...t, likes: total_likes } : t
                 ))
+
+                // Atualizar tutorial selecionado se for o mesmo
+                if (tutorialSelecionado?.id === tutorialId) {
+                    setTutorialSelecionado(prev => prev ? { ...prev, likes: total_likes } : null)
+                }
             }
         } catch (error) {
             console.error('Erro ao alternar like:', error)
+        } finally {
+            // Remover estado de carregamento
+            setLikingInProgress(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(tutorialId)
+                return newSet
+            })
         }
     }
 
-    // Abrir tutorial
+    // Abrir tutorial (não registrar visualização aqui, só quando o usuário assistir o vídeo)
     const abrirTutorial = (tutorial: Tutorial) => {
         setTutorialSelecionado(tutorial)
-        registrarVisualizacao(tutorial.id)
+    }
+
+    // Registrar visualização após assistir o vídeo (chamado após fechar o modal)
+    const fecharTutorialERegistrarView = () => {
+        if (tutorialSelecionado && !viewsRegistered.has(tutorialSelecionado.id)) {
+            // Registrar visualização ao fechar o modal (assumindo que o usuário assistiu)
+            registrarVisualizacao(tutorialSelecionado.id)
+            setViewsRegistered(prev => new Set(prev).add(tutorialSelecionado.id))
+        }
+        setTutorialSelecionado(null)
     }
 
     const tutoriaisFiltrados = categoriaFiltro === 'todos'
@@ -372,19 +415,27 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
                                         </div>
                                         <button
                                             onClick={(e) => toggleLike(e, tutorial.id)}
+                                            disabled={likingInProgress.has(tutorial.id)}
                                             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${likedTutorials.has(tutorial.id)
                                                 ? 'bg-red-50 text-red-600 hover:bg-red-100'
                                                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                                }`}
+                                                } ${likingInProgress.has(tutorial.id) ? 'opacity-70 cursor-wait' : ''}`}
                                         >
-                                            <svg
-                                                className={`w-4 h-4 transition-transform ${likedTutorials.has(tutorial.id) ? 'scale-110' : ''}`}
-                                                fill={likedTutorials.has(tutorial.id) ? 'currentColor' : 'none'}
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                            </svg>
+                                            {likingInProgress.has(tutorial.id) ? (
+                                                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                </svg>
+                                            ) : (
+                                                <svg
+                                                    className={`w-4 h-4 transition-transform ${likedTutorials.has(tutorial.id) ? 'scale-110' : ''} ${likeAnimations.has(tutorial.id) ? 'animate-bounce' : ''}`}
+                                                    fill={likedTutorials.has(tutorial.id) ? 'currentColor' : 'none'}
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                                </svg>
+                                            )}
                                             {formatNumber(tutorial.likes || 0)}
                                         </button>
                                     </div>
@@ -398,7 +449,7 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
                 {tutorialSelecionado && (
                     <div
                         className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-                        onClick={() => setTutorialSelecionado(null)}
+                        onClick={fecharTutorialERegistrarView}
                     >
                         <div
                             className="bg-white rounded-2xl w-full max-w-4xl overflow-hidden shadow-2xl animate-scale-in"
@@ -410,7 +461,7 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
                                     {tutorialSelecionado.titulo}
                                 </h3>
                                 <button
-                                    onClick={() => setTutorialSelecionado(null)}
+                                    onClick={fecharTutorialERegistrarView}
                                     className="p-2 rounded-lg hover:bg-slate-100 transition-colors"
                                 >
                                     <svg className="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -451,19 +502,27 @@ export const TutoriaisPublicosPage: React.FC<TutoriaisPublicosPageProps> = ({ on
                                     </div>
                                     <button
                                         onClick={(e) => toggleLike(e, tutorialSelecionado.id)}
+                                        disabled={likingInProgress.has(tutorialSelecionado.id)}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${likedTutorials.has(tutorialSelecionado.id)
-                                                ? 'bg-red-500 text-white hover:bg-red-600'
-                                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                                            }`}
+                                            ? 'bg-red-500 text-white hover:bg-red-600'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            } ${likingInProgress.has(tutorialSelecionado.id) ? 'opacity-70 cursor-wait' : ''}`}
                                     >
-                                        <svg
-                                            className={`w-5 h-5 transition-transform ${likedTutorials.has(tutorialSelecionado.id) ? 'scale-110' : ''}`}
-                                            fill={likedTutorials.has(tutorialSelecionado.id) ? 'currentColor' : 'none'}
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                                        </svg>
+                                        {likingInProgress.has(tutorialSelecionado.id) ? (
+                                            <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        ) : (
+                                            <svg
+                                                className={`w-5 h-5 transition-transform ${likedTutorials.has(tutorialSelecionado.id) ? 'scale-110' : ''} ${likeAnimations.has(tutorialSelecionado.id) ? 'animate-bounce' : ''}`}
+                                                fill={likedTutorials.has(tutorialSelecionado.id) ? 'currentColor' : 'none'}
+                                                stroke="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            </svg>
+                                        )}
                                         {likedTutorials.has(tutorialSelecionado.id) ? 'Gostei!' : 'Gostei'}
                                     </button>
                                 </div>
