@@ -80,8 +80,8 @@ export const LoginScreen: React.FC = () => {
         return (
             <SchoolRegistration
                 onSuccess={() => {
-                    // After successful registration, user will be logged in automatically
-                    // The AuthContext will handle the redirect
+                    // Voltar para a tela de login após cadastro bem-sucedido
+                    setMode('login')
                 }}
                 onCancel={() => setMode('login')}
             />
