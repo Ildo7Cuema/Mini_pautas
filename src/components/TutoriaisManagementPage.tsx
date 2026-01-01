@@ -780,8 +780,8 @@ export const TutoriaisManagementPage: React.FC = () => {
                         </div>
 
                         {/* Actions */}
-                        <div className="px-6 pb-6">
-                            <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="px-6 pb-6 pb-safe sm:pb-6">
+                            <div className="flex flex-col sm:flex-row gap-3 mb-16 sm:mb-0">
                                 <button
                                     onClick={closeDeleteModal}
                                     disabled={deleting}
