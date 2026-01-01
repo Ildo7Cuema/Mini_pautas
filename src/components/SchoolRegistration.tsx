@@ -86,6 +86,35 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
     const [success, setSuccess] = useState(false)
     const [step, setStep] = useState(1) // 1: Dados da Escola, 2: Dados do Responsável
     const [generatingCode, setGeneratingCode] = useState(false)
+    const [countdown, setCountdown] = useState(10) // Contagem regressiva de 10 segundos
+
+    // Efeito para contagem regressiva e redirecionamento automático
+    useEffect(() => {
+        if (!success) return
+
+        const timer = setInterval(() => {
+            setCountdown(prev => {
+                if (prev <= 1) {
+                    clearInterval(timer)
+                    handleGoToLogin()
+                    return 0
+                }
+                return prev - 1
+            })
+        }, 1000)
+
+        return () => clearInterval(timer)
+    }, [success])
+
+    // Função para redirecionar para login
+    const handleGoToLogin = () => {
+        if (onSuccess) {
+            onSuccess()
+        } else {
+            // Fallback: redirecionar para a página de login via navegação
+            window.location.href = '/'
+        }
+    }
 
     const handleChange = async (field: keyof SchoolRegistrationForm, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }))
@@ -221,13 +250,7 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
 
             // 4. Show success message
             setSuccess(true)
-
-            // 5. After 3 seconds, redirect to login
-            setTimeout(() => {
-                if (onSuccess) {
-                    onSuccess()
-                }
-            }, 3000)
+            // A contagem regressiva é gerenciada pelo useEffect
 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro'
@@ -260,13 +283,17 @@ export const SchoolRegistration: React.FC<SchoolRegistrationProps> = ({ onSucces
                             Verifique seu email para confirmar a conta.
                         </p>
                         <div className="flex flex-col items-center gap-3">
-                            <div className="spinner-gradient w-8 h-8 rounded-full mask-linear"></div>
-                            <span className="text-xs text-slate-400 font-medium animate-pulse">Redirecionando para login...</span>
+                            <div className="flex items-center justify-center w-12 h-12 bg-primary-100 rounded-full">
+                                <span className="text-xl font-bold text-primary-600">{countdown}</span>
+                            </div>
+                            <span className="text-sm text-slate-500 font-medium">
+                                Redirecionando para login em <strong className="text-primary-600">{countdown}</strong> segundos...
+                            </span>
                         </div>
                         <Button
                             variant="primary"
                             className="btn-premium mt-6"
-                            onClick={() => onSuccess?.()}
+                            onClick={handleGoToLogin}
                             fullWidth
                         >
                             Ir para Login agora
