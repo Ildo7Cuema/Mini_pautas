@@ -41,6 +41,9 @@ export const TutoriaisManagementPage: React.FC = () => {
     const [editingTutorial, setEditingTutorial] = useState<TutorialWithPerfis | null>(null)
     const [saving, setSaving] = useState(false)
     const [activeFilter, setActiveFilter] = useState<'todos' | 'ativos' | 'inativos' | 'publicos'>('todos')
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [tutorialToDelete, setTutorialToDelete] = useState<TutorialWithPerfis | null>(null)
+    const [deleting, setDeleting] = useState(false)
 
     // Form state
     const [formData, setFormData] = useState({
@@ -187,13 +190,27 @@ export const TutoriaisManagementPage: React.FC = () => {
         }
     }
 
-    const deleteTutorial = async (tutorial: TutorialWithPerfis) => {
-        if (!confirm(`Deseja realmente excluir "${tutorial.titulo}"?`)) return
+    const openDeleteModal = (tutorial: TutorialWithPerfis) => {
+        setTutorialToDelete(tutorial)
+        setShowDeleteModal(true)
+    }
+
+    const closeDeleteModal = () => {
+        setShowDeleteModal(false)
+        setTutorialToDelete(null)
+        setDeleting(false)
+    }
+
+    const confirmDeleteTutorial = async () => {
+        if (!tutorialToDelete) return
+        setDeleting(true)
         try {
-            await supabase.from('tutoriais').delete().eq('id', tutorial.id)
+            await supabase.from('tutoriais').delete().eq('id', tutorialToDelete.id)
             loadTutoriais()
+            closeDeleteModal()
         } catch (error) {
             console.error('Erro ao excluir tutorial:', error)
+            setDeleting(false)
         }
     }
 
@@ -451,7 +468,7 @@ export const TutoriaisManagementPage: React.FC = () => {
                                         {tutorial.ativo ? '⏸️' : '▶️'}
                                     </button>
                                     <button
-                                        onClick={() => deleteTutorial(tutorial)}
+                                        onClick={() => openDeleteModal(tutorial)}
                                         className="py-2 px-3 text-sm font-medium text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all active:scale-95"
                                     >
                                         <Icons.Trash className="w-4 h-4" />
@@ -650,6 +667,147 @@ export const TutoriaisManagementPage: React.FC = () => {
                                 >
                                     {saving ? 'Salvando...' : editingTutorial ? 'Salvar' : 'Criar'}
                                 </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Delete Confirmation Modal */}
+            {showDeleteModal && tutorialToDelete && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+                        onClick={closeDeleteModal}
+                    />
+
+                    {/* Modal Content */}
+                    <div className="relative w-full max-w-sm bg-white rounded-2xl shadow-2xl animate-scale-in overflow-hidden">
+                        {/* Animated Warning Header */}
+                        <div className="relative bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 px-6 py-8 text-center overflow-hidden">
+                            {/* Animated Background Pattern */}
+                            <div className="absolute inset-0 opacity-20">
+                                <div className="absolute top-0 left-0 w-20 h-20 bg-white/30 rounded-full -translate-x-10 -translate-y-10 animate-pulse" />
+                                <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/20 rounded-full translate-x-16 translate-y-16 animate-pulse" style={{ animationDelay: '0.5s' }} />
+                            </div>
+
+                            {/* Warning Icon with Animation */}
+                            <div className="relative mx-auto mb-4">
+                                <div className="w-20 h-20 mx-auto bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center shadow-lg animate-bounce-subtle">
+                                    <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-inner">
+                                        <svg className="w-10 h-10 text-red-500 animate-shake" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h3 className="text-xl font-bold text-white mb-1">Eliminar Tutorial?</h3>
+                            <p className="text-white/80 text-sm">Esta ação não pode ser desfeita</p>
+                        </div>
+
+                        {/* Tutorial Info Card */}
+                        <div className="px-6 py-5">
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+                                <div className="flex items-start gap-4">
+                                    {/* Thumbnail */}
+                                    <div className="w-16 h-12 rounded-lg overflow-hidden bg-gradient-to-br from-slate-200 to-slate-300 flex-shrink-0 shadow-sm">
+                                        {getThumbnail(tutorialToDelete) ? (
+                                            <img
+                                                src={getThumbnail(tutorialToDelete)}
+                                                alt={tutorialToDelete.titulo}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <span className="text-xl opacity-50">📹</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-slate-800 text-sm line-clamp-1">
+                                            {tutorialToDelete.titulo}
+                                        </h4>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold text-white bg-gradient-to-r ${CATEGORIAS.find(c => c.value === tutorialToDelete.categoria)?.color}`}>
+                                                {CATEGORIAS.find(c => c.value === tutorialToDelete.categoria)?.icon} {CATEGORIAS.find(c => c.value === tutorialToDelete.categoria)?.label}
+                                            </span>
+                                        </div>
+                                        {tutorialToDelete.descricao && (
+                                            <p className="text-slate-500 text-xs mt-1 line-clamp-1">
+                                                {tutorialToDelete.descricao}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Stats */}
+                                <div className="flex items-center justify-center gap-6 mt-3 pt-3 border-t border-slate-200">
+                                    <div className="text-center">
+                                        <div className="flex items-center gap-1 text-slate-600">
+                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                            </svg>
+                                            <span className="text-xs font-semibold">{(tutorialToDelete.visualizacoes || 0).toLocaleString()}</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400">visualizações</span>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="flex items-center gap-1 text-slate-600">
+                                            <svg className="w-3.5 h-3.5 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                                                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                                            </svg>
+                                            <span className="text-xs font-semibold">{(tutorialToDelete.likes || 0).toLocaleString()}</span>
+                                        </div>
+                                        <span className="text-[10px] text-slate-400">curtidas</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Warning Message */}
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                <div className="flex items-start gap-2">
+                                    <span className="text-lg">⚠️</span>
+                                    <p className="text-xs text-amber-700 leading-relaxed">
+                                        Todos os dados associados a este tutorial serão <strong>permanentemente eliminados</strong>, incluindo estatísticas e configurações de perfil.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="px-6 pb-6">
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <button
+                                    onClick={closeDeleteModal}
+                                    disabled={deleting}
+                                    className="flex-1 py-3.5 px-4 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    onClick={confirmDeleteTutorial}
+                                    disabled={deleting}
+                                    className="flex-1 py-3.5 px-4 text-sm font-bold text-white bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 rounded-xl shadow-lg shadow-red-500/25 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                >
+                                    {deleting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                            Eliminando...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                            </svg>
+                                            Sim, Eliminar
+                                        </>
+                                    )}
+                                </button>
                             </div>
                         </div>
                     </div>
