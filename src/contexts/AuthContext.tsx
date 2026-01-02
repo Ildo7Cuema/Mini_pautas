@@ -214,7 +214,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.log('🔍 AuthContext: Checking if user is an aluno...')
                 const { data: alunoData, error: alunoError } = await supabase
                     .from('alunos')
-                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola))')
+                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola, bloqueado, bloqueado_motivo, ativo))')
                     .eq('user_id', authUser.id)
                     .eq('ativo', true)
                     .maybeSingle()
@@ -231,8 +231,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setIsEncarregado(false)
 
                     // Extract escola from turma relation
-                    const turmaData = alunoData.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string } } | null
+                    const turmaData = alunoData.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string; bloqueado?: boolean; bloqueado_motivo?: string; ativo?: boolean } } | null
                     const escolaData = turmaData?.escolas || null
+
+                    // Check if escola is blocked or inactive
+                    if (escolaData) {
+                        if (escolaData.bloqueado) {
+                            console.error('🚫 AuthContext: Escola is blocked:', escolaData.bloqueado_motivo)
+                            setBlockedModalData({
+                                reason: escolaData.bloqueado_motivo || undefined,
+                                type: 'blocked'
+                            })
+                            setShowBlockedModal(true)
+                            await supabase.auth.signOut()
+                            setUser(null)
+                            isLoadingProfileRef.current = false
+                            setLoading(false)
+                            return
+                        }
+
+                        if (escolaData.ativo === false) {
+                            console.warn('⚠️ AuthContext: Escola is inactive')
+                            setBlockedModalData({
+                                reason: undefined,
+                                type: 'inactive'
+                            })
+                            setShowBlockedModal(true)
+                            await supabase.auth.signOut()
+                            setUser(null)
+                            isLoadingProfileRef.current = false
+                            setLoading(false)
+                            return
+                        }
+                    }
 
                     // Create inline aluno profile with escola
                     const alunoProfile = {
@@ -259,7 +290,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.log('🔍 AuthContext: Checking if user is an encarregado...')
                 const { data: encarregadoData, error: encarregadoError } = await supabase
                     .from('alunos')
-                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola))')
+                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola, bloqueado, bloqueado_motivo, ativo))')
                     .eq('encarregado_user_id', authUser.id)
                     .eq('ativo', true)
 
@@ -275,8 +306,39 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setIsAluno(false)
 
                     // Extract escola from first aluno's turma
-                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string } } | null
+                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string; bloqueado?: boolean; bloqueado_motivo?: string; ativo?: boolean } } | null
                     const escolaData = firstAlunoTurma?.escolas || null
+
+                    // Check if escola is blocked or inactive
+                    if (escolaData) {
+                        if (escolaData.bloqueado) {
+                            console.error('🚫 AuthContext: Escola is blocked:', escolaData.bloqueado_motivo)
+                            setBlockedModalData({
+                                reason: escolaData.bloqueado_motivo || undefined,
+                                type: 'blocked'
+                            })
+                            setShowBlockedModal(true)
+                            await supabase.auth.signOut()
+                            setUser(null)
+                            isLoadingProfileRef.current = false
+                            setLoading(false)
+                            return
+                        }
+
+                        if (escolaData.ativo === false) {
+                            console.warn('⚠️ AuthContext: Escola is inactive')
+                            setBlockedModalData({
+                                reason: undefined,
+                                type: 'inactive'
+                            })
+                            setShowBlockedModal(true)
+                            await supabase.auth.signOut()
+                            setUser(null)
+                            isLoadingProfileRef.current = false
+                            setLoading(false)
+                            return
+                        }
+                    }
 
                     // Create inline encarregado profile with escola
                     const encarregadoProfile = {
@@ -715,6 +777,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log('✅ AuthContext: Aluno data loaded:', alunoData)
             const aluno = alunoData as Aluno & { turma: Turma & { escola: Escola } }
 
+            // Check if escola is blocked or inactive
+            if (aluno.turma?.escola) {
+                if (aluno.turma.escola.bloqueado) {
+                    console.error('🚫 AuthContext: Escola is blocked:', aluno.turma.escola.bloqueado_motivo)
+                    setBlockedModalData({
+                        reason: aluno.turma.escola.bloqueado_motivo || undefined,
+                        type: 'blocked'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
+                if (!aluno.turma.escola.ativo) {
+                    console.warn('⚠️ AuthContext: Escola is inactive')
+                    setBlockedModalData({
+                        reason: undefined,
+                        type: 'inactive'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+            }
+
             // Build aluno profile
             const alunoProfileData: AlunoProfile = {
                 ...aluno,
@@ -790,6 +883,37 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             // Get escola from first aluno
             const escola = alunosAssociados[0]?.escola
+
+            // Check if escola is blocked or inactive
+            if (escola) {
+                if (escola.bloqueado) {
+                    console.error('🚫 AuthContext: Escola is blocked:', escola.bloqueado_motivo)
+                    setBlockedModalData({
+                        reason: escola.bloqueado_motivo || undefined,
+                        type: 'blocked'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
+                if (!escola.ativo) {
+                    console.warn('⚠️ AuthContext: Escola is inactive')
+                    setBlockedModalData({
+                        reason: undefined,
+                        type: 'inactive'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+            }
 
             const encarregadoProfileData: EncarregadoProfile = {
                 user_profile: profile,
