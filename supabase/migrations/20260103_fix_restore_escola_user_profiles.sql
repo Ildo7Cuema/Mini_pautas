@@ -331,7 +331,7 @@ BEGIN
                 (v_item->>'professor_id')::UUID,
                 v_item->>'nome',
                 v_item->>'codigo_turma',
-                COALESCE((v_item->>'ano_lectivo')::INT, EXTRACT(YEAR FROM NOW())::INT),
+                COALESCE(v_item->>'ano_lectivo', EXTRACT(YEAR FROM NOW())::TEXT),
                 COALESCE((v_item->>'trimestre')::INT, 1),
                 v_item->>'nivel_ensino',
                 (v_item->>'sala')::INT,
