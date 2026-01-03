@@ -45,7 +45,7 @@ interface TurmaBasic {
     id: string
     nome: string
     codigo_turma: string
-    ano_lectivo: number
+    ano_lectivo: string
 }
 
 export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ searchQuery = '' }) => {
@@ -402,7 +402,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                 .from('turmas')
                 .select('id, nome, codigo_turma, ano_lectivo')
                 .eq('escola_id', escolaId)
-                .eq('ano_lectivo', currentYear)
+                .ilike('ano_lectivo', `${currentYear}%`)
                 .order('nome')
 
             setTurmas(turmasData || [])
