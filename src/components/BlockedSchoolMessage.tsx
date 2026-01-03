@@ -9,7 +9,7 @@ import { getSuperAdminContact, getDadosBancarios, type SuperAdminContact, type D
 
 interface BlockedSchoolMessageProps {
     reason?: string
-    type: 'blocked' | 'inactive'
+    type: 'blocked' | 'inactive' | 'deleted'
     escolaCodigo?: string
     escolaNome?: string
     onClose: () => void
@@ -46,6 +46,7 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
     }, [])
 
     const isBlocked = type === 'blocked'
+    const isDeleted = type === 'deleted'
     const isLicenseExpired = reason?.toLowerCase().includes('licença') || reason?.toLowerCase().includes('expirad')
 
     // Generate WhatsApp link for renewal
@@ -68,12 +69,16 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
             {/* Modal Container */}
             <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden animate-slide-up max-h-[90vh] overflow-y-auto">
                 {/* Header with gradient */}
-                <div className={`${isBlocked ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gradient-to-r from-amber-600 to-amber-700'} px-8 py-6`}>
+                <div className={`${isDeleted ? 'bg-gradient-to-r from-slate-700 to-slate-800' : isBlocked ? 'bg-gradient-to-r from-red-600 to-red-700' : 'bg-gradient-to-r from-amber-600 to-amber-700'} px-8 py-6`}>
                     <div className="flex items-center gap-4">
                         {/* Icon */}
                         <div className="flex-shrink-0">
-                            <div className={`h-16 w-16 rounded-full ${isBlocked ? 'bg-red-500/30' : 'bg-amber-500/30'} flex items-center justify-center backdrop-blur-sm border-2 ${isBlocked ? 'border-red-300' : 'border-amber-300'}`}>
-                                {isBlocked ? (
+                            <div className={`h-16 w-16 rounded-full ${isDeleted ? 'bg-slate-500/30 border-slate-400' : isBlocked ? 'bg-red-500/30 border-red-300' : 'bg-amber-500/30 border-amber-300'} flex items-center justify-center backdrop-blur-sm border-2`}>
+                                {isDeleted ? (
+                                    <svg className="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
+                                ) : isBlocked ? (
                                     <svg className="h-9 w-9 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636" />
                                     </svg>
@@ -88,9 +93,9 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
                         {/* Title */}
                         <div className="flex-1">
                             <h3 className="text-2xl font-bold text-white mb-1">
-                                {isBlocked ? 'Acesso Bloqueado' : 'Acesso Temporariamente Indisponível'}
+                                {isDeleted ? 'Instituição Encerrada' : isBlocked ? 'Acesso Bloqueado' : 'Acesso Temporariamente Indisponível'}
                             </h3>
-                            <p className="text-red-100 text-sm">
+                            <p className={`${isDeleted ? 'text-slate-300' : 'text-red-100'} text-sm`}>
                                 EduGest Angola - Sistema de Gestão Escolar
                             </p>
                         </div>
@@ -101,17 +106,42 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
                 <div className="px-8 py-6">
                     {/* Main Message */}
                     <div className="mb-6">
-                        <div className={`${isBlocked ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border-l-4 rounded-r-lg p-4 mb-4`}>
-                            <p className={`${isBlocked ? 'text-red-900' : 'text-amber-900'} font-semibold mb-2`}>
-                                {isBlocked ? '🚫 Instituição Bloqueada' : '⏸️ Instituição Inactiva'}
+                        <div className={`${isDeleted ? 'bg-slate-50 border-slate-300' : isBlocked ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border-l-4 rounded-r-lg p-4 mb-4`}>
+                            <p className={`${isDeleted ? 'text-slate-900' : isBlocked ? 'text-red-900' : 'text-amber-900'} font-semibold mb-2`}>
+                                {isDeleted ? '🏫 Instituição Encerrada Definitivamente' : isBlocked ? '🚫 Instituição Bloqueada' : '⏸️ Instituição Inactiva'}
                             </p>
-                            <p className={`${isBlocked ? 'text-red-700' : 'text-amber-700'} text-sm leading-relaxed`}>
-                                {reason || (isBlocked
-                                    ? 'Esta instituição de ensino foi temporariamente bloqueada pelo administrador do sistema.'
-                                    : 'Esta instituição de ensino encontra-se temporariamente inactiva.'
+                            <p className={`${isDeleted ? 'text-slate-700' : isBlocked ? 'text-red-700' : 'text-amber-700'} text-sm leading-relaxed`}>
+                                {reason || (isDeleted
+                                    ? 'Esta instituição de ensino foi encerrada definitivamente pelo administrador do sistema. Todos os dados da escola foram removidos do sistema.'
+                                    : isBlocked
+                                        ? 'Esta instituição de ensino foi temporariamente bloqueada pelo administrador do sistema.'
+                                        : 'Esta instituição de ensino encontra-se temporariamente inactiva.'
                                 )}
                             </p>
                         </div>
+
+                        {/* Additional info for deleted schools */}
+                        {isDeleted && (
+                            <div className="bg-slate-100 border border-slate-200 rounded-xl p-4 mb-4">
+                                <h4 className="font-semibold text-slate-800 mb-2 flex items-center gap-2">
+                                    <span>ℹ️</span> O que isto significa?
+                                </h4>
+                                <ul className="space-y-2 text-sm text-slate-700">
+                                    <li className="flex gap-2">
+                                        <span>•</span>
+                                        <span>A sua conta está associada a uma escola que já não existe no sistema</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span>•</span>
+                                        <span>Não é possível aceder aos dados anteriores desta instituição</span>
+                                    </li>
+                                    <li className="flex gap-2">
+                                        <span>•</span>
+                                        <span>Entre em contacto com o suporte para mais informações</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        )}
 
                         {/* License Renewal Instructions (if license expired) */}
                         {isLicenseExpired && (
@@ -212,7 +242,7 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
                         {/* Close Button - Secondary Action */}
                         <button
                             onClick={onClose}
-                            className={`w-full px-6 py-3 ${isBlocked ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white'} rounded-lg font-semibold transition-all duration-200`}
+                            className={`w-full px-6 py-3 ${isDeleted || isBlocked ? 'bg-slate-200 hover:bg-slate-300 text-slate-700' : 'bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white'} rounded-lg font-semibold transition-all duration-200`}
                         >
                             Entendido
                         </button>

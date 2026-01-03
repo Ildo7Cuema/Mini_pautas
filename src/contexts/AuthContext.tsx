@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [showBlockedModal, setShowBlockedModal] = useState(false)
     const [blockedModalData, setBlockedModalData] = useState<{
         reason?: string
-        type: 'blocked' | 'inactive'
+        type: 'blocked' | 'inactive' | 'deleted'
     }>({ type: 'blocked' })
 
     // Flag to prevent race conditions between getSession and onAuthStateChange
@@ -234,35 +234,48 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     const turmaData = alunoData.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string; bloqueado?: boolean; bloqueado_motivo?: string; ativo?: boolean } } | null
                     const escolaData = turmaData?.escolas || null
 
-                    // Check if escola is blocked or inactive
-                    if (escolaData) {
-                        if (escolaData.bloqueado) {
-                            console.error('🚫 AuthContext: Escola is blocked:', escolaData.bloqueado_motivo)
-                            setBlockedModalData({
-                                reason: escolaData.bloqueado_motivo || undefined,
-                                type: 'blocked'
-                            })
-                            setShowBlockedModal(true)
-                            await supabase.auth.signOut()
-                            setUser(null)
-                            isLoadingProfileRef.current = false
-                            setLoading(false)
-                            return
-                        }
+                    // Check if escola was deleted (not found)
+                    if (!escolaData) {
+                        console.warn('🗑️ AuthContext: Escola not found for aluno - may have been deleted')
+                        setBlockedModalData({
+                            reason: 'A escola associada à sua conta de aluno foi eliminada do sistema. Contacte o suporte para mais informações.',
+                            type: 'deleted'
+                        })
+                        setShowBlockedModal(true)
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        isLoadingProfileRef.current = false
+                        setLoading(false)
+                        return
+                    }
 
-                        if (escolaData.ativo === false) {
-                            console.warn('⚠️ AuthContext: Escola is inactive')
-                            setBlockedModalData({
-                                reason: undefined,
-                                type: 'inactive'
-                            })
-                            setShowBlockedModal(true)
-                            await supabase.auth.signOut()
-                            setUser(null)
-                            isLoadingProfileRef.current = false
-                            setLoading(false)
-                            return
-                        }
+                    // Check if escola is blocked or inactive
+                    if (escolaData.bloqueado) {
+                        console.error('🚫 AuthContext: Escola is blocked:', escolaData.bloqueado_motivo)
+                        setBlockedModalData({
+                            reason: escolaData.bloqueado_motivo || undefined,
+                            type: 'blocked'
+                        })
+                        setShowBlockedModal(true)
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        isLoadingProfileRef.current = false
+                        setLoading(false)
+                        return
+                    }
+
+                    if (escolaData.ativo === false) {
+                        console.warn('⚠️ AuthContext: Escola is inactive')
+                        setBlockedModalData({
+                            reason: undefined,
+                            type: 'inactive'
+                        })
+                        setShowBlockedModal(true)
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        isLoadingProfileRef.current = false
+                        setLoading(false)
+                        return
                     }
 
                     // Create inline aluno profile with escola
@@ -309,35 +322,48 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string; bloqueado?: boolean; bloqueado_motivo?: string; ativo?: boolean } } | null
                     const escolaData = firstAlunoTurma?.escolas || null
 
-                    // Check if escola is blocked or inactive
-                    if (escolaData) {
-                        if (escolaData.bloqueado) {
-                            console.error('🚫 AuthContext: Escola is blocked:', escolaData.bloqueado_motivo)
-                            setBlockedModalData({
-                                reason: escolaData.bloqueado_motivo || undefined,
-                                type: 'blocked'
-                            })
-                            setShowBlockedModal(true)
-                            await supabase.auth.signOut()
-                            setUser(null)
-                            isLoadingProfileRef.current = false
-                            setLoading(false)
-                            return
-                        }
+                    // Check if escola was deleted (not found)
+                    if (!escolaData) {
+                        console.warn('🗑️ AuthContext: Escola not found for encarregado - may have been deleted')
+                        setBlockedModalData({
+                            reason: 'A escola associada à conta do seu educando foi eliminada do sistema. Contacte o suporte para mais informações.',
+                            type: 'deleted'
+                        })
+                        setShowBlockedModal(true)
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        isLoadingProfileRef.current = false
+                        setLoading(false)
+                        return
+                    }
 
-                        if (escolaData.ativo === false) {
-                            console.warn('⚠️ AuthContext: Escola is inactive')
-                            setBlockedModalData({
-                                reason: undefined,
-                                type: 'inactive'
-                            })
-                            setShowBlockedModal(true)
-                            await supabase.auth.signOut()
-                            setUser(null)
-                            isLoadingProfileRef.current = false
-                            setLoading(false)
-                            return
-                        }
+                    // Check if escola is blocked or inactive
+                    if (escolaData.bloqueado) {
+                        console.error('🚫 AuthContext: Escola is blocked:', escolaData.bloqueado_motivo)
+                        setBlockedModalData({
+                            reason: escolaData.bloqueado_motivo || undefined,
+                            type: 'blocked'
+                        })
+                        setShowBlockedModal(true)
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        isLoadingProfileRef.current = false
+                        setLoading(false)
+                        return
+                    }
+
+                    if (escolaData.ativo === false) {
+                        console.warn('⚠️ AuthContext: Escola is inactive')
+                        setBlockedModalData({
+                            reason: undefined,
+                            type: 'inactive'
+                        })
+                        setShowBlockedModal(true)
+                        await supabase.auth.signOut()
+                        setUser(null)
+                        isLoadingProfileRef.current = false
+                        setLoading(false)
+                        return
                     }
 
                     // Create inline encarregado profile with escola
@@ -526,11 +552,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             if (!escolaData) {
                 console.warn('⚠️ AuthContext: No escola found for escola_id:', profile.escola_id)
-                setUser({
-                    id: userId,
-                    email: profile.user_id || '',
-                    profile
+                console.warn('🗑️ AuthContext: Escola may have been deleted')
+                // Escola was deleted - show deleted modal
+                setBlockedModalData({
+                    reason: 'A escola associada à sua conta foi eliminada do sistema. Contacte o suporte para mais informações.',
+                    type: 'deleted'
                 })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
                 return
             }
 
@@ -640,37 +672,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
             const escola = escolaData ? (escolaData as Escola) : undefined
 
+            // Check if escola was deleted (not found)
+            if (!escola) {
+                console.warn('🗑️ AuthContext: Escola not found - may have been deleted')
+                setBlockedModalData({
+                    reason: 'A escola associada à sua conta de professor foi eliminada do sistema. Contacte o suporte para mais informações.',
+                    type: 'deleted'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
+
             // Check if escola is blocked or inactive
-            if (escola) {
-                console.log('✅ AuthContext: Escola data loaded:', escola.nome)
+            console.log('✅ AuthContext: Escola data loaded:', escola.nome)
 
-                if (escola.bloqueado) {
-                    console.error('🚫 AuthContext: Escola is blocked:', escola.bloqueado_motivo)
-                    setBlockedModalData({
-                        reason: escola.bloqueado_motivo || undefined,
-                        type: 'blocked'
-                    })
-                    setShowBlockedModal(true)
-                    await supabase.auth.signOut()
-                    setUser(null)
-                    isLoadingProfileRef.current = false
-                    setLoading(false)
-                    return
-                }
+            if (escola.bloqueado) {
+                console.error('🚫 AuthContext: Escola is blocked:', escola.bloqueado_motivo)
+                setBlockedModalData({
+                    reason: escola.bloqueado_motivo || undefined,
+                    type: 'blocked'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
 
-                if (!escola.ativo) {
-                    console.warn('⚠️ AuthContext: Escola is inactive')
-                    setBlockedModalData({
-                        reason: undefined,
-                        type: 'inactive'
-                    })
-                    setShowBlockedModal(true)
-                    await supabase.auth.signOut()
-                    setUser(null)
-                    isLoadingProfileRef.current = false
-                    setLoading(false)
-                    return
-                }
+            if (!escola.ativo) {
+                console.warn('⚠️ AuthContext: Escola is inactive')
+                setBlockedModalData({
+                    reason: undefined,
+                    type: 'inactive'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
             }
 
             // Get turmas associadas (may fail due to RLS, that's OK)
@@ -977,37 +1022,50 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             console.log('✅ AuthContext: Secretario data loaded:', secretarioData)
             const secretario = secretarioData as Secretario & { escola: Escola }
 
+            // Check if escola was deleted (not found)
+            if (!secretario.escola) {
+                console.warn('🗑️ AuthContext: Escola not found for secretario - may have been deleted')
+                setBlockedModalData({
+                    reason: 'A escola associada à sua conta de secretário foi eliminada do sistema. Contacte o suporte para mais informações.',
+                    type: 'deleted'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
+
             // Check if escola is blocked or inactive
-            if (secretario.escola) {
-                console.log('✅ AuthContext: Escola data loaded:', secretario.escola.nome)
+            console.log('✅ AuthContext: Escola data loaded:', secretario.escola.nome)
 
-                if (secretario.escola.bloqueado) {
-                    console.error('🚫 AuthContext: Escola is blocked:', secretario.escola.bloqueado_motivo)
-                    setBlockedModalData({
-                        reason: secretario.escola.bloqueado_motivo || undefined,
-                        type: 'blocked'
-                    })
-                    setShowBlockedModal(true)
-                    await supabase.auth.signOut()
-                    setUser(null)
-                    isLoadingProfileRef.current = false
-                    setLoading(false)
-                    return
-                }
+            if (secretario.escola.bloqueado) {
+                console.error('🚫 AuthContext: Escola is blocked:', secretario.escola.bloqueado_motivo)
+                setBlockedModalData({
+                    reason: secretario.escola.bloqueado_motivo || undefined,
+                    type: 'blocked'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
+            }
 
-                if (!secretario.escola.ativo) {
-                    console.warn('⚠️ AuthContext: Escola is inactive')
-                    setBlockedModalData({
-                        reason: undefined,
-                        type: 'inactive'
-                    })
-                    setShowBlockedModal(true)
-                    await supabase.auth.signOut()
-                    setUser(null)
-                    isLoadingProfileRef.current = false
-                    setLoading(false)
-                    return
-                }
+            if (!secretario.escola.ativo) {
+                console.warn('⚠️ AuthContext: Escola is inactive')
+                setBlockedModalData({
+                    reason: undefined,
+                    type: 'inactive'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                isLoadingProfileRef.current = false
+                setLoading(false)
+                return
             }
 
             // Build secretario profile

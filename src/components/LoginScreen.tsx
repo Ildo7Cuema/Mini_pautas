@@ -15,6 +15,7 @@ import { Card, CardBody } from './ui/Card'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { SchoolRegistration } from './SchoolRegistration'
+import { BlockedSchoolMessage } from './BlockedSchoolMessage'
 
 type AuthMode = 'login' | 'signup' | 'school-registration'
 
@@ -28,6 +29,12 @@ export const LoginScreen: React.FC = () => {
     const [resetEmail, setResetEmail] = useState('')
     const [resetLoading, setResetLoading] = useState(false)
     const [resetSuccess, setResetSuccess] = useState(false)
+    // School status modal state
+    const [showSchoolStatusModal, setShowSchoolStatusModal] = useState(false)
+    const [schoolStatusType, setSchoolStatusType] = useState<'blocked' | 'inactive' | 'deleted'>('deleted')
+    const [schoolStatusReason, setSchoolStatusReason] = useState<string | undefined>(undefined)
+    const [schoolInfo, setSchoolInfo] = useState<{ nome?: string; codigo?: string }>({})
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -35,12 +42,154 @@ export const LoginScreen: React.FC = () => {
         setError(null)
 
         try {
-            const { error: signInError } = await supabase.auth.signInWithPassword({
+            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
                 email,
                 password,
             })
 
             if (signInError) throw signInError
+
+            // After successful authentication, check user profile and escola status
+            if (signInData.user) {
+                const userId = signInData.user.id
+
+                // Check user_profiles table
+                const { data: profileData } = await supabase
+                    .from('user_profiles')
+                    .select('*, escolas(*)')
+                    .eq('user_id', userId)
+                    .eq('ativo', true)
+                    .maybeSingle()
+
+                // If no profile found, check if user is SUPERADMIN (which doesn't need escola)
+                if (!profileData) {
+                    // Check for SUPERADMIN profile
+                    const { data: superadminProfile } = await supabase
+                        .from('user_profiles')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .eq('tipo_perfil', 'SUPERADMIN')
+                        .maybeSingle()
+
+                    if (superadminProfile) {
+                        // SUPERADMIN can proceed
+                        return
+                    }
+
+                    // Check if this might be a professor/aluno/encarregado direct record
+                    const { data: professorData } = await supabase
+                        .from('professores')
+                        .select('escola_id, escolas(*)')
+                        .eq('user_id', userId)
+                        .eq('ativo', true)
+                        .maybeSingle()
+
+                    if (professorData) {
+                        const escola = professorData.escolas as any
+                        if (!escola) {
+                            // Escola was deleted
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('deleted')
+                            setSchoolStatusReason('A escola associada à sua conta foi eliminada do sistema. Os seus dados de acesso já não são válidos.')
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        if (escola.bloqueado) {
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('blocked')
+                            setSchoolStatusReason(escola.bloqueado_motivo || undefined)
+                            setSchoolInfo({ nome: escola.nome, codigo: escola.codigo_escola })
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        if (!escola.ativo) {
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('inactive')
+                            setSchoolInfo({ nome: escola.nome, codigo: escola.codigo_escola })
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        // Professor with valid escola - let AuthContext handle
+                        return
+                    }
+
+                    // Check for aluno
+                    const { data: alunoData } = await supabase
+                        .from('alunos')
+                        .select('turma_id, turmas(escola_id, escolas(*))')
+                        .eq('user_id', userId)
+                        .eq('ativo', true)
+                        .maybeSingle()
+
+                    if (alunoData) {
+                        const turma = alunoData.turmas as any
+                        const escola = turma?.escolas as any
+                        if (!escola) {
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('deleted')
+                            setSchoolStatusReason('A escola associada à sua conta de aluno foi eliminada do sistema.')
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        if (escola.bloqueado) {
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('blocked')
+                            setSchoolStatusReason(escola.bloqueado_motivo || undefined)
+                            setSchoolInfo({ nome: escola.nome, codigo: escola.codigo_escola })
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        if (!escola.ativo) {
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('inactive')
+                            setSchoolInfo({ nome: escola.nome, codigo: escola.codigo_escola })
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        // Aluno with valid escola - let AuthContext handle
+                        return
+                    }
+
+                    // No profile at all - escola was probably deleted
+                    await supabase.auth.signOut()
+                    setSchoolStatusType('deleted')
+                    setSchoolStatusReason('A sua conta de utilizador não está associada a nenhuma instituição activa no sistema. A escola pode ter sido eliminada. Contacte o suporte para mais informações.')
+                    setShowSchoolStatusModal(true)
+                    return
+                }
+
+                // User has profile - check escola status
+                const escola = profileData.escolas as any
+                if (profileData.tipo_perfil !== 'SUPERADMIN' && !escola) {
+                    // Escola was deleted
+                    await supabase.auth.signOut()
+                    setSchoolStatusType('deleted')
+                    setSchoolStatusReason('A escola associada à sua conta foi eliminada do sistema. Os seus dados de acesso já não são válidos.')
+                    setShowSchoolStatusModal(true)
+                    return
+                }
+
+                // Check if escola is blocked or inactive
+                if (escola) {
+                    if (escola.bloqueado) {
+                        await supabase.auth.signOut()
+                        setSchoolStatusType('blocked')
+                        setSchoolStatusReason(escola.bloqueado_motivo || undefined)
+                        setSchoolInfo({ nome: escola.nome, codigo: escola.codigo_escola })
+                        setShowSchoolStatusModal(true)
+                        return
+                    }
+                    if (!escola.ativo) {
+                        await supabase.auth.signOut()
+                        setSchoolStatusType('inactive')
+                        setSchoolInfo({ nome: escola.nome, codigo: escola.codigo_escola })
+                        setShowSchoolStatusModal(true)
+                        return
+                    }
+                }
+
+                // All good - let AuthContext handle the rest of the login flow
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro'
             setError(translateError(errorMessage))
@@ -406,6 +555,21 @@ export const LoginScreen: React.FC = () => {
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* School Status Modal (Deleted/Blocked/Inactive) */}
+            {showSchoolStatusModal && (
+                <BlockedSchoolMessage
+                    type={schoolStatusType}
+                    reason={schoolStatusReason}
+                    escolaNome={schoolInfo.nome}
+                    escolaCodigo={schoolInfo.codigo}
+                    onClose={() => {
+                        setShowSchoolStatusModal(false)
+                        setSchoolStatusReason(undefined)
+                        setSchoolInfo({})
+                    }}
+                />
             )}
         </div>
     )

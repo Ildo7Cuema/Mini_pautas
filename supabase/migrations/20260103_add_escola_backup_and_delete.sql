@@ -132,14 +132,13 @@ BEGIN
         RETURNING id INTO v_backup_id;
     END IF;
     
-    -- Delete escola (CASCADE will delete related records)
-    DELETE FROM escolas WHERE id = p_escola_id;
-    
-    -- Log the action
+    -- Log the action BEFORE deleting (to avoid foreign key constraint violation)
+    -- Pass NULL as escola_id since the escola will be deleted
     PERFORM log_superadmin_action(
         'DELETE_ESCOLA',
-        p_escola_id,
+        NULL,  -- Use NULL because escola will be deleted
         jsonb_build_object(
+            'escola_id', p_escola_id,
             'escola_nome', v_escola_data->>'nome',
             'escola_codigo', v_escola_data->>'codigo_escola',
             'motivo', p_motivo,
@@ -147,6 +146,9 @@ BEGIN
             'backup_id', v_backup_id
         )
     );
+    
+    -- Delete escola (CASCADE will delete related records)
+    DELETE FROM escolas WHERE id = p_escola_id;
     
     RETURN json_build_object(
         'success', true,

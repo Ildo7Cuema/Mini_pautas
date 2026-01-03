@@ -34,6 +34,22 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
     const [showBackupsSection, setShowBackupsSection] = useState(false)
     const [backups, setBackups] = useState<EscolaBackup[]>([])
     const [backupsLoading, setBackupsLoading] = useState(false)
+    // Custom alert modal state
+    const [alertModal, setAlertModal] = useState<{ show: boolean; title: string; message: string; type: 'success' | 'error' | 'warning' }>({
+        show: false, title: '', message: '', type: 'error'
+    })
+    // Restore confirmation modal state
+    const [showRestoreModal, setShowRestoreModal] = useState(false)
+    const [restoreBackupId, setRestoreBackupId] = useState<string | null>(null)
+    const [restoreBackupData, setRestoreBackupData] = useState<EscolaBackup | null>(null)
+
+    const showAlert = (title: string, message: string, type: 'success' | 'error' | 'warning' = 'error') => {
+        setAlertModal({ show: true, title, message, type })
+    }
+
+    const closeAlert = () => {
+        setAlertModal({ show: false, title: '', message: '', type: 'error' })
+    }
 
     useEffect(() => {
         loadEscolas()
@@ -74,7 +90,7 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
             await activateEscola(escolaId)
             await loadEscolas()
         } catch (err) {
-            alert('Erro ao activar escola')
+            showAlert('Erro', 'Erro ao activar escola', 'error')
         } finally {
             setActionLoading(null)
         }
@@ -86,7 +102,7 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
             await deactivateEscola(escolaId)
             await loadEscolas()
         } catch (err) {
-            alert('Erro ao desactivar escola')
+            showAlert('Erro', 'Erro ao desactivar escola', 'error')
         } finally {
             setActionLoading(null)
         }
@@ -95,12 +111,12 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
     const handleBlockClick = (escola: Escola) => {
         setSelectedEscola(escola)
         setShowBlockModal(true)
-        setBlockReason('')
+        setBlockReason('Irregularidades administrativas detectadas. A escola foi temporariamente bloqueada para verificação e regularização da situação.')
     }
 
     const handleBlockSubmit = async () => {
         if (!selectedEscola || !blockReason.trim()) {
-            alert('Por favor, forneça um motivo para o bloqueio')
+            showAlert('Aviso', 'Por favor, forneça um motivo para o bloqueio', 'warning')
             return
         }
 
@@ -112,7 +128,7 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
             setBlockReason('')
             await loadEscolas()
         } catch (err) {
-            alert('Erro ao bloquear escola')
+            showAlert('Erro', 'Erro ao bloquear escola', 'error')
         } finally {
             setActionLoading(null)
         }
@@ -124,7 +140,7 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
             await unblockEscola(escolaId)
             await loadEscolas()
         } catch (err) {
-            alert('Erro ao desbloquear escola')
+            showAlert('Erro', 'Erro ao desbloquear escola', 'error')
         } finally {
             setActionLoading(null)
         }
@@ -138,13 +154,13 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
     const handleDeleteClick = (escola: Escola) => {
         setSelectedEscola(escola)
         setShowDeleteModal(true)
-        setDeleteReason('')
+        setDeleteReason('Escola encerrada definitivamente por decisão administrativa. Todos os dados serão arquivados conforme política de retenção.')
         setCreateBackup(true)
     }
 
     const handleDeleteSubmit = async () => {
         if (!selectedEscola || !deleteReason.trim()) {
-            alert('Por favor, forneça um motivo para a eliminação')
+            showAlert('Aviso', 'Por favor, forneça um motivo para a eliminação', 'warning')
             return
         }
 
@@ -156,12 +172,13 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                 setSelectedEscola(null)
                 setDeleteReason('')
                 await loadEscolas()
-                alert(result.message || 'Escola eliminada com sucesso')
+                showAlert('Sucesso', result.message || 'Escola eliminada com sucesso', 'success')
             } else {
-                alert(result.error || 'Erro ao eliminar escola')
+                showAlert('Erro', result.error || 'Erro ao eliminar escola', 'error')
             }
-        } catch (err) {
-            alert('Erro ao eliminar escola')
+        } catch (err: any) {
+            const errorMessage = err?.message || 'Erro ao eliminar escola'
+            showAlert('Erro ao Eliminar', errorMessage, 'error')
         } finally {
             setActionLoading(null)
         }
@@ -174,30 +191,45 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
             setBackups(data)
         } catch (err) {
             console.error('Error loading backups:', err)
-            alert('Erro ao carregar backups')
+            showAlert('Erro', 'Erro ao carregar backups', 'error')
         } finally {
             setBackupsLoading(false)
         }
     }
 
-    const handleRestoreBackup = async (backupId: string) => {
-        if (!confirm('Tem certeza que deseja restaurar esta escola?')) return
+    const handleRestoreClick = (backup: EscolaBackup) => {
+        setRestoreBackupId(backup.id)
+        setRestoreBackupData(backup)
+        setShowRestoreModal(true)
+    }
 
-        setActionLoading(backupId)
+    const handleRestoreConfirm = async () => {
+        if (!restoreBackupId) return
+
+        setActionLoading(restoreBackupId)
+        setShowRestoreModal(false)
         try {
-            const result = await restoreEscola(backupId)
+            const result = await restoreEscola(restoreBackupId)
             if (result.success) {
                 await loadBackups()
                 await loadEscolas()
-                alert(result.message || 'Escola restaurada com sucesso')
+                showAlert('Sucesso', result.message || 'Escola restaurada com sucesso', 'success')
             } else {
-                alert(result.error || 'Erro ao restaurar escola')
+                showAlert('Erro', result.error || 'Erro ao restaurar escola', 'error')
             }
         } catch (err) {
-            alert('Erro ao restaurar escola')
+            showAlert('Erro', 'Erro ao restaurar escola', 'error')
         } finally {
             setActionLoading(null)
+            setRestoreBackupId(null)
+            setRestoreBackupData(null)
         }
+    }
+
+    const handleRestoreCancel = () => {
+        setShowRestoreModal(false)
+        setRestoreBackupId(null)
+        setRestoreBackupData(null)
     }
 
     const toggleBackupsSection = () => {
@@ -774,7 +806,7 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                             </p>
                                         </div>
                                         <button
-                                            onClick={() => handleRestoreBackup(backup.id)}
+                                            onClick={() => handleRestoreClick(backup)}
                                             disabled={actionLoading === backup.id}
                                             className="w-full px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-all"
                                         >
@@ -790,6 +822,104 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                             className="w-full mt-6 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl font-medium hover:bg-neutral-200 transition-all"
                         >
                             Fechar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Restore Confirmation Modal */}
+            {showRestoreModal && restoreBackupData && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                <span className="text-2xl">♻️</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-neutral-800">Restaurar Escola</h2>
+                                <p className="text-sm text-neutral-500">{restoreBackupData.escola_data.nome}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 mb-4">
+                            <p className="text-sm text-emerald-800 font-medium mb-2">
+                                ♻️ Esta acção irá restaurar a escola e todos os seus dados.
+                            </p>
+                            <p className="text-xs text-emerald-700">
+                                Serão recuperados: {restoreBackupData.related_data.professores?.length || 0} professores, {restoreBackupData.related_data.turmas?.length || 0} turmas e {restoreBackupData.related_data.alunos?.length || 0} alunos.
+                            </p>
+                        </div>
+
+                        <div className="bg-neutral-50 rounded-xl p-3 mb-4">
+                            <p className="text-xs text-neutral-500 mb-1">Código da escola</p>
+                            <p className="text-sm font-mono text-neutral-700">{restoreBackupData.escola_data.codigo_escola}</p>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleRestoreCancel}
+                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleRestoreConfirm}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white rounded-xl font-semibold transition-all touch-feedback"
+                            >
+                                ♻️ Confirmar Restauração
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Custom Alert Modal */}
+            {alertModal.show && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-[60] animate-fade-in">
+                    <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up">
+                        <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${alertModal.type === 'success' ? 'bg-emerald-100' :
+                                alertModal.type === 'warning' ? 'bg-amber-100' : 'bg-red-100'
+                                }`}>
+                                <span className="text-2xl">
+                                    {alertModal.type === 'success' ? '✅' :
+                                        alertModal.type === 'warning' ? '⚠️' : '❌'}
+                                </span>
+                            </div>
+                            <div>
+                                <h2 className={`text-xl font-bold ${alertModal.type === 'success' ? 'text-emerald-800' :
+                                    alertModal.type === 'warning' ? 'text-amber-800' : 'text-red-800'
+                                    }`}>
+                                    {alertModal.title}
+                                </h2>
+                            </div>
+                        </div>
+
+                        <div className={`rounded-xl p-4 mb-6 ${alertModal.type === 'success' ? 'bg-emerald-50 border border-emerald-200' :
+                            alertModal.type === 'warning' ? 'bg-amber-50 border border-amber-200' :
+                                'bg-red-50 border border-red-200'
+                            }`}>
+                            <p className={`text-sm ${alertModal.type === 'success' ? 'text-emerald-800' :
+                                alertModal.type === 'warning' ? 'text-amber-800' : 'text-red-800'
+                                }`}>
+                                {alertModal.message}
+                            </p>
+                        </div>
+
+                        <button
+                            onClick={closeAlert}
+                            className={`w-full px-4 py-3 rounded-xl font-semibold transition-all touch-feedback ${alertModal.type === 'success'
+                                ? 'bg-gradient-to-r from-emerald-500 to-emerald-600 text-white' :
+                                alertModal.type === 'warning'
+                                    ? 'bg-gradient-to-r from-amber-500 to-amber-600 text-white' :
+                                    'bg-gradient-to-r from-red-500 to-red-600 text-white'
+                                }`}
+                        >
+                            Entendido
                         </button>
                     </div>
                 </div>
