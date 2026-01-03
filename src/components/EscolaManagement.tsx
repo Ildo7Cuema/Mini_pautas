@@ -425,28 +425,31 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                                     <StatusBadge escola={escola} />
                                                 </td>
                                                 <td className="text-right">
-                                                    <div className="flex justify-end gap-2">
+                                                    <div className="flex justify-end gap-1">
                                                         <button
                                                             onClick={() => handleViewDetails(escola)}
-                                                            className="px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded-lg font-medium transition-colors"
+                                                            className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
+                                                            title="Ver detalhes"
                                                         >
-                                                            Ver
+                                                            👁️
                                                         </button>
                                                         {escola.bloqueado ? (
                                                             <>
                                                                 <button
                                                                     onClick={() => handleUnblock(escola.id)}
                                                                     disabled={actionLoading === escola.id}
-                                                                    className="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                                    title="Desbloquear"
                                                                 >
-                                                                    {actionLoading === escola.id ? '...' : 'Desbloquear'}
+                                                                    {actionLoading === escola.id ? '⏳' : '🔓'}
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleDeleteClick(escola)}
                                                                     disabled={actionLoading === escola.id}
-                                                                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                                    title="Eliminar"
                                                                 >
-                                                                    🗑️ Eliminar
+                                                                    🗑️
                                                                 </button>
                                                             </>
                                                         ) : (
@@ -455,32 +458,36 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                                                     <button
                                                                         onClick={() => handleDeactivate(escola.id)}
                                                                         disabled={actionLoading === escola.id}
-                                                                        className="px-3 py-1.5 text-sm text-amber-600 hover:bg-amber-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                        className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+                                                                        title="Desactivar"
                                                                     >
-                                                                        {actionLoading === escola.id ? '...' : 'Desactivar'}
+                                                                        {actionLoading === escola.id ? '⏳' : '⏸️'}
                                                                     </button>
                                                                 ) : (
                                                                     <button
                                                                         onClick={() => handleActivate(escola.id)}
                                                                         disabled={actionLoading === escola.id}
-                                                                        className="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                        className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
+                                                                        title="Activar"
                                                                     >
-                                                                        {actionLoading === escola.id ? '...' : 'Activar'}
+                                                                        {actionLoading === escola.id ? '⏳' : '▶️'}
                                                                     </button>
                                                                 )}
                                                                 <button
                                                                     onClick={() => handleBlockClick(escola)}
                                                                     disabled={actionLoading === escola.id}
-                                                                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                                    title="Bloquear"
                                                                 >
-                                                                    Bloquear
+                                                                    🚫
                                                                 </button>
                                                                 <button
                                                                     onClick={() => handleDeleteClick(escola)}
                                                                     disabled={actionLoading === escola.id}
-                                                                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                                                    title="Eliminar"
                                                                 >
-                                                                    🗑️ Eliminar
+                                                                    🗑️
                                                                 </button>
                                                             </>
                                                         )}
