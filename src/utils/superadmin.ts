@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabaseClient'
-import type { SuperAdminStats, SuperAdminAction, Escola } from '../types'
+import type { SuperAdminStats, SuperAdminAction, Escola, EscolaBackup } from '../types'
 
 /**
  * SUPERADMIN Utility Functions
@@ -330,6 +330,72 @@ export async function updateEscola(
         })
     } catch (error) {
         console.error('Error updating escola:', error)
+        throw error
+    }
+}
+
+/**
+ * Delete a school with optional backup
+ */
+export async function deleteEscola(
+    escolaId: string,
+    motivo: string,
+    createBackup: boolean = true
+): Promise<{ success: boolean; backup_id?: string; message?: string; error?: string }> {
+    try {
+        const { data, error } = await supabase.rpc('backup_and_delete_escola', {
+            p_escola_id: escolaId,
+            p_motivo: motivo,
+            p_create_backup: createBackup
+        })
+
+        if (error) throw error
+
+        return data as { success: boolean; backup_id?: string; message?: string; error?: string }
+    } catch (error) {
+        console.error('Error deleting escola:', error)
+        throw error
+    }
+}
+
+/**
+ * Fetch all escola backups
+ */
+export async function fetchEscolaBackups(filters?: {
+    limit?: number
+    includeRestored?: boolean
+}): Promise<EscolaBackup[]> {
+    try {
+        const { data, error } = await supabase.rpc('fetch_escola_backups', {
+            p_limit: filters?.limit || 50,
+            p_include_restored: filters?.includeRestored || false
+        })
+
+        if (error) throw error
+
+        return data || []
+    } catch (error) {
+        console.error('Error fetching escola backups:', error)
+        throw error
+    }
+}
+
+/**
+ * Restore a school from backup
+ */
+export async function restoreEscola(
+    backupId: string
+): Promise<{ success: boolean; escola_id?: string; message?: string; error?: string }> {
+    try {
+        const { data, error } = await supabase.rpc('restore_escola_from_backup', {
+            p_backup_id: backupId
+        })
+
+        if (error) throw error
+
+        return data as { success: boolean; escola_id?: string; message?: string; error?: string }
+    } catch (error) {
+        console.error('Error restoring escola:', error)
         throw error
     }
 }

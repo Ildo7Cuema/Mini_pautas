@@ -530,9 +530,31 @@ export interface SuperAdminAction {
     created_at: string;
 }
 
+// Backup de escola eliminada
+export interface EscolaBackup {
+    id: string;
+    escola_id: string;
+    escola_data: Escola;
+    related_data: {
+        professores: any[];
+        turmas: any[];
+        alunos: any[];
+        disciplinas: any[];
+        licencas: any[];
+        secretarios: any[];
+    };
+    deleted_by: string;
+    deleted_at: string;
+    motivo: string;
+    restored_at?: string;
+    restored_by?: string;
+    created_at: string;
+}
+
 // ============================================
 // LICENSING TYPES
 // ============================================
+
 
 export type PlanoLicenca = 'trimestral' | 'semestral' | 'anual';
 export type EstadoLicenca = 'ativa' | 'expirada' | 'suspensa' | 'cancelada';

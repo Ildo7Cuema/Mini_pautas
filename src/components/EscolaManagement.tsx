@@ -7,8 +7,8 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import { fetchAllEscolas, activateEscola, deactivateEscola, blockEscola, unblockEscola } from '../utils/superadmin'
-import type { Escola } from '../types'
+import { fetchAllEscolas, activateEscola, deactivateEscola, blockEscola, unblockEscola, deleteEscola, fetchEscolaBackups, restoreEscola } from '../utils/superadmin'
+import type { Escola, EscolaBackup } from '../types'
 
 interface EscolaManagementProps {
     initialFilter?: 'all' | 'active' | 'inactive' | 'blocked' | 'attention'
@@ -26,6 +26,14 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
     const [actionLoading, setActionLoading] = useState<string | null>(null)
     const [showDetailsModal, setShowDetailsModal] = useState(false)
     const [detailsEscola, setDetailsEscola] = useState<Escola | null>(null)
+    // Delete functionality state
+    const [showDeleteModal, setShowDeleteModal] = useState(false)
+    const [deleteReason, setDeleteReason] = useState('')
+    const [createBackup, setCreateBackup] = useState(true)
+    // Backups section state
+    const [showBackupsSection, setShowBackupsSection] = useState(false)
+    const [backups, setBackups] = useState<EscolaBackup[]>([])
+    const [backupsLoading, setBackupsLoading] = useState(false)
 
     useEffect(() => {
         loadEscolas()
@@ -127,6 +135,79 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
         setShowDetailsModal(true)
     }
 
+    const handleDeleteClick = (escola: Escola) => {
+        setSelectedEscola(escola)
+        setShowDeleteModal(true)
+        setDeleteReason('')
+        setCreateBackup(true)
+    }
+
+    const handleDeleteSubmit = async () => {
+        if (!selectedEscola || !deleteReason.trim()) {
+            alert('Por favor, forneça um motivo para a eliminação')
+            return
+        }
+
+        setActionLoading(selectedEscola.id)
+        try {
+            const result = await deleteEscola(selectedEscola.id, deleteReason, createBackup)
+            if (result.success) {
+                setShowDeleteModal(false)
+                setSelectedEscola(null)
+                setDeleteReason('')
+                await loadEscolas()
+                alert(result.message || 'Escola eliminada com sucesso')
+            } else {
+                alert(result.error || 'Erro ao eliminar escola')
+            }
+        } catch (err) {
+            alert('Erro ao eliminar escola')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const loadBackups = async () => {
+        setBackupsLoading(true)
+        try {
+            const data = await fetchEscolaBackups({ limit: 50, includeRestored: false })
+            setBackups(data)
+        } catch (err) {
+            console.error('Error loading backups:', err)
+            alert('Erro ao carregar backups')
+        } finally {
+            setBackupsLoading(false)
+        }
+    }
+
+    const handleRestoreBackup = async (backupId: string) => {
+        if (!confirm('Tem certeza que deseja restaurar esta escola?')) return
+
+        setActionLoading(backupId)
+        try {
+            const result = await restoreEscola(backupId)
+            if (result.success) {
+                await loadBackups()
+                await loadEscolas()
+                alert(result.message || 'Escola restaurada com sucesso')
+            } else {
+                alert(result.error || 'Erro ao restaurar escola')
+            }
+        } catch (err) {
+            alert('Erro ao restaurar escola')
+        } finally {
+            setActionLoading(null)
+        }
+    }
+
+    const toggleBackupsSection = () => {
+        const newValue = !showBackupsSection
+        setShowBackupsSection(newValue)
+        if (newValue && backups.length === 0) {
+            loadBackups()
+        }
+    }
+
     const filteredEscolas = escolas.filter(escola => {
         if (!searchQuery) return true
         const query = searchQuery.toLowerCase()
@@ -166,15 +247,25 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                             Gerir todas as escolas cadastradas no sistema
                         </p>
                     </div>
-                    <button
-                        onClick={loadEscolas}
-                        className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition-all touch-feedback backdrop-blur-sm self-start md:self-auto"
-                    >
-                        <span>🔄</span>
-                        <span>Actualizar</span>
-                    </button>
+                    <div className="flex gap-2 self-start md:self-auto">
+                        <button
+                            onClick={toggleBackupsSection}
+                            className={`inline-flex items-center justify-center gap-2 px-5 py-2.5 ${showBackupsSection ? 'bg-white text-primary-800' : 'bg-white/20 hover:bg-white/30 text-white'} rounded-xl font-medium transition-all touch-feedback backdrop-blur-sm`}
+                        >
+                            <span>📦</span>
+                            <span className="hidden md:inline">Backups</span>
+                        </button>
+                        <button
+                            onClick={loadEscolas}
+                            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white rounded-xl font-medium transition-all touch-feedback backdrop-blur-sm"
+                        >
+                            <span>🔄</span>
+                            <span>Actualizar</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
 
             <div className="px-4 md:px-8 -mt-4 space-y-4">
                 {/* Mini Stats Cards */}
@@ -252,12 +343,20 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                         <span className="text-xs text-neutral-500 font-mono">{escola.codigo_escola}</span>
                                         <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                                             {escola.bloqueado ? (
-                                                <ActionButton
-                                                    label="Desbloquear"
-                                                    color="green"
-                                                    loading={actionLoading === escola.id}
-                                                    onClick={() => handleUnblock(escola.id)}
-                                                />
+                                                <>
+                                                    <ActionButton
+                                                        label="Desbloquear"
+                                                        color="green"
+                                                        loading={actionLoading === escola.id}
+                                                        onClick={() => handleUnblock(escola.id)}
+                                                    />
+                                                    <ActionButton
+                                                        label="Eliminar"
+                                                        color="red"
+                                                        loading={actionLoading === escola.id}
+                                                        onClick={() => handleDeleteClick(escola)}
+                                                    />
+                                                </>
                                             ) : (
                                                 <>
                                                     {escola.ativo ? (
@@ -280,6 +379,12 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                                         color="red"
                                                         loading={actionLoading === escola.id}
                                                         onClick={() => handleBlockClick(escola)}
+                                                    />
+                                                    <ActionButton
+                                                        label="Eliminar"
+                                                        color="red"
+                                                        loading={actionLoading === escola.id}
+                                                        onClick={() => handleDeleteClick(escola)}
                                                     />
                                                 </>
                                             )}
@@ -328,13 +433,22 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                                             Ver
                                                         </button>
                                                         {escola.bloqueado ? (
-                                                            <button
-                                                                onClick={() => handleUnblock(escola.id)}
-                                                                disabled={actionLoading === escola.id}
-                                                                className="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg font-medium transition-colors disabled:opacity-50"
-                                                            >
-                                                                {actionLoading === escola.id ? '...' : 'Desbloquear'}
-                                                            </button>
+                                                            <>
+                                                                <button
+                                                                    onClick={() => handleUnblock(escola.id)}
+                                                                    disabled={actionLoading === escola.id}
+                                                                    className="px-3 py-1.5 text-sm text-green-600 hover:bg-green-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                >
+                                                                    {actionLoading === escola.id ? '...' : 'Desbloquear'}
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteClick(escola)}
+                                                                    disabled={actionLoading === escola.id}
+                                                                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                >
+                                                                    🗑️ Eliminar
+                                                                </button>
+                                                            </>
                                                         ) : (
                                                             <>
                                                                 {escola.ativo ? (
@@ -360,6 +474,13 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                                                     className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
                                                                 >
                                                                     Bloquear
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteClick(escola)}
+                                                                    disabled={actionLoading === escola.id}
+                                                                    className="px-3 py-1.5 text-sm text-red-600 hover:bg-red-50 rounded-lg font-medium transition-colors disabled:opacity-50"
+                                                                >
+                                                                    🗑️ Eliminar
                                                                 </button>
                                                             </>
                                                         )}
@@ -488,6 +609,177 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
                                 setShowDetailsModal(false)
                                 setDetailsEscola(null)
                             }}
+                            className="w-full mt-6 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl font-medium hover:bg-neutral-200 transition-all"
+                        >
+                            Fechar
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Delete Modal */}
+            {showDeleteModal && selectedEscola && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white w-full md:max-w-md md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                <span className="text-2xl">🗑️</span>
+                            </div>
+                            <div>
+                                <h2 className="text-xl font-bold text-neutral-800">Eliminar Escola</h2>
+                                <p className="text-sm text-neutral-500">{selectedEscola.nome}</p>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+                            <p className="text-sm text-red-800 font-medium mb-2">
+                                ⚠️ ATENÇÃO: Esta acção é irreversível!
+                            </p>
+                            <p className="text-xs text-red-700">
+                                Serão eliminados permanentemente: todos os professores, turmas, alunos, notas e dados relacionados desta escola.
+                            </p>
+                        </div>
+
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-neutral-700 mb-2">
+                                Motivo da Eliminação *
+                            </label>
+                            <textarea
+                                value={deleteReason}
+                                onChange={(e) => setDeleteReason(e.target.value)}
+                                rows={3}
+                                className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all"
+                                placeholder="Descreva o motivo da eliminação..."
+                            />
+                        </div>
+
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+                            <label className="flex items-center gap-3 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={createBackup}
+                                    onChange={(e) => setCreateBackup(e.target.checked)}
+                                    className="w-5 h-5 rounded border-blue-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div>
+                                    <p className="text-sm font-medium text-blue-800">📦 Criar backup antes de eliminar</p>
+                                    <p className="text-xs text-blue-600">Permite restaurar a escola mais tarde se necessário</p>
+                                </div>
+                            </label>
+                        </div>
+
+                        {!createBackup && (
+                            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                                <p className="text-sm text-amber-800">
+                                    ⚠️ Sem backup, não será possível recuperar os dados após a eliminação!
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowDeleteModal(false)
+                                    setSelectedEscola(null)
+                                    setDeleteReason('')
+                                }}
+                                className="flex-1 px-4 py-3 border border-neutral-300 rounded-xl font-medium text-neutral-700 hover:bg-neutral-50 transition-all"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={handleDeleteSubmit}
+                                disabled={actionLoading === selectedEscola.id || !deleteReason.trim()}
+                                className="flex-1 px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 text-white rounded-xl font-semibold disabled:opacity-50 transition-all touch-feedback"
+                            >
+                                {actionLoading === selectedEscola.id ? 'A eliminar...' : '🗑️ Eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Backups Section */}
+            {showBackupsSection && (
+                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center z-50 animate-fade-in">
+                    <div className="bg-white w-full md:max-w-2xl md:rounded-2xl rounded-t-3xl p-6 md:mx-4 animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <div className="w-12 h-1 bg-neutral-300 rounded-full mx-auto mb-4 md:hidden" />
+
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                    <span className="text-2xl">📦</span>
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-bold text-neutral-800">Backups de Escolas</h2>
+                                    <p className="text-sm text-neutral-500">Escolas eliminadas que podem ser restauradas</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={loadBackups}
+                                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                            >
+                                🔄
+                            </button>
+                        </div>
+
+                        {backupsLoading ? (
+                            <div className="space-y-3">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="bg-neutral-50 rounded-xl p-4 animate-pulse">
+                                        <div className="h-5 bg-neutral-200 rounded w-3/4 mb-2"></div>
+                                        <div className="h-3 bg-neutral-100 rounded w-1/2"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : backups.length === 0 ? (
+                            <div className="text-center py-12">
+                                <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
+                                    <span className="text-3xl">📦</span>
+                                </div>
+                                <p className="text-neutral-500">Nenhum backup disponível</p>
+                                <p className="text-sm text-neutral-400 mt-1">Os backups aparecem quando escolas são eliminadas</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 max-h-96 overflow-y-auto">
+                                {backups.map((backup) => (
+                                    <div key={backup.id} className="bg-neutral-50 rounded-xl p-4 border border-neutral-100">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <p className="font-semibold text-neutral-800">
+                                                    {backup.escola_data.nome}
+                                                </p>
+                                                <p className="text-xs text-neutral-500 font-mono">
+                                                    {backup.escola_data.codigo_escola}
+                                                </p>
+                                            </div>
+                                            <span className="text-xs px-2 py-1 bg-red-100 text-red-700 rounded-full">
+                                                Eliminada
+                                            </span>
+                                        </div>
+                                        <div className="text-sm text-neutral-600 mb-3">
+                                            <p><span className="font-medium">Eliminada em:</span> {new Date(backup.deleted_at).toLocaleString('pt-AO')}</p>
+                                            <p><span className="font-medium">Motivo:</span> {backup.motivo}</p>
+                                            <p className="text-xs text-neutral-400 mt-1">
+                                                {backup.related_data.professores?.length || 0} professores, {backup.related_data.turmas?.length || 0} turmas, {backup.related_data.alunos?.length || 0} alunos
+                                            </p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRestoreBackup(backup.id)}
+                                            disabled={actionLoading === backup.id}
+                                            className="w-full px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-medium text-sm disabled:opacity-50 transition-all"
+                                        >
+                                            {actionLoading === backup.id ? 'A restaurar...' : '♻️ Restaurar Escola'}
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <button
+                            onClick={() => setShowBackupsSection(false)}
                             className="w-full mt-6 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl font-medium hover:bg-neutral-200 transition-all"
                         >
                             Fechar
