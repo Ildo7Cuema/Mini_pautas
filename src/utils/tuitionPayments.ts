@@ -341,6 +341,7 @@ export async function fetchAlunosComStatusPagamento(
         const currentYear = ano || new Date().getFullYear()
 
         // First get students
+        // Note: ano_lectivo is TEXT and can be "2025" or "2025/2026"
         let query = supabase
             .from('alunos')
             .select(`
@@ -348,7 +349,7 @@ export async function fetchAlunosComStatusPagamento(
                 turmas!inner(id, nome, codigo_turma, escola_id, ano_lectivo)
             `)
             .eq('turmas.escola_id', escolaId)
-            .eq('turmas.ano_lectivo', currentYear)
+            .ilike('turmas.ano_lectivo', `${currentYear}%`)
             .eq('ativo', true)
             .order('nome_completo')
 

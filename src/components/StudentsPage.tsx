@@ -70,7 +70,7 @@ const initialFormData = {
     // Dados pessoais
     data_nascimento: '',
     genero: '' as '' | 'M' | 'F',
-    nacionalidade: '',
+    nacionalidade: 'Angolana',
     naturalidade: '',
     tipo_documento: '',
     numero_documento: '',
@@ -858,13 +858,33 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Input
-                                label="Nacionalidade"
-                                type="text"
-                                value={formData.nacionalidade}
-                                onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
-                                placeholder="Angolana"
-                            />
+                            <div>
+                                <label className="form-label">Nacionalidade</label>
+                                <input
+                                    type="text"
+                                    list="nacionalidades-list-students"
+                                    value={formData.nacionalidade}
+                                    onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
+                                    placeholder="Selecione ou digite"
+                                    className="form-input min-h-touch"
+                                />
+                                <datalist id="nacionalidades-list-students">
+                                    <option value="Angolana" />
+                                    <option value="Angolano" />
+                                    <option value="Brasileira" />
+                                    <option value="Portuguesa" />
+                                    <option value="Moçambicana" />
+                                    <option value="Cabo-verdiana" />
+                                    <option value="São-tomense" />
+                                    <option value="Guineense" />
+                                    <option value="Timorense" />
+                                    <option value="Congolesa" />
+                                    <option value="Sul-africana" />
+                                    <option value="Namibiana" />
+                                    <option value="Zambiana" />
+                                    <option value="Outra" />
+                                </datalist>
+                            </div>
                             <Input
                                 label="Naturalidade"
                                 type="text"

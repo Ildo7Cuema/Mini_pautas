@@ -12,6 +12,7 @@ import { Card, CardBody, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
+import { supabase } from '../lib/supabaseClient'
 
 export interface StudentFormData {
     // Dados básicos
@@ -60,7 +61,7 @@ export const initialStudentFormData: StudentFormData = {
     turma_id: '',
     data_nascimento: '',
     genero: '',
-    nacionalidade: '',
+    nacionalidade: 'Angolana',
     naturalidade: '',
     tipo_documento: '',
     numero_documento: '',
@@ -119,17 +120,106 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
     const [activeTab, setActiveTab] = useState<TabType>('pessoal')
     const [formData, setFormData] = useState<StudentFormData>(initialStudentFormData)
     const [isSubmitting, setIsSubmitting] = useState(false)
+    const [generatingNumero, setGeneratingNumero] = useState(false)
+
+    // Função para gerar o número de processo automaticamente
+    const generateNumeroProcesso = async (turmaIdToUse: string) => {
+        if (!turmaIdToUse) return
+
+        setGeneratingNumero(true)
+        try {
+            // Try to use the RPC function first
+            const { data, error } = await supabase
+                .rpc('generate_numero_processo', { turma_uuid: turmaIdToUse })
+
+            if (error) {
+                // Fallback: Generate locally if RPC function doesn't exist or fails
+                console.warn('RPC function not available, generating locally:', error.message)
+
+                // Get turma details
+                const { data: turmaData } = await supabase
+                    .from('turmas')
+                    .select('nome, ano_lectivo')
+                    .eq('id', turmaIdToUse)
+                    .single()
+
+                // Count existing students in this turma
+                const { count } = await supabase
+                    .from('alunos')
+                    .select('id', { count: 'exact', head: true })
+                    .eq('turma_id', turmaIdToUse)
+
+                // Use nome da turma simplificado (ex: "1ª Classe A" -> "1A")
+                const turmaNomeForCode = turmaData?.nome || turmaNome || 'TURMA'
+                const turmaCodigo = turmaNomeForCode
+                    .replace(/[ªº°]/g, '')           // Remove ordinal symbols
+                    .replace(/classe/gi, '')         // Remove "classe"
+                    .replace(/\s+/g, '')             // Remove spaces
+                    .substring(0, 4)                 // Max 4 chars
+                    .toUpperCase()
+
+                const anoLectivo = turmaData?.ano_lectivo || new Date().getFullYear()
+                let contador = (count || 0) + 1
+                let novoNumero = `${turmaCodigo}-${anoLectivo}-${String(contador).padStart(3, '0')}`
+
+                // Check if numero already exists and increment if needed
+                let exists = true
+                while (exists) {
+                    const { data: existingAluno } = await supabase
+                        .from('alunos')
+                        .select('id')
+                        .eq('numero_processo', novoNumero)
+                        .maybeSingle()
+
+                    if (existingAluno) {
+                        contador++
+                        novoNumero = `${turmaCodigo}-${anoLectivo}-${String(contador).padStart(3, '0')}`
+                    } else {
+                        exists = false
+                    }
+                }
+
+                setFormData(prev => ({ ...prev, numero_processo: novoNumero }))
+            } else {
+                setFormData(prev => ({ ...prev, numero_processo: data }))
+            }
+        } catch (err) {
+            console.error('Error generating numero_processo:', err)
+            // Fallback to simple format if all else fails
+            const turmaCode = (turmaNome || 'TURMA').replace(/[ªº°]/g, '').replace(/classe/gi, '').replace(/\s+/g, '').substring(0, 4).toUpperCase()
+            const anoAtual = new Date().getFullYear()
+            const randomNum = Math.floor(Math.random() * 900) + 100 // 100-999
+            setFormData(prev => ({ ...prev, numero_processo: `${turmaCode}-${anoAtual}-${randomNum}` }))
+        } finally {
+            setGeneratingNumero(false)
+        }
+    }
 
     useEffect(() => {
         if (isOpen) {
+            const targetTurmaId = turmaId || initialData?.turma_id || ''
             setFormData({
                 ...initialStudentFormData,
                 ...initialData,
-                turma_id: turmaId || initialData?.turma_id || '',
+                turma_id: targetTurmaId,
             })
             setActiveTab('pessoal')
+
+            // Gerar número de processo automaticamente se for um novo aluno (sem initialData.numero_processo)
+            // e se temos um turma_id definido
+            if (targetTurmaId && !initialData?.numero_processo) {
+                generateNumeroProcesso(targetTurmaId)
+            }
         }
     }, [isOpen, initialData, turmaId])
+
+    // Quando a turma é alterada no seletor, gerar novo número
+    const handleTurmaChange = (newTurmaId: string) => {
+        setFormData(prev => ({ ...prev, turma_id: newTurmaId, numero_processo: '' }))
+        if (newTurmaId) {
+            generateNumeroProcesso(newTurmaId)
+        }
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -180,14 +270,26 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                                 required
                                 icon={<Icons.User />}
                             />
-                            <Input
-                                label="Nº de Processo *"
-                                type="text"
-                                value={formData.numero_processo}
-                                onChange={(e) => setFormData({ ...formData, numero_processo: e.target.value })}
-                                placeholder="001"
-                                required
-                            />
+                            <div className="relative">
+                                <Input
+                                    label="Nº de Processo"
+                                    type="text"
+                                    value={formData.numero_processo}
+                                    onChange={() => { }}
+                                    placeholder={generatingNumero ? "Gerando..." : "Gerado automaticamente"}
+                                    disabled={true}
+                                    helpText={
+                                        turmaId || formData.turma_id
+                                            ? "Gerado automaticamente ao selecionar a turma"
+                                            : "Selecione uma turma primeiro"
+                                    }
+                                />
+                                {generatingNumero && (
+                                    <div className="absolute right-3 top-9">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -212,13 +314,33 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <Input
-                                label="Nacionalidade"
-                                type="text"
-                                value={formData.nacionalidade}
-                                onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
-                                placeholder="Angolana"
-                            />
+                            <div>
+                                <label className="form-label">Nacionalidade</label>
+                                <input
+                                    type="text"
+                                    list="nacionalidades-list"
+                                    value={formData.nacionalidade}
+                                    onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
+                                    placeholder="Selecione ou digite"
+                                    className="form-input min-h-touch"
+                                />
+                                <datalist id="nacionalidades-list">
+                                    <option value="Angolana" />
+                                    <option value="Angolano" />
+                                    <option value="Brasileira" />
+                                    <option value="Portuguesa" />
+                                    <option value="Moçambicana" />
+                                    <option value="Cabo-verdiana" />
+                                    <option value="São-tomense" />
+                                    <option value="Guineense" />
+                                    <option value="Timorense" />
+                                    <option value="Congolesa" />
+                                    <option value="Sul-africana" />
+                                    <option value="Namibiana" />
+                                    <option value="Zambiana" />
+                                    <option value="Outra" />
+                                </datalist>
+                            </div>
                             <Input
                                 label="Naturalidade"
                                 type="text"
@@ -258,7 +380,7 @@ export const StudentFormModal: React.FC<StudentFormModalProps> = ({
                                 <label className="form-label">Turma *</label>
                                 <select
                                     value={formData.turma_id}
-                                    onChange={(e) => setFormData({ ...formData, turma_id: e.target.value })}
+                                    onChange={(e) => handleTurmaChange(e.target.value)}
                                     className="form-input min-h-touch"
                                     required
                                 >

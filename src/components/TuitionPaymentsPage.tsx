@@ -56,6 +56,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
 
     // State
     const [loading, setLoading] = useState(true)
+    const [loadingStudents, setLoadingStudents] = useState(false)
     const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'payments' | 'config'>('overview')
     const [turmas, setTurmas] = useState<TurmaBasic[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
@@ -107,8 +108,9 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
         }
     }, [escolaId])
 
+    // Reload students when turma filter changes (including empty = all turmas)
     useEffect(() => {
-        if (escolaId && selectedTurma) {
+        if (escolaId) {
             loadStudents()
         }
     }, [selectedTurma])
@@ -441,6 +443,8 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
     }
 
     const loadStudents = async () => {
+        setLoadingStudents(true)
+        setError(null)
         try {
             const alunosData = await fetchAlunosComStatusPagamento(
                 escolaId,
@@ -448,8 +452,16 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                 currentYear
             )
             setAlunos(alunosData)
+
+            // Show feedback if no students found for the selected turma
+            if (selectedTurma && alunosData.length === 0) {
+                setError('Nenhum aluno encontrado nesta turma para o ano lectivo actual')
+            }
         } catch (err) {
             console.error('Error loading students:', err)
+            setError('Erro ao carregar a lista de alunos. Por favor, tente novamente.')
+        } finally {
+            setLoadingStudents(false)
         }
     }
 
@@ -764,17 +776,36 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
 
                 <div className="p-5">
                     {/* Filter by Turma */}
-                    <div className="mb-5">
+                    <div className="mb-5 flex flex-wrap items-center gap-3">
                         <select
                             value={selectedTurma}
                             onChange={(e) => setSelectedTurma(e.target.value)}
-                            className="w-full md:w-64 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
+                            disabled={loadingStudents}
+                            className="w-full md:w-64 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 disabled:opacity-60"
                         >
                             <option value="">Todas as turmas</option>
                             {turmas.map(turma => (
                                 <option key={turma.id} value={turma.id}>{turma.nome}</option>
                             ))}
                         </select>
+
+                        {/* Loading indicator */}
+                        {loadingStudents && (
+                            <div className="flex items-center gap-2 text-sm text-primary-600">
+                                <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>A carregar alunos...</span>
+                            </div>
+                        )}
+
+                        {/* Student count badge */}
+                        {!loadingStudents && (
+                            <span className="px-3 py-1 bg-slate-100 text-slate-600 text-sm rounded-full">
+                                {filteredAlunos.length} aluno{filteredAlunos.length !== 1 ? 's' : ''}
+                            </span>
+                        )}
                     </div>
 
                     {/* Overview Tab - Month Matrix */}
