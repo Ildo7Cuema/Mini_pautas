@@ -10,6 +10,7 @@ component-meta:
 import { ReactNode, useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { NotificationPanel } from './NotificationPanel'
+import { NotificationDetailModal } from './NotificationDetailModal'
 import { AppNotification } from '../utils/notificationUtils'
 import { fetchNotifications, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } from '../utils/notificationApi'
 import { isSuperAdmin } from '../utils/permissions'
@@ -40,6 +41,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
     // Notification state
     const [notificationPanelOpen, setNotificationPanelOpen] = useState(false)
     const [notifications, setNotifications] = useState<AppNotification[]>([])
+    const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null)
     const [loadingNotifications, setLoadingNotifications] = useState(false)
 
     // Helper to get display name
@@ -572,10 +574,22 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                 notifications={notifications}
                                 onMarkAsRead={handleMarkAsRead}
                                 onMarkAllAsRead={handleMarkAllAsRead}
+                                onSelectNotification={setSelectedNotification}
                                 onDeleteNotification={handleDeleteNotification}
                                 onClearAllNotifications={handleClearAllNotifications}
                                 onNavigate={onNavigate}
                                 loading={loadingNotifications}
+                            />
+
+                            <NotificationDetailModal
+                                notification={selectedNotification}
+                                isOpen={!!selectedNotification}
+                                onClose={() => setSelectedNotification(null)}
+                                onDelete={handleDeleteNotification}
+                                onNavigate={(link) => {
+                                    setSelectedNotification(null)
+                                    onNavigate(link)
+                                }}
                             />
 
                             <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block" />

@@ -8,6 +8,7 @@ component-meta:
 */
 
 import { useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { AppNotification, getNotificationIcon, getRelativeTime } from '../utils/notificationUtils'
 
 interface NotificationDetailModalProps {
@@ -83,16 +84,16 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
         return labels[tipo] || 'Notificação'
     }
 
-    return (
+    return createPortal(
         <>
             {/* Backdrop */}
             <div
-                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[200] animate-fade-in"
+                className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[999] animate-fade-in"
                 onClick={onClose}
             />
 
             {/* Modal Container - Scrollable if content is tall */}
-            <div className="fixed inset-0 z-[201] overflow-y-auto overflow-x-hidden flex justify-center py-4 md:py-10">
+            <div className="fixed inset-0 z-[1000] overflow-y-auto overflow-x-hidden flex justify-center py-4 md:py-10">
                 <div
                     className="bg-white rounded-3xl shadow-2xl w-full max-w-md animate-slide-up self-center mx-4 overflow-hidden"
                     onClick={(e) => e.stopPropagation()}
@@ -221,6 +222,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     </div>
                 </div>
             </div>
-        </>
+        </>,
+        document.body
     )
 }

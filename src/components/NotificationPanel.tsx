@@ -10,7 +10,6 @@ component-meta:
 import { useEffect, useRef, useState } from 'react'
 import { AppNotification } from '../utils/notificationUtils'
 import { NotificationItem } from './NotificationItem'
-import { NotificationDetailModal } from './NotificationDetailModal'
 
 interface NotificationPanelProps {
     isOpen: boolean
@@ -18,9 +17,8 @@ interface NotificationPanelProps {
     notifications: AppNotification[]
     onMarkAsRead: (id: string) => void
     onMarkAllAsRead: () => void
-    onDeleteNotification: (id: string) => void
+    onSelectNotification: (notification: AppNotification) => void
     onClearAllNotifications: () => void
-    onNavigate?: (link: string) => void
     loading?: boolean
 }
 
@@ -30,13 +28,11 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     notifications,
     onMarkAsRead,
     onMarkAllAsRead,
-    onDeleteNotification,
+    onSelectNotification,
     onClearAllNotifications,
-    onNavigate,
     loading = false
 }) => {
     const panelRef = useRef<HTMLDivElement>(null)
-    const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null)
     const [showClearConfirm, setShowClearConfirm] = useState(false)
 
     // Close panel when clicking outside
@@ -47,21 +43,17 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             }
         }
 
-        if (isOpen && !selectedNotification) {
+        if (isOpen) {
             document.addEventListener('mousedown', handleClickOutside)
             return () => document.removeEventListener('mousedown', handleClickOutside)
         }
-    }, [isOpen, onClose, selectedNotification])
+    }, [isOpen, onClose])
 
     // Close on escape key
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                if (selectedNotification) {
-                    setSelectedNotification(null)
-                } else {
-                    onClose()
-                }
+                onClose()
             }
         }
 
@@ -69,33 +61,20 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             document.addEventListener('keydown', handleEscape)
             return () => document.removeEventListener('keydown', handleEscape)
         }
-    }, [isOpen, onClose, selectedNotification])
+    }, [isOpen, onClose])
 
     const handleNotificationClick = (notification: AppNotification) => {
         // Mark as read
         if (!notification.lida) {
             onMarkAsRead(notification.id)
         }
-        // Open detail modal
-        setSelectedNotification(notification)
-    }
-
-    const handleDeleteNotification = (id: string) => {
-        onDeleteNotification(id)
-        setSelectedNotification(null)
+        // Open detail modal in parent
+        onSelectNotification(notification)
     }
 
     const handleClearAll = () => {
         onClearAllNotifications()
         setShowClearConfirm(false)
-    }
-
-    const handleNavigateFromModal = (link: string) => {
-        setSelectedNotification(null)
-        onClose()
-        if (onNavigate) {
-            onNavigate(link)
-        }
     }
 
     if (!isOpen) return null
@@ -224,15 +203,6 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                     </div>
                 )}
             </div>
-
-            {/* Detail Modal */}
-            <NotificationDetailModal
-                notification={selectedNotification}
-                isOpen={!!selectedNotification}
-                onClose={() => setSelectedNotification(null)}
-                onDelete={handleDeleteNotification}
-                onNavigate={handleNavigateFromModal}
-            />
         </>
     )
 }
