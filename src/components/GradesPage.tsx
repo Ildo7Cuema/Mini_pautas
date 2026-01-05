@@ -460,6 +460,43 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
         setNotas({ ...notas, [alunoId]: numericValue })
     }
 
+    // Helper function to notify professor when escola posts grades
+    const notifyProfessorGradesPosted = async (
+        professorUserId: string,
+        disciplinaId: string,
+        turmaId: string,
+        numNotas: number
+    ) => {
+        try {
+            const disciplina = disciplinas.find(d => d.id === disciplinaId)
+            const turma = turmas.find(t => t.id === turmaId)
+
+            if (!disciplina || !turma) return
+
+            await supabase
+                .from('notificacoes')
+                .insert({
+                    destinatario_id: professorUserId,
+                    tipo: 'nota_lancada_admin',
+                    titulo: 'Notas lançadas pela direcção',
+                    mensagem: `A direcção da escola lançou ${numNotas} nota(s) de ${disciplina.nome} para a turma ${turma.nome} (${trimestre}º Trimestre)`,
+                    dados_adicionais: {
+                        disciplina_id: disciplinaId,
+                        disciplina_nome: disciplina.nome,
+                        turma_id: turmaId,
+                        turma_nome: turma.nome,
+                        quantidade: numNotas,
+                        trimestre
+                    }
+                })
+
+            console.log('✅ Notificação enviada ao professor')
+        } catch (error) {
+            console.error('❌ Erro ao notificar professor:', error)
+            // Não falhar o fluxo por causa de notificação
+        }
+    }
+
     const handleSaveNotas = async (silent: boolean = false) => {
         if (Object.keys(errors).length > 0) {
             if (!silent) setError('Corrija os erros antes de salvar')
@@ -476,13 +513,35 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
             const { data: { user } } = await supabase.auth.getUser()
             if (!user) throw new Error('Usuário não autenticado')
 
-            const { data: professor } = await supabase
-                .from('professores')
-                .select('id')
-                .eq('user_id', user.id)
-                .single()
+            let lancadoPorId: string
+            let professorDaDisciplina: { id: string; user_id: string; nome_completo: string } | null = null
 
-            if (!professor) throw new Error('Professor não encontrado')
+            if (isProfessor && professorProfile) {
+                // Professor logado: usar seu próprio ID
+                lancadoPorId = professorProfile.id
+                console.log('📊 Lançamento por professor:', professorProfile.nome_completo)
+            } else {
+                // Escola logada: buscar professor da disciplina selecionada
+                const disciplina = disciplinas.find(d => d.id === selectedDisciplina)
+                if (!disciplina) throw new Error('Disciplina não encontrada')
+
+                console.log('📊 Escola lançando notas - buscando professor da disciplina:', disciplina.nome)
+
+                const { data: professor, error: profError } = await supabase
+                    .from('professores')
+                    .select('id, user_id, nome_completo')
+                    .eq('id', disciplina.professor_id)
+                    .single()
+
+                if (profError || !professor) {
+                    console.error('❌ Professor da disciplina não encontrado:', profError)
+                    throw new Error('Professor da disciplina não encontrado. Verifique se a disciplina tem um professor atribuído.')
+                }
+
+                lancadoPorId = professor.id
+                professorDaDisciplina = professor
+                console.log('✅ Professor da disciplina encontrado:', professor.nome_completo)
+            }
 
             const notasToSave = Object.entries(notas).map(([alunoId, valor]) => ({
                 aluno_id: alunoId,
@@ -490,7 +549,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                 turma_id: selectedTurma,
                 trimestre,
                 valor,
-                lancado_por: professor.id,
+                lancado_por: lancadoPorId,
                 data_lancamento: new Date().toISOString()
             }))
 
@@ -526,6 +585,16 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
             console.log('✅ Grades saved successfully')
             setOriginalNotas({ ...notas })
             setHasChanges(false)
+
+            // Notificar professor se escola lançou as notas
+            if (!isProfessor && professorDaDisciplina) {
+                await notifyProfessorGradesPosted(
+                    professorDaDisciplina.user_id,
+                    selectedDisciplina,
+                    selectedTurma,
+                    notasToSave.length
+                )
+            }
 
             if (!silent) {
                 setSuccess(`${notasToSave.length} ${notasToSave.length === 1 ? 'nota salva' : 'notas salvas'} com sucesso!`)
