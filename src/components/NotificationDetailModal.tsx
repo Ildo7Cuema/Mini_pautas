@@ -208,7 +208,7 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             Eliminar
                         </button>
 
-                        {notification.link && onNavigate && (
+                        {notification.link && onNavigate && notification.tipo !== 'nota_lancada_admin' && (
                             <button
                                 onClick={handleNavigate}
                                 className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-medium transition-colors min-h-touch"
