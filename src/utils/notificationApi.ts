@@ -7,23 +7,21 @@ import { Notification, NotificationType } from './notificationUtils'
  * Create a new notification
  */
 export async function createNotification(
-    userId: string,
-    escolaId: string,
+    destinatarioId: string,
     tipo: NotificationType,
     titulo: string,
     mensagem?: string,
-    link?: string
+    dadosAdicionais?: Record<string, any>
 ): Promise<{ data: Notification | null; error: Error | null }> {
     try {
         const { data, error } = await supabase
             .from('notificacoes')
             .insert({
-                user_id: userId,
-                escola_id: escolaId,
+                destinatario_id: destinatarioId,
                 tipo,
                 titulo,
-                mensagem,
-                link,
+                mensagem: mensagem || '',
+                dados_adicionais: dadosAdicionais || {},
                 lida: false
             })
             .select()
@@ -49,7 +47,7 @@ export async function fetchNotifications(
         const { data, error } = await supabase
             .from('notificacoes')
             .select('*')
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
             .order('created_at', { ascending: false })
             .limit(limit)
 
@@ -72,7 +70,7 @@ export async function fetchUnreadCount(
         const { count, error } = await supabase
             .from('notificacoes')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
             .eq('lida', false)
 
         if (error) throw error
@@ -115,7 +113,7 @@ export async function markAllAsRead(
         const { error } = await supabase
             .from('notificacoes')
             .update({ lida: true })
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
             .eq('lida', false)
 
         if (error) throw error
@@ -163,7 +161,7 @@ export function subscribeToNotifications(
                 event: 'INSERT',
                 schema: 'public',
                 table: 'notificacoes',
-                filter: `user_id=eq.${userId}`
+                filter: `destinatario_id=eq.${userId}`
             },
             (payload) => {
                 callback(payload.new as Notification)

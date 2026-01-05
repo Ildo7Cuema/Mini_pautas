@@ -20,8 +20,8 @@ export const NotificationTestPanel: React.FC = () => {
     const escolaId = escolaProfile?.id || professorProfile?.escola_id || secretarioProfile?.escola_id
 
     const handleCreateNotification = async (type: string) => {
-        if (!user || !escolaId) {
-            setMessage('Usuário ou escola não encontrado')
+        if (!user) {
+            setMessage('Usuário não encontrado')
             return
         }
 
@@ -31,21 +31,20 @@ export const NotificationTestPanel: React.FC = () => {
         try {
             switch (type) {
                 case 'aluno_novo':
-                    await notifyNewStudent(user.id, escolaId, 'João Silva', '10ª A')
+                    await notifyNewStudent(user.id, 'João Silva', '10ª A')
                     break
                 case 'nota_lancada':
-                    await notifyGradesPosted(user.id, escolaId, 'Matemática', '10ª A')
+                    await notifyGradesPosted(user.id, 'Matemática', '10ª A')
                     break
                 case 'relatorio_gerado':
-                    await notifyReportGenerated(user.id, escolaId, 'Mini-pauta', '10ª A')
+                    await notifyReportGenerated(user.id, 'Mini-pauta', '10ª A')
                     break
                 case 'sistema':
                     await notifySystem(
                         user.id,
-                        escolaId,
                         'Atualização do Sistema',
                         'Nova funcionalidade de notificações disponível!',
-                        'dashboard'
+                        { link: 'dashboard' }
                     )
                     break
             }

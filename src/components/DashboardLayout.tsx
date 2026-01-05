@@ -121,9 +121,10 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         // Close panel
         setNotificationPanelOpen(false)
 
-        // Navigate if link is provided
-        if (notification.link) {
-            onNavigate(notification.link)
+        // Navigate if link is provided in dados_adicionais
+        const link = notification.dados_adicionais?.link
+        if (link) {
+            onNavigate(link)
         }
     }
 
@@ -311,6 +312,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         if (item.path === 'teachers') return isEscola // Only show teachers menu for School Admins
         if (item.path === 'secretaries') return isEscola // Only show secretaries menu for School Admins
         if (item.path === 'classes' || item.path === 'students' || item.path === 'propinas') return isEscola // Hide for professors
+        if (item.path === 'subscription') return isEscola // Only show subscription menu for School Admins
         return true
     })
 
