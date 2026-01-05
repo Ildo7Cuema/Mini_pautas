@@ -7,18 +7,20 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { useEffect, useRef } from 'react'
-import { Notification } from '../utils/notificationUtils'
+import { useEffect, useRef, useState } from 'react'
+import { AppNotification } from '../utils/notificationUtils'
 import { NotificationItem } from './NotificationItem'
-import { Icons } from './ui/Icons'
+import { NotificationDetailModal } from './NotificationDetailModal'
 
 interface NotificationPanelProps {
     isOpen: boolean
     onClose: () => void
-    notifications: Notification[]
+    notifications: AppNotification[]
     onMarkAsRead: (id: string) => void
     onMarkAllAsRead: () => void
-    onNotificationClick: (notification: Notification) => void
+    onDeleteNotification: (id: string) => void
+    onClearAllNotifications: () => void
+    onNavigate?: (link: string) => void
     loading?: boolean
 }
 
@@ -28,10 +30,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     notifications,
     onMarkAsRead,
     onMarkAllAsRead,
-    onNotificationClick,
+    onDeleteNotification,
+    onClearAllNotifications,
+    onNavigate,
     loading = false
 }) => {
     const panelRef = useRef<HTMLDivElement>(null)
+    const [selectedNotification, setSelectedNotification] = useState<AppNotification | null>(null)
+    const [showClearConfirm, setShowClearConfirm] = useState(false)
 
     // Close panel when clicking outside
     useEffect(() => {
@@ -41,17 +47,21 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             }
         }
 
-        if (isOpen) {
+        if (isOpen && !selectedNotification) {
             document.addEventListener('mousedown', handleClickOutside)
             return () => document.removeEventListener('mousedown', handleClickOutside)
         }
-    }, [isOpen, onClose])
+    }, [isOpen, onClose, selectedNotification])
 
     // Close on escape key
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
             if (event.key === 'Escape') {
-                onClose()
+                if (selectedNotification) {
+                    setSelectedNotification(null)
+                } else {
+                    onClose()
+                }
             }
         }
 
@@ -59,7 +69,34 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             document.addEventListener('keydown', handleEscape)
             return () => document.removeEventListener('keydown', handleEscape)
         }
-    }, [isOpen, onClose])
+    }, [isOpen, onClose, selectedNotification])
+
+    const handleNotificationClick = (notification: AppNotification) => {
+        // Mark as read
+        if (!notification.lida) {
+            onMarkAsRead(notification.id)
+        }
+        // Open detail modal
+        setSelectedNotification(notification)
+    }
+
+    const handleDeleteNotification = (id: string) => {
+        onDeleteNotification(id)
+        setSelectedNotification(null)
+    }
+
+    const handleClearAll = () => {
+        onClearAllNotifications()
+        setShowClearConfirm(false)
+    }
+
+    const handleNavigateFromModal = (link: string) => {
+        setSelectedNotification(null)
+        onClose()
+        if (onNavigate) {
+            onNavigate(link)
+        }
+    }
 
     if (!isOpen) return null
 
@@ -96,15 +133,52 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                         )}
                     </div>
 
-                    {unreadCount > 0 && (
-                        <button
-                            onClick={onMarkAllAsRead}
-                            className="text-xs text-primary-600 hover:text-primary-700 font-medium min-h-touch px-2"
-                        >
-                            Marcar todas como lidas
-                        </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        {unreadCount > 0 && (
+                            <button
+                                onClick={onMarkAllAsRead}
+                                className="text-xs text-primary-600 hover:text-primary-700 font-medium px-2 py-1 hover:bg-primary-50 rounded-lg transition-colors"
+                            >
+                                Marcar todas
+                            </button>
+                        )}
+
+                        {notifications.length > 0 && (
+                            <button
+                                onClick={() => setShowClearConfirm(true)}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Limpar todas as notificações"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                            </button>
+                        )}
+                    </div>
                 </div>
+
+                {/* Clear All Confirmation */}
+                {showClearConfirm && (
+                    <div className="p-4 bg-red-50 border-b border-red-100 animate-slide-down">
+                        <p className="text-sm text-red-800 mb-3">
+                            Tem certeza que deseja eliminar todas as {notifications.length} notificações?
+                        </p>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={handleClearAll}
+                                className="flex-1 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-lg transition-colors"
+                            >
+                                Sim, eliminar todas
+                            </button>
+                            <button
+                                onClick={() => setShowClearConfirm(false)}
+                                className="flex-1 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-lg border border-slate-200 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 {/* Notifications List */}
                 <div className="flex-1 overflow-y-auto">
@@ -134,25 +208,31 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                                     key={notification.id}
                                     notification={notification}
                                     onMarkAsRead={onMarkAsRead}
-                                    onClick={onNotificationClick}
+                                    onClick={handleNotificationClick}
                                 />
                             ))}
                         </div>
                     )}
                 </div>
 
-                {/* Footer (optional - for "View All" link) */}
+                {/* Footer */}
                 {notifications.length > 5 && (
                     <div className="p-3 border-t border-slate-200 flex-shrink-0">
-                        <button
-                            onClick={onClose}
-                            className="w-full text-center text-sm text-primary-600 hover:text-primary-700 font-medium py-2 min-h-touch"
-                        >
-                            Ver todas as notificações
-                        </button>
+                        <p className="text-center text-xs text-slate-500">
+                            Mostrando {notifications.length} notificações
+                        </p>
                     </div>
                 )}
             </div>
+
+            {/* Detail Modal */}
+            <NotificationDetailModal
+                notification={selectedNotification}
+                isOpen={!!selectedNotification}
+                onClose={() => setSelectedNotification(null)}
+                onDelete={handleDeleteNotification}
+                onNavigate={handleNavigateFromModal}
+            />
         </>
     )
 }

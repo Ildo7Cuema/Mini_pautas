@@ -8,12 +8,11 @@ component-meta:
 */
 
 import { ReactNode, useState, useEffect } from 'react'
-import { supabase } from '../lib/supabaseClient'
 import { useAuth } from '../contexts/AuthContext'
 import { NotificationPanel } from './NotificationPanel'
-import { Notification, formatNotificationCount } from '../utils/notificationUtils'
-import { fetchNotifications, markAsRead, markAllAsRead } from '../utils/notificationApi'
-import { isSuperAdmin, isAluno, isEncarregado, isSecretario } from '../utils/permissions'
+import { AppNotification } from '../utils/notificationUtils'
+import { fetchNotifications, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } from '../utils/notificationApi'
+import { isSuperAdmin } from '../utils/permissions'
 
 interface SidebarProps {
     children: ReactNode
@@ -40,7 +39,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
 
     // Notification state
     const [notificationPanelOpen, setNotificationPanelOpen] = useState(false)
-    const [notifications, setNotifications] = useState<Notification[]>([])
+    const [notifications, setNotifications] = useState<AppNotification[]>([])
     const [loadingNotifications, setLoadingNotifications] = useState(false)
 
     // Helper to get display name
@@ -117,15 +116,15 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         )
     }
 
-    const handleNotificationClick = (notification: Notification) => {
-        // Close panel
-        setNotificationPanelOpen(false)
+    const handleDeleteNotification = async (id: string) => {
+        await deleteNotification(id)
+        setNotifications(prev => prev.filter(n => n.id !== id))
+    }
 
-        // Navigate if link is provided in dados_adicionais
-        const link = notification.dados_adicionais?.link
-        if (link) {
-            onNavigate(link)
-        }
+    const handleClearAllNotifications = async () => {
+        if (!user) return
+        await deleteAllNotifications(user.id)
+        setNotifications([])
     }
 
     const unreadCount = notifications.filter(n => !n.lida).length
@@ -573,7 +572,9 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                 notifications={notifications}
                                 onMarkAsRead={handleMarkAsRead}
                                 onMarkAllAsRead={handleMarkAllAsRead}
-                                onNotificationClick={handleNotificationClick}
+                                onDeleteNotification={handleDeleteNotification}
+                                onClearAllNotifications={handleClearAllNotifications}
+                                onNavigate={onNavigate}
                                 loading={loadingNotifications}
                             />
 

@@ -1,7 +1,7 @@
 // Notification API functions for Supabase integration
 
 import { supabase } from '../lib/supabaseClient'
-import { Notification, NotificationType } from './notificationUtils'
+import { AppNotification, NotificationType } from './notificationUtils'
 
 /**
  * Create a new notification
@@ -12,16 +12,16 @@ export async function createNotification(
     titulo: string,
     mensagem?: string,
     dadosAdicionais?: Record<string, any>
-): Promise<{ data: Notification | null; error: Error | null }> {
+): Promise<{ data: AppNotification | null; error: Error | null }> {
     try {
         const { data, error } = await supabase
             .from('notificacoes')
             .insert({
-                destinatario_id: destinatarioId,
+                user_id: destinatarioId,
                 tipo,
                 titulo,
                 mensagem: mensagem || '',
-                dados_adicionais: dadosAdicionais || {},
+                link: dadosAdicionais?.link || '',
                 lida: false
             })
             .select()
@@ -42,12 +42,12 @@ export async function createNotification(
 export async function fetchNotifications(
     userId: string,
     limit: number = 50
-): Promise<{ data: Notification[]; error: Error | null }> {
+): Promise<{ data: AppNotification[]; error: Error | null }> {
     try {
         const { data, error } = await supabase
             .from('notificacoes')
             .select('*')
-            .eq('destinatario_id', userId)
+            .eq('user_id', userId)
             .order('created_at', { ascending: false })
             .limit(limit)
 
@@ -70,7 +70,7 @@ export async function fetchUnreadCount(
         const { count, error } = await supabase
             .from('notificacoes')
             .select('*', { count: 'exact', head: true })
-            .eq('destinatario_id', userId)
+            .eq('user_id', userId)
             .eq('lida', false)
 
         if (error) throw error
@@ -113,7 +113,7 @@ export async function markAllAsRead(
         const { error } = await supabase
             .from('notificacoes')
             .update({ lida: true })
-            .eq('destinatario_id', userId)
+            .eq('user_id', userId)
             .eq('lida', false)
 
         if (error) throw error
@@ -147,11 +147,32 @@ export async function deleteNotification(
 }
 
 /**
+ * Delete all notifications for a user
+ */
+export async function deleteAllNotifications(
+    userId: string
+): Promise<{ success: boolean; error: Error | null }> {
+    try {
+        const { error } = await supabase
+            .from('notificacoes')
+            .delete()
+            .eq('user_id', userId)
+
+        if (error) throw error
+
+        return { success: true, error: null }
+    } catch (err) {
+        console.error('Error deleting all notifications:', err)
+        return { success: false, error: err as Error }
+    }
+}
+
+/**
  * Subscribe to real-time notifications (optional feature)
  */
 export function subscribeToNotifications(
     userId: string,
-    callback: (notification: Notification) => void
+    callback: (notification: AppNotification) => void
 ) {
     const channel = supabase
         .channel('notifications')
@@ -161,10 +182,10 @@ export function subscribeToNotifications(
                 event: 'INSERT',
                 schema: 'public',
                 table: 'notificacoes',
-                filter: `destinatario_id=eq.${userId}`
+                filter: `user_id=eq.${userId}`
             },
             (payload) => {
-                callback(payload.new as Notification)
+                callback(payload.new as AppNotification)
             }
         )
         .subscribe()

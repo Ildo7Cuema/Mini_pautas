@@ -184,16 +184,17 @@ export interface Auditoria {
     created_at: string;
 }
 
-export interface Notificacao {
+export interface AppNotification {
     id: string;
-    destinatario_id: string;
+    user_id: string;
+    escola_id?: string;
     tipo: string;
     titulo: string;
-    mensagem: string;
-    dados_adicionais?: Record<string, any>;
+    mensagem?: string;
+    link?: string;
     lida: boolean;
-    lida_em?: string;
     created_at: string;
+    updated_at?: string;
 }
 
 export interface ConfiguracaoSistema {

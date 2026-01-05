@@ -7,12 +7,12 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { Notification, getNotificationIcon, getRelativeTime } from '../utils/notificationUtils'
+import { AppNotification, getNotificationIcon, getRelativeTime } from '../utils/notificationUtils'
 
 interface NotificationItemProps {
-    notification: Notification
+    notification: AppNotification
     onMarkAsRead: (id: string) => void
-    onClick: (notification: Notification) => void
+    onClick: (notification: AppNotification) => void
 }
 
 export const NotificationItem: React.FC<NotificationItemProps> = ({

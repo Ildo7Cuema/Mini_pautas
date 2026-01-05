@@ -2,16 +2,17 @@
 
 export type NotificationType = 'aluno_novo' | 'nota_lancada' | 'nota_lancada_admin' | 'nota_final_calculada' | 'relatorio_gerado' | 'sistema' | 'escola_nova' | 'atualizacao_sistema'
 
-export interface Notification {
+export interface AppNotification {
     id: string
-    destinatario_id: string
+    user_id: string
+    escola_id?: string
     tipo: string  // Can be NotificationType or other custom types from database
     titulo: string
     mensagem?: string
-    dados_adicionais?: Record<string, any>
+    link?: string
     lida: boolean
-    lida_em?: string
     created_at: string
+    updated_at?: string
 }
 
 export interface NotificationIconConfig {
