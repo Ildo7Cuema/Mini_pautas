@@ -754,6 +754,74 @@ export interface TutorialPerfil {
 }
 
 // ============================================
+// MATRICULAS TYPES
+// ============================================
+
+export type StatusTransicao = 'Transita' | 'Não Transita' | 'Condicional' | 'AguardandoNotas';
+export type EstadoMatricula = 'pendente' | 'confirmada' | 'cancelada' | 'aguardando_exame' | 'exame_realizado';
+export type ResultadoExame = 'aprovado' | 'reprovado';
+
+export interface Matricula {
+    id: string;
+    aluno_id: string;
+    escola_id: string;
+    turma_origem_id?: string;
+    turma_destino_id?: string;
+    ano_lectivo_origem: string;
+    ano_lectivo_destino: string;
+
+    // Classificação
+    status_transicao: StatusTransicao;
+    estado_matricula: EstadoMatricula;
+
+    // Detalhes da classificação
+    disciplinas_em_risco?: string[];
+    observacao_padronizada?: string;
+    motivo_retencao?: string;
+    media_geral?: number;
+    frequencia_anual?: number;
+    matricula_condicional?: boolean;
+
+    // Classe de origem e destino
+    classe_origem?: string;
+    classe_destino?: string;
+
+    // Exame extraordinário
+    resultado_exame?: ResultadoExame;
+    data_exame?: string;
+    nota_exame?: number;
+    disciplina_exame_id?: string;
+    observacao_exame?: string;
+
+    // Auditoria
+    criado_por?: string;
+    confirmado_por?: string;
+    confirmado_em?: string;
+    created_at: string;
+    updated_at: string;
+
+    // Joined fields
+    aluno?: Aluno;
+    turma_origem?: Turma;
+    turma_destino?: Turma;
+}
+
+export interface ResumoMatriculas {
+    escola_id: string;
+    ano_lectivo_origem: string;
+    ano_lectivo_destino: string;
+    turma_nome?: string;
+    nivel_ensino?: string;
+    total_alunos: number;
+    transitados: number;
+    nao_transitados: number;
+    condicionais: number;
+    pendentes: number;
+    confirmadas: number;
+    aguardando_exame: number;
+}
+
+// ============================================
 // UTILITY TYPES
 // ============================================
 

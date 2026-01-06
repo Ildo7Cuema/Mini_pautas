@@ -35,6 +35,7 @@ const SecretariesPage = lazy(() => import('./components/SecretariesPage').then(m
 const SecretaryRegistration = lazy(() => import('./components/SecretaryRegistration').then(m => ({ default: m.SecretaryRegistration })))
 const TutoriaisPublicosPage = lazy(() => import('./components/TutoriaisPublicosPage').then(m => ({ default: m.TutoriaisPublicosPage })))
 const TutoriaisManagementPage = lazy(() => import('./components/TutoriaisManagementPage').then(m => ({ default: m.TutoriaisManagementPage })))
+const MatriculasPage = lazy(() => import('./components/MatriculasPage').then(m => ({ default: m.MatriculasPage })))
 
 function App() {
     const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, escolaProfile, profile } = useAuth()
@@ -224,6 +225,8 @@ function App() {
                 return <TuitionPaymentsPage searchQuery={searchQuery} />
             case 'secretaries':
                 return <SecretariesPage searchQuery={searchQuery} />
+            case 'matriculas':
+                return <MatriculasPage />
             default:
                 return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
         }
