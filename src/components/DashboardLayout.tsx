@@ -586,9 +586,7 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
                                 onMarkAsRead={handleMarkAsRead}
                                 onMarkAllAsRead={handleMarkAllAsRead}
                                 onSelectNotification={setSelectedNotification}
-                                onDeleteNotification={handleDeleteNotification}
                                 onClearAllNotifications={handleClearAllNotifications}
-                                onNavigate={onNavigate}
                                 loading={loadingNotifications}
                             />
 
