@@ -742,15 +742,23 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                 setTurmas(turmasData)
                 console.log('✅ ReportsPage: Loaded', turmasData.length, 'turmas')
-            } else {
-                // For escola: load all turmas
+            } else if (escolaProfile || secretarioProfile) {
+                // For escola or secretario: load all turmas for this escola
+                console.log('📊 ReportsPage: Loading turmas for escola/secretario')
+
+                const escolaId = escolaProfile?.id || secretarioProfile?.escola_id
+
                 const { data, error } = await supabase
                     .from('turmas')
                     .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
+                    .eq('escola_id', escolaId)
                     .order('nome')
 
                 if (error) throw error
                 setTurmas(data || [])
+                console.log('✅ ReportsPage: Loaded', data?.length || 0, 'turmas for escola')
+            } else {
+                console.error('❌ ReportsPage: No profile found')
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar turmas'

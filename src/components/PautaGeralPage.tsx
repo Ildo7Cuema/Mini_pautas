@@ -147,27 +147,105 @@ export const PautaGeralPage: React.FC = () => {
 
     const loadTurmas = async () => {
         try {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (!user) throw new Error('User not authenticated')
+            if (professorProfile) {
+                console.log('📊 PautaGeralPage: Loading turmas for professor:', professorProfile.id)
 
-            const { data: professor } = await supabase
-                .from('professores')
-                .select('id')
-                .eq('user_id', user.id)
-                .single()
+                // Try NEW MODEL first: Get turmas via turma_professores
+                const { data: turmaProfsData, error: turmaProfsError } = await supabase
+                    .from('turma_professores')
+                    .select(`
+                        turma_id,
+                        turmas!inner (
+                            id,
+                            nome,
+                            ano_lectivo,
+                            codigo_turma,
+                            nivel_ensino
+                        )
+                    `)
+                    .eq('professor_id', professorProfile.id)
 
-            if (!professor) throw new Error('Professor not found')
+                let turmasData: any[] = []
 
-            const { data, error } = await supabase
-                .from('turmas')
-                .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
-                .eq('professor_id', professor.id)
-                .order('nome')
+                if (!turmaProfsError && turmaProfsData && turmaProfsData.length > 0) {
+                    // NEW MODEL: Extract unique turmas from turma_professores
+                    console.log('✅ PautaGeralPage: Using NEW model (turma_professores)')
+                    const turmasMap = new Map()
+                    turmaProfsData.forEach(tp => {
+                        const turma = tp.turmas as any
+                        if (!turmasMap.has(turma.id)) {
+                            turmasMap.set(turma.id, {
+                                id: turma.id,
+                                nome: turma.nome,
+                                ano_lectivo: turma.ano_lectivo,
+                                codigo_turma: turma.codigo_turma,
+                                nivel_ensino: turma.nivel_ensino
+                            })
+                        }
+                    })
+                    turmasData = Array.from(turmasMap.values())
+                } else {
+                    // OLD MODEL fallback: Get turmas via disciplinas
+                    console.log('⚠️ PautaGeralPage: Falling back to OLD model (disciplinas.professor_id)')
 
-            if (error) throw error
-            setTurmas(data || [])
+                    const { data, error } = await supabase
+                        .from('disciplinas')
+                        .select(`
+                            turma_id,
+                            turmas!inner (
+                                id,
+                                nome,
+                                ano_lectivo,
+                                codigo_turma,
+                                nivel_ensino
+                            )
+                        `)
+                        .eq('professor_id', professorProfile.id)
+
+                    if (error) throw error
+
+                    // Extract unique turmas
+                    const turmasMap = new Map()
+                    data?.forEach(disc => {
+                        const turma = disc.turmas as any
+                        if (!turmasMap.has(turma.id)) {
+                            turmasMap.set(turma.id, {
+                                id: turma.id,
+                                nome: turma.nome,
+                                ano_lectivo: turma.ano_lectivo,
+                                codigo_turma: turma.codigo_turma,
+                                nivel_ensino: turma.nivel_ensino
+                            })
+                        }
+                    })
+
+                    turmasData = Array.from(turmasMap.values())
+                }
+
+                setTurmas(turmasData)
+                console.log('✅ PautaGeralPage: Loaded', turmasData.length, 'turmas')
+            } else if (escolaProfile || secretarioProfile) {
+                // For escola or secretario: load all turmas for this escola
+                console.log('📊 PautaGeralPage: Loading turmas for escola/secretario')
+
+                const escolaId = escolaProfile?.id || secretarioProfile?.escola_id
+
+                const { data, error } = await supabase
+                    .from('turmas')
+                    .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
+                    .eq('escola_id', escolaId)
+                    .order('nome')
+
+                if (error) throw error
+                setTurmas(data || [])
+                console.log('✅ PautaGeralPage: Loaded', data?.length || 0, 'turmas for escola')
+            } else {
+                console.error('❌ PautaGeralPage: No profile found')
+                setError('Perfil não encontrado')
+            }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar turmas'
+            console.error('❌ PautaGeralPage: Error loading turmas:', err)
             setError(translateError(errorMessage))
         }
     }
