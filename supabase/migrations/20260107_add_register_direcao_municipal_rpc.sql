@@ -1,0 +1,202 @@
+-- Migration: Adicionar RPC para registo de Direção Municipal
+-- As Direções Municipais são criadas com ativo = false (pendente aprovação SUPERADMIN)
+
+-- Função RPC para registo de Direção Municipal (bypassa RLS)
+CREATE OR REPLACE FUNCTION register_direcao_municipal(
+    p_user_id UUID,
+    p_nome TEXT,
+    p_provincia TEXT,
+    p_municipio TEXT,
+    p_email TEXT,
+    p_telefone TEXT DEFAULT NULL,
+    p_cargo TEXT DEFAULT 'Director Municipal de Educação'
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_existing_profile_id UUID;
+    v_existing_direcao_id UUID;
+BEGIN
+    -- Verificar se já existe um user_profile para este user_id
+    SELECT id INTO v_existing_profile_id
+    FROM user_profiles
+    WHERE user_id = p_user_id;
+
+    IF v_existing_profile_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Já existe um perfil para este utilizador';
+    END IF;
+
+    -- Verificar se já existe uma direção municipal para este município
+    SELECT id INTO v_existing_direcao_id
+    FROM direcoes_municipais
+    WHERE municipio = p_municipio AND provincia = p_provincia AND ativo = true;
+
+    IF v_existing_direcao_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Já existe uma Direção Municipal activa para % - %', p_municipio, p_provincia;
+    END IF;
+
+    -- Verificar se o email já está em uso
+    SELECT id INTO v_existing_direcao_id
+    FROM direcoes_municipais
+    WHERE email = p_email;
+
+    IF v_existing_direcao_id IS NOT NULL THEN
+        RAISE EXCEPTION 'Este email já está associado a outra Direção Municipal';
+    END IF;
+
+    -- Criar o user_profile (inactivo - pendente aprovação)
+    INSERT INTO user_profiles (user_id, tipo_perfil, escola_id, ativo)
+    VALUES (p_user_id, 'DIRECAO_MUNICIPAL', NULL, false);
+
+    -- Criar o registo da direção municipal (inactivo - pendente aprovação)
+    INSERT INTO direcoes_municipais (
+        user_id,
+        nome,
+        provincia,
+        municipio,
+        email,
+        telefone,
+        cargo,
+        ativo
+    ) VALUES (
+        p_user_id,
+        p_nome,
+        p_provincia,
+        p_municipio,
+        p_email,
+        p_telefone,
+        p_cargo,
+        false  -- Pendente aprovação
+    );
+
+    -- Criar notificação para SUPERADMIN
+    INSERT INTO notificacoes (
+        user_id,
+        tipo,
+        titulo,
+        mensagem,
+        dados
+    )
+    SELECT 
+        up.user_id,
+        'sistema',
+        'Nova Direção Municipal Pendente',
+        'Nova solicitação de registo de Direção Municipal de ' || p_municipio || ' - ' || p_provincia || ' aguarda aprovação.',
+        jsonb_build_object(
+            'tipo', 'aprovacao_direcao_municipal',
+            'direcao_nome', p_nome,
+            'municipio', p_municipio,
+            'provincia', p_provincia,
+            'email', p_email
+        )
+    FROM user_profiles up
+    WHERE up.tipo_perfil = 'SUPERADMIN' AND up.ativo = true;
+
+END;
+$$;
+
+-- Conceder permissão de execução para utilizadores autenticados
+GRANT EXECUTE ON FUNCTION register_direcao_municipal(UUID, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+
+-- Comentário explicativo
+COMMENT ON FUNCTION register_direcao_municipal IS 
+'Regista uma nova Direção Municipal. O perfil é criado como inactivo e requer aprovação do SUPERADMIN. Notifica automaticamente os SUPERADMINs.';
+
+-- Função para SUPERADMIN aprovar/rejeitar Direção Municipal
+CREATE OR REPLACE FUNCTION aprovar_direcao_municipal(
+    p_direcao_id UUID,
+    p_aprovar BOOLEAN,
+    p_motivo_rejeicao TEXT DEFAULT NULL
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_direcao RECORD;
+    v_user_id UUID;
+BEGIN
+    -- Verificar se é SUPERADMIN
+    IF NOT is_superadmin() THEN
+        RAISE EXCEPTION 'Apenas SUPERADMIN pode aprovar/rejeitar Direções Municipais';
+    END IF;
+
+    -- Buscar dados da direção
+    SELECT * INTO v_direcao
+    FROM direcoes_municipais
+    WHERE id = p_direcao_id;
+
+    IF v_direcao IS NULL THEN
+        RAISE EXCEPTION 'Direção Municipal não encontrada';
+    END IF;
+
+    v_user_id := v_direcao.user_id;
+
+    IF p_aprovar THEN
+        -- Activar o user_profile
+        UPDATE user_profiles
+        SET ativo = true, updated_at = NOW()
+        WHERE user_id = v_user_id AND tipo_perfil = 'DIRECAO_MUNICIPAL';
+
+        -- Activar a direção municipal
+        UPDATE direcoes_municipais
+        SET ativo = true, updated_at = NOW()
+        WHERE id = p_direcao_id;
+
+        -- Notificar o utilizador
+        INSERT INTO notificacoes (user_id, tipo, titulo, mensagem, dados)
+        VALUES (
+            v_user_id,
+            'sistema',
+            'Registo Aprovado! 🎉',
+            'O seu registo como Direção Municipal de ' || v_direcao.municipio || ' foi aprovado. Já pode aceder ao sistema.',
+            jsonb_build_object('tipo', 'aprovacao_confirmada')
+        );
+    ELSE
+        -- Notificar o utilizador da rejeição
+        INSERT INTO notificacoes (user_id, tipo, titulo, mensagem, dados)
+        VALUES (
+            v_user_id,
+            'sistema',
+            'Registo Não Aprovado',
+            COALESCE(p_motivo_rejeicao, 'O seu registo como Direção Municipal não foi aprovado. Por favor, contacte o suporte para mais informações.'),
+            jsonb_build_object('tipo', 'aprovacao_rejeitada', 'motivo', p_motivo_rejeicao)
+        );
+
+        -- Opcional: Eliminar registos ou mantê-los para auditoria
+        -- Por agora, mantemos para histórico mas marcamos como rejeitado
+        UPDATE direcoes_municipais
+        SET 
+            ativo = false, 
+            updated_at = NOW()
+        WHERE id = p_direcao_id;
+    END IF;
+END;
+$$;
+
+-- Conceder permissão apenas para autenticados (a função verifica internamente se é SUPERADMIN)
+GRANT EXECUTE ON FUNCTION aprovar_direcao_municipal(UUID, BOOLEAN, TEXT) TO authenticated;
+
+COMMENT ON FUNCTION aprovar_direcao_municipal IS
+'Permite ao SUPERADMIN aprovar ou rejeitar uma Direção Municipal pendente.';
+
+-- View para listar Direções Municipais pendentes (para SUPERADMIN)
+CREATE OR REPLACE VIEW direcoes_municipais_pendentes AS
+SELECT 
+    dm.id,
+    dm.nome,
+    dm.provincia,
+    dm.municipio,
+    dm.email,
+    dm.telefone,
+    dm.cargo,
+    dm.created_at,
+    up.user_id
+FROM direcoes_municipais dm
+JOIN user_profiles up ON dm.user_id = up.user_id
+WHERE dm.ativo = false AND up.ativo = false AND up.tipo_perfil = 'DIRECAO_MUNICIPAL';
+
+-- Dar acesso à view para SUPERADMIN
+GRANT SELECT ON direcoes_municipais_pendentes TO authenticated;

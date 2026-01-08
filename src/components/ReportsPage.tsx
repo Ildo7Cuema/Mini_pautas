@@ -110,7 +110,7 @@ interface ReportsPageProps {
 }
 
 export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) => {
-    const { isProfessor, professorProfile, escolaProfile, secretarioProfile } = useAuth()
+    const { isProfessor, professorProfile, escolaProfile, secretarioProfile, isDirecaoMunicipal, direcaoMunicipalProfile } = useAuth()
     const [turmas, setTurmas] = useState<Turma[]>([])
     const [disciplinas, setDisciplinas] = useState<Disciplina[]>([])
     const [selectedTurma, setSelectedTurma] = useState<string>('')
@@ -149,6 +149,10 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
         currentAluno: string
     } | null>(null)
     const [batchGenerating, setBatchGenerating] = useState(false)
+
+    // Direção Municipal - escola filter state
+    const [escolas, setEscolas] = useState<Array<{ id: string, nome: string, codigo_escola: string }>>([])
+    const [selectedEscola, setSelectedEscola] = useState<string>('')
 
     // Detect if selected turma is Primary Education
     const isPrimaryEducation = selectedTurmaData?.nivel_ensino?.toLowerCase().includes('primário') ||
@@ -593,7 +597,17 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
     useEffect(() => {
         loadTurmas()
-    }, [])
+    }, [selectedEscola]) // Re-run when escola changes (for Direção Municipal)
+
+    // Reset turma when escola changes
+    useEffect(() => {
+        if (isDirecaoMunicipal) {
+            setSelectedTurma('')
+            setSelectedTurmaData(null)
+            setDisciplinas([])
+            setSelectedDisciplina('')
+        }
+    }, [selectedEscola, isDirecaoMunicipal])
 
     useEffect(() => {
         if (selectedTurma) {
@@ -757,6 +771,37 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                 if (error) throw error
                 setTurmas(data || [])
                 console.log('✅ ReportsPage: Loaded', data?.length || 0, 'turmas for escola')
+            } else if (isDirecaoMunicipal && direcaoMunicipalProfile) {
+                // For Direção Municipal: load escolas from municipio, then turmas from selected escola
+                console.log('📊 ReportsPage: Loading data for Direção Municipal:', direcaoMunicipalProfile.municipio)
+
+                // First, load escolas from this municipio
+                const { data: escolasData, error: escolasError } = await supabase
+                    .from('escolas')
+                    .select('id, nome, codigo_escola')
+                    .eq('municipio', direcaoMunicipalProfile.municipio)
+                    .eq('ativo', true)
+                    .order('nome')
+
+                if (escolasError) throw escolasError
+                setEscolas(escolasData || [])
+                console.log('✅ ReportsPage: Loaded', escolasData?.length || 0, 'escolas for municipio')
+
+                // If an escola is selected, load its turmas
+                if (selectedEscola) {
+                    const { data: turmasData, error: turmasError } = await supabase
+                        .from('turmas')
+                        .select('id, nome, ano_lectivo, codigo_turma, nivel_ensino')
+                        .eq('escola_id', selectedEscola)
+                        .order('nome')
+
+                    if (turmasError) throw turmasError
+                    setTurmas(turmasData || [])
+                    console.log('✅ ReportsPage: Loaded', turmasData?.length || 0, 'turmas for selected escola')
+                } else {
+                    // No escola selected yet - clear turmas
+                    setTurmas([])
+                }
             } else {
                 console.error('❌ ReportsPage: No profile found')
             }
@@ -2114,14 +2159,33 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                         </CardHeader>
                         <CardBody className="p-3 md:p-4">
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+                                {/* Escola filter - only for Direção Municipal */}
+                                {isDirecaoMunicipal && (
+                                    <div>
+                                        <label className="form-label">Escola</label>
+                                        <select
+                                            value={selectedEscola}
+                                            onChange={(e) => setSelectedEscola(e.target.value)}
+                                            className="form-input min-h-touch"
+                                        >
+                                            <option value="">Seleccione uma escola</option>
+                                            {escolas.map((escola) => (
+                                                <option key={escola.id} value={escola.id}>
+                                                    {escola.nome}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 <div>
                                     <label className="form-label">Turma</label>
                                     <select
                                         value={selectedTurma}
                                         onChange={(e) => setSelectedTurma(e.target.value)}
                                         className="form-input min-h-touch"
+                                        disabled={isDirecaoMunicipal && !selectedEscola}
                                     >
-                                        <option value="">Selecione uma turma</option>
+                                        <option value="">{isDirecaoMunicipal && !selectedEscola ? 'Seleccione primeiro uma escola' : 'Seleccione uma turma'}</option>
                                         {turmas.map((turma) => (
                                             <option key={turma.id} value={turma.id}>
                                                 {turma.nome} - {turma.ano_lectivo}
@@ -2389,7 +2453,25 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                             </div>
                         </CardHeader>
                         <CardBody className="p-3 md:p-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                                {/* Escola filter - only for Direção Municipal */}
+                                {isDirecaoMunicipal && (
+                                    <div>
+                                        <label className="form-label">Escola</label>
+                                        <select
+                                            value={selectedEscola}
+                                            onChange={(e) => setSelectedEscola(e.target.value)}
+                                            className="form-input min-h-touch"
+                                        >
+                                            <option value="">Seleccione uma escola</option>
+                                            {escolas.map((escola) => (
+                                                <option key={escola.id} value={escola.id}>
+                                                    {escola.nome}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                                 {/* Turma Selection */}
                                 <div>
                                     <label className="form-label">Turma</label>
@@ -2401,8 +2483,9 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                                             setTermoFrequenciaData(null)
                                         }}
                                         className="form-input min-h-touch"
+                                        disabled={isDirecaoMunicipal && !selectedEscola}
                                     >
-                                        <option value="">Selecione uma turma</option>
+                                        <option value="">{isDirecaoMunicipal && !selectedEscola ? 'Seleccione primeiro uma escola' : 'Seleccione uma turma'}</option>
                                         {turmas.map((turma) => (
                                             <option key={turma.id} value={turma.id}>
                                                 {turma.nome} - {turma.ano_lectivo}

@@ -17,6 +17,7 @@ const GradesPage = lazy(() => import('./components/GradesPage').then(m => ({ def
 const ReportsPage = lazy(() => import('./components/ReportsPage').then(m => ({ default: m.ReportsPage })))
 const SettingsPage = lazy(() => import('./components/SettingsPage').then(m => ({ default: m.SettingsPage })))
 const TeachersPage = lazy(() => import('./components/TeachersPage').then(m => ({ default: m.TeachersPage })))
+const StaffPage = lazy(() => import('./components/StaffPage').then(m => ({ default: m.StaffPage })))
 const ProfessorRegistration = lazy(() => import('./components/ProfessorRegistration').then(m => ({ default: m.ProfessorRegistration })))
 const StudentRegistration = lazy(() => import('./components/StudentRegistration').then(m => ({ default: m.StudentRegistration })))
 const GuardianRegistration = lazy(() => import('./components/GuardianRegistration').then(m => ({ default: m.GuardianRegistration })))
@@ -36,9 +37,21 @@ const SecretaryRegistration = lazy(() => import('./components/SecretaryRegistrat
 const TutoriaisPublicosPage = lazy(() => import('./components/TutoriaisPublicosPage').then(m => ({ default: m.TutoriaisPublicosPage })))
 const TutoriaisManagementPage = lazy(() => import('./components/TutoriaisManagementPage').then(m => ({ default: m.TutoriaisManagementPage })))
 const MatriculasPage = lazy(() => import('./components/MatriculasPage').then(m => ({ default: m.MatriculasPage })))
+const DirecaoMunicipalDashboard = lazy(() => import('./components/DirecaoMunicipalDashboard'))
+const EscolasOverviewPage = lazy(() => import('./components/EscolasOverviewPage'))
+const SolicitacoesPage = lazy(() => import('./components/SolicitacoesPage'))
+const DirecaoMunicipalRegistration = lazy(() => import('./components/DirecaoMunicipalRegistration').then(m => ({ default: m.DirecaoMunicipalRegistration })))
+const DirecoesMunicipaisManagement = lazy(() => import('./components/DirecoesMunicipaisManagement').then(m => ({ default: m.DirecoesMunicipaisManagement })))
+const ProfessorDocumentRequestsPage = lazy(() => import('./components/ProfessorDocumentRequestsPage').then(m => ({ default: m.ProfessorDocumentRequestsPage })))
+
+// Municipal Education Module - New Features
+const SupervisaoPedagogica = lazy(() => import('./modules/municipal_education/components/SupervisaoPedagogica').then(m => ({ default: m.SupervisaoPedagogica })))
+const FuncionariosConsulta = lazy(() => import('./modules/municipal_education/components/FuncionariosConsulta').then(m => ({ default: m.FuncionariosConsulta })))
+const CircularesPage = lazy(() => import('./modules/municipal_education/components/CircularesPage').then(m => ({ default: m.CircularesPage })))
+const RelatoriosMunicipaisPage = lazy(() => import('./modules/municipal_education/components/RelatoriosPage').then(m => ({ default: m.RelatoriosPage })))
 
 function App() {
-    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, escolaProfile, profile } = useAuth()
+    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, isDirecaoMunicipal, escolaProfile, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string; filter?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
@@ -105,6 +118,14 @@ function App() {
         )
     }
 
+    if (window.location.pathname === '/register-direcao-municipal') {
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <DirecaoMunicipalRegistration />
+            </Suspense>
+        )
+    }
+
     if (window.location.pathname === '/reset-password') {
         return (
             <Suspense fallback={<PageSkeleton />}>
@@ -126,7 +147,7 @@ function App() {
         return <LoginScreen />
     }
 
-    const handleNavigate = (page: string, params?: { turmaId?: string }) => {
+    const handleNavigate = (page: string, params?: { turmaId?: string; filter?: string }) => {
         setCurrentPage(page)
         setSearchQuery('') // Clear search when navigating
         if (params) {
@@ -151,10 +172,38 @@ function App() {
                     return <SuperAdminAuditLog />
                 case 'superadmin-tutoriais':
                     return <TutoriaisManagementPage />
+                case 'superadmin-direcoes-municipais':
+                    return <DirecoesMunicipaisManagement onNavigate={handleNavigate} />
                 case 'settings':
                     return <SettingsPage />
                 default:
                     return <SuperAdminDashboard />
+            }
+        }
+
+        // DIREÇÃO MUNICIPAL routes
+        if (isDirecaoMunicipal) {
+            switch (currentPage) {
+                case 'dashboard':
+                    return <DirecaoMunicipalDashboard onNavigate={handleNavigate} />
+                case 'escolas':
+                    return <EscolasOverviewPage onNavigate={handleNavigate} />
+                case 'supervisao-pedagogica':
+                    return <SupervisaoPedagogica onNavigate={handleNavigate} />
+                case 'funcionarios':
+                    return <FuncionariosConsulta onNavigate={handleNavigate} />
+                case 'circulares':
+                    return <CircularesPage onNavigate={handleNavigate} />
+                case 'relatorios-municipais':
+                    return <RelatoriosMunicipaisPage onNavigate={handleNavigate} />
+                case 'solicitacoes':
+                    return <SolicitacoesPage onNavigate={handleNavigate} />
+                case 'reports':
+                    return <ReportsPage searchQuery={searchQuery} />
+                case 'settings':
+                    return <SettingsPage />
+                default:
+                    return <DirecaoMunicipalDashboard onNavigate={handleNavigate} />
             }
         }
 
@@ -199,6 +248,8 @@ function App() {
         switch (currentPage) {
             case 'dashboard':
                 return isProfessor ? <ProfessorDashboard /> : <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
+            case 'solicitacoes':
+                return <ProfessorDocumentRequestsPage />
             case 'classes':
                 return <ClassesPage onNavigate={handleNavigate} searchQuery={searchQuery} />
             case 'class-details':
@@ -217,6 +268,8 @@ function App() {
                 return <SettingsPage />
             case 'teachers':
                 return <TeachersPage onNavigate={handleNavigate} searchQuery={searchQuery} />
+            case 'staff':
+                return <StaffPage onNavigate={handleNavigate} searchQuery={searchQuery} />
             case 'subscription':
             case 'escola-subscricao':
                 return <SubscriptionPage />

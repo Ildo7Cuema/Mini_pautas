@@ -399,3 +399,181 @@ export async function restoreEscola(
         throw error
     }
 }
+
+// ============================================
+// DIREÇÃO MUNICIPAL MANAGEMENT FUNCTIONS
+// ============================================
+
+export interface DirecaoMunicipal {
+    id: string
+    user_id: string | null
+    nome: string
+    provincia: string
+    municipio: string
+    email: string
+    telefone: string | null
+    cargo: string
+    numero_funcionario: string | null
+    ativo: boolean
+    bloqueado: boolean
+    bloqueado_motivo: string | null
+    bloqueado_em: string | null
+    bloqueado_por: string | null
+    created_at: string
+    updated_at: string
+}
+
+/**
+ * Fetch all direções municipais with optional filters
+ */
+export async function fetchAllDirecoesMunicipais(filters?: {
+    ativo?: boolean
+    bloqueado?: boolean
+    provincia?: string
+    municipio?: string
+    search?: string
+    needsAttention?: boolean
+}): Promise<DirecaoMunicipal[]> {
+    try {
+        let query = supabase.from('direcoes_municipais').select('*')
+
+        if (filters?.needsAttention) {
+            // Needs attention: inactive OR blocked
+            query = query.or('ativo.eq.false,bloqueado.eq.true')
+        } else {
+            if (filters?.ativo !== undefined) {
+                query = query.eq('ativo', filters.ativo)
+            }
+
+            if (filters?.bloqueado !== undefined) {
+                query = query.eq('bloqueado', filters.bloqueado)
+            }
+        }
+
+        if (filters?.provincia) {
+            query = query.eq('provincia', filters.provincia)
+        }
+
+        if (filters?.municipio) {
+            query = query.eq('municipio', filters.municipio)
+        }
+
+        if (filters?.search) {
+            query = query.or(`nome.ilike.%${filters.search}%,municipio.ilike.%${filters.search}%,provincia.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false })
+
+        if (error) throw error
+
+        return data || []
+    } catch (error) {
+        console.error('Error fetching direções municipais:', error)
+        throw error
+    }
+}
+
+/**
+ * Activate a direção municipal
+ */
+export async function activateDirecaoMunicipal(direcaoId: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('direcoes_municipais')
+            .update({ ativo: true })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('ACTIVATE_DIRECAO_MUNICIPAL', null, {
+            action: 'Direção Municipal activated',
+            direcao_id: direcaoId
+        })
+    } catch (error) {
+        console.error('Error activating direção municipal:', error)
+        throw error
+    }
+}
+
+/**
+ * Deactivate a direção municipal
+ */
+export async function deactivateDirecaoMunicipal(direcaoId: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('direcoes_municipais')
+            .update({ ativo: false })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('DEACTIVATE_DIRECAO_MUNICIPAL', null, {
+            action: 'Direção Municipal deactivated',
+            direcao_id: direcaoId
+        })
+    } catch (error) {
+        console.error('Error deactivating direção municipal:', error)
+        throw error
+    }
+}
+
+/**
+ * Block a direção municipal with reason
+ */
+export async function blockDirecaoMunicipal(direcaoId: string, motivo: string): Promise<void> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+
+        const { error } = await supabase
+            .from('direcoes_municipais')
+            .update({
+                bloqueado: true,
+                bloqueado_motivo: motivo,
+                bloqueado_em: new Date().toISOString(),
+                bloqueado_por: user?.id
+            })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('BLOCK_DIRECAO_MUNICIPAL', null, {
+            action: 'Direção Municipal blocked',
+            direcao_id: direcaoId,
+            motivo: motivo
+        })
+    } catch (error) {
+        console.error('Error blocking direção municipal:', error)
+        throw error
+    }
+}
+
+/**
+ * Unblock a direção municipal
+ */
+export async function unblockDirecaoMunicipal(direcaoId: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('direcoes_municipais')
+            .update({
+                bloqueado: false,
+                bloqueado_motivo: null,
+                bloqueado_em: null,
+                bloqueado_por: null
+            })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('UNBLOCK_DIRECAO_MUNICIPAL', null, {
+            action: 'Direção Municipal unblocked',
+            direcao_id: direcaoId
+        })
+    } catch (error) {
+        console.error('Error unblocking direção municipal:', error)
+        throw error
+    }
+}

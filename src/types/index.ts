@@ -33,11 +33,39 @@ export interface Professor {
     numero_agente: string;
     email: string;
     telefone?: string;
+    genero?: 'M' | 'F';
     especialidade?: string;
     funcoes: string[];
     ativo: boolean;
     created_at: string;
     updated_at: string;
+
+    // Novos Campos para Documentação Automática
+    data_nascimento?: string;
+    nome_pai?: string;
+    nome_mae?: string;
+    estado_civil?: 'Solteiro' | 'Casado' | 'Divorciado' | 'Viúvo' | 'União de Facto';
+    numero_bi?: string;
+    nacionalidade?: string;
+    naturalidade?: string;
+
+    provincia_residencia?: string;
+    municipio_residencia?: string;
+    bairro_residencia?: string;
+    endereco_completo?: string;
+
+    iban?: string;
+    banco?: string;
+    numero_seguranca_social?: string;
+    data_inicio_funcoes?: string;
+    categoria_laboral?: 'Quadro Definitivo' | 'Contratado' | 'Colaborador';
+
+    grau_academico?: string;
+    area_formacao?: string;
+    categoria_docente?: string;
+    numero_diploma?: string;
+    instituicao_formacao?: string;
+    ano_conclusao?: number;
 }
 
 export interface Turma {
@@ -95,6 +123,29 @@ export interface Aluno {
     observacoes_academicas?: string;
 
     ativo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface FuncionarioEscola {
+    id: string;
+    escola_id: string;
+    user_id?: string;
+    nome_completo: string;
+    email: string;
+    telefone: string;
+    numero_funcionario?: string;
+    categoria: 'DIRECAO' | 'COORDENACAO' | 'ADMINISTRATIVO' | 'APOIO';
+    subcategoria: string;
+    cargo?: string;
+    departamento?: string;
+    data_admissao?: string;
+    data_saida?: string;
+    observacoes?: string;
+    ativo: boolean;
+    genero?: 'M' | 'F';
+    data_nascimento?: string;
+    nif?: string;
     created_at: string;
     updated_at: string;
 }
@@ -342,13 +393,13 @@ export interface ImportError {
 // USER ROLES AND PROFILES
 // ============================================
 
-export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO' | 'SECRETARIO';
+export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO' | 'SECRETARIO' | 'DIRECAO_MUNICIPAL';
 
 export interface UserProfile {
     id: string;
     user_id: string;
     tipo_perfil: UserRole;
-    escola_id: string | null;  // Nullable for SUPERADMIN users
+    escola_id: string | null;  // Nullable for SUPERADMIN and DIRECAO_MUNICIPAL users
     ativo: boolean;
     metadata: Record<string, any>;
     created_at: string;
@@ -395,6 +446,146 @@ export interface SecretarioProfile extends Secretario {
     escola?: Escola;
 }
 
+// ============================================
+// DIREÇÃO MUNICIPAL TYPES
+// ============================================
+
+export interface DirecaoMunicipal {
+    id: string;
+    user_id?: string;
+    nome: string;
+    provincia: string;
+    municipio: string;
+    email: string;
+    telefone?: string;
+    cargo?: string;
+    numero_funcionario?: string;
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DirecaoMunicipalProfile extends DirecaoMunicipal {
+    user_profile: UserProfile;
+    escolas_count?: number;
+}
+
+// ============================================
+// SOLICITAÇÕES DE DOCUMENTOS TYPES
+// ============================================
+
+export type TipoDocumentoCodigo =
+    | 'DECLARACAO_TRABALHO'
+    | 'DECLARACAO_SERVICO'
+    | 'CERTIFICADO_FORMACAO'
+    | 'AUTORIZACAO_LICENCA'
+    | 'TRANSFERENCIA'
+    | 'OUTRO';
+
+export type EstadoSolicitacao =
+    | 'pendente'
+    | 'em_analise'
+    | 'pendente_info'
+    | 'aprovado'
+    | 'rejeitado'
+    | 'concluido';
+
+export interface TipoDocumento {
+    id: string;
+    codigo: TipoDocumentoCodigo;
+    nome: string;
+    descricao?: string;
+    campos_requeridos?: Record<string, any>[];
+    prazo_dias: number;
+    ativo: boolean;
+    created_at: string;
+}
+
+export interface SolicitacaoDocumento {
+    id: string;
+    solicitante_user_id: string;
+    solicitante_tipo: 'PROFESSOR' | 'SECRETARIO' | 'ESCOLA';
+    escola_id: string;
+    tipo_documento_id: string;
+    assunto: string;
+    descricao?: string;
+    urgente: boolean;
+    dados_adicionais?: Record<string, any>;
+    estado: EstadoSolicitacao;
+    entidade_destino: 'ESCOLA' | 'DIRECAO_MUNICIPAL';
+    resposta_direcao?: string;
+    documento_url?: string;
+    documento_filename?: string;
+    analisado_por?: string;
+    analisado_em?: string;
+    concluido_em?: string;
+    created_at: string;
+    updated_at: string;
+    // Joined fields
+    tipo_documento?: TipoDocumento;
+    escola?: Escola;
+    solicitante_nome?: string;
+}
+
+export interface SolicitacaoStats {
+    total: number;
+    pendentes: number;
+    em_analise: number;
+    aprovadas: number;
+    rejeitadas: number;
+    concluidas: number;
+}
+
+export interface CreateSolicitacaoRequest {
+    escola_id: string;
+    tipo_documento_id: string;
+    assunto: string;
+    descricao?: string;
+    urgente?: boolean;
+    entidade_destino?: 'ESCOLA' | 'DIRECAO_MUNICIPAL';
+    dados_adicionais?: Record<string, any>;
+}
+
+// ============================================
+// ESTATÍSTICAS DO MUNICÍPIO
+// ============================================
+
+export interface MunicipioStats {
+    total_escolas: number;
+    escolas_ativas: number;
+    total_alunos: number;
+    alunos_masculino: number;
+    alunos_feminino: number;
+    total_professores: number;
+    professores_masculino: number;
+    professores_feminino: number;
+    total_funcionarios: number;
+    funcionarios_masculino: number;
+    funcionarios_feminino: number;
+    total_turmas: number;
+    media_geral: number;
+    taxa_aprovacao: number;
+    solicitacoes_pendentes: number;
+    estatisticas_por_escola: EscolaStats[];
+}
+
+export interface EscolaStats {
+    escola_id: string;
+    escola_nome: string;
+    total_turmas: number;
+    total_alunos: number;
+    alunos_masculino: number;
+    alunos_feminino: number;
+    total_professores: number;
+    professores_masculino: number;
+    professores_feminino: number;
+    total_funcionarios: number;
+    funcionarios_masculino: number;
+    funcionarios_feminino: number;
+    media_geral: number;
+    taxa_aprovacao: number;
+}
+
 export interface AuthUser {
     id: string;
     email: string;
@@ -404,6 +595,7 @@ export interface AuthUser {
     aluno?: AlunoProfile;
     encarregado?: EncarregadoProfile;
     secretario?: SecretarioProfile;
+    direcaoMunicipal?: DirecaoMunicipalProfile;
 }
 
 // ALUNO Profile - Student with turma and escola info

@@ -19,6 +19,14 @@ export const isSecretario = (profile: UserProfile | null): boolean => {
 }
 
 /**
+ * Check if user is DIRECAO_MUNICIPAL
+ */
+export const isDirecaoMunicipal = (profile: UserProfile | null): boolean => {
+    return profile?.tipo_perfil === 'DIRECAO_MUNICIPAL' && profile.ativo
+}
+
+
+/**
  * Check if user can manage all escolas (SUPERADMIN only)
  */
 export const canManageEscolas = (profile: UserProfile | null): boolean => {

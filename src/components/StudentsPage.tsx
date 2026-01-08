@@ -844,11 +844,12 @@ export const StudentsPage: React.FC<StudentsPageProps> = ({ searchQuery = '' }) 
                                 onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
                             />
                             <div>
-                                <label className="form-label">Género</label>
+                                <label className="form-label">Género *</label>
                                 <select
                                     value={formData.genero}
                                     onChange={(e) => setFormData({ ...formData, genero: e.target.value as '' | 'M' | 'F' })}
                                     className="form-input min-h-touch"
+                                    required
                                 >
                                     <option value="">Selecione</option>
                                     <option value="M">Masculino</option>

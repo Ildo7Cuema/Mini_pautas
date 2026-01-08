@@ -15,17 +15,9 @@ import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { ConfirmModal } from './ui/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
+import { Professor } from '../types'
 
-interface Professor {
-    id: string
-    user_id?: string | null
-    nome_completo: string
-    email: string
-    telefone: string
-    especialidade: string
-    ativo: boolean
-    numero_agente: string
-}
+
 interface TeachersPageProps {
     onNavigate?: (page: string) => void
     searchQuery?: string
@@ -41,13 +33,40 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
     const [selectedProfessorId, setSelectedProfessorId] = useState<string | null>(null)
     const [professorToDelete, setProfessorToDelete] = useState<string | null>(null)
 
+    const [activeTab, setActiveTab] = useState<'pessoal' | 'profissional' | 'endereco'>('pessoal')
+
     // Form data
     const [formData, setFormData] = useState({
+        // Pessoal
         nome_completo: '',
+        data_nascimento: '',
+        genero: '' as '' | 'M' | 'F',
+        estado_civil: '',
+        numero_bi: '',
+        nome_pai: '',
+        nome_mae: '',
+        nacionalidade: 'Angolana',
+        naturalidade: '',
+
+        // Profissional
         email: '',
         telefone: '',
-        especialidade: '',
         numero_agente: '',
+        categoria_docente: '',
+        grau_academico: '',
+        area_formacao: '',
+        especialidade: '',
+        data_inicio_funcoes: '',
+        categoria_laboral: '',
+        numero_seguranca_social: '',
+
+        // Endereço e Bancários
+        provincia_residencia: '',
+        municipio_residencia: '',
+        bairro_residencia: '',
+        endereco_completo: '',
+        iban: '',
+        banco: '',
     })
 
     const [error, setError] = useState<string | null>(null)
@@ -110,43 +129,57 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
                 throw new Error('Nome e Email são obrigatórios')
             }
 
+            const professorData = {
+                // Pessoal
+                nome_completo: formData.nome_completo,
+                data_nascimento: formData.data_nascimento || null,
+                genero: formData.genero || null,
+                estado_civil: formData.estado_civil || null,
+                numero_bi: formData.numero_bi || null,
+                nome_pai: formData.nome_pai || null,
+                nome_mae: formData.nome_mae || null,
+                nacionalidade: formData.nacionalidade || null,
+                naturalidade: formData.naturalidade || null,
+
+                // Profissional
+                email: formData.email,
+                telefone: formData.telefone,
+                numero_agente: formData.numero_agente,
+                categoria_docente: formData.categoria_docente || null,
+                grau_academico: formData.grau_academico || null,
+                area_formacao: formData.area_formacao || null,
+                especialidade: formData.especialidade,
+                data_inicio_funcoes: formData.data_inicio_funcoes || null,
+                categoria_laboral: formData.categoria_laboral || null,
+                numero_seguranca_social: formData.numero_seguranca_social || null,
+
+                // Endereço e Bancários
+                provincia_residencia: formData.provincia_residencia || null,
+                municipio_residencia: formData.municipio_residencia || null,
+                bairro_residencia: formData.bairro_residencia || null,
+                endereco_completo: formData.endereco_completo || null,
+                iban: formData.iban || null,
+                banco: formData.banco || null,
+            }
+
             if (editMode && selectedProfessorId) {
                 // Update existing professor
                 const { error: updateError } = await supabase
                     .from('professores')
-                    .update({
-                        nome_completo: formData.nome_completo,
-                        email: formData.email,
-                        telefone: formData.telefone,
-                        especialidade: formData.especialidade,
-                        numero_agente: formData.numero_agente,
-                    })
+                    .update(professorData)
                     .eq('id', selectedProfessorId)
 
                 if (updateError) throw updateError
                 setSuccess('Professor atualizado com sucesso!')
             } else {
                 // Create new professor
-                // NOTE: This might fail if user_id is NOT NULL and we don't provide it.
-                // Assuming we can create a professor record first or there's a trigger handling it.
-                // If it fails, we need a "Invite Professor" flow that creates an Auth User.
-
-                // Generating a temporary dummy user_id if strict constraint exists is risky.
-                // Let's try inserting without user_id first if the schema allows nullable.
-                // If the schema requires user_id, this insert will fail and we'll see the error.
-
                 const { error: insertError } = await supabase
                     .from('professores')
                     .insert({
                         escola_id: escolaProfile.id,
-                        nome_completo: formData.nome_completo,
-                        email: formData.email,
-                        telefone: formData.telefone,
-                        especialidade: formData.especialidade,
-                        numero_agente: formData.numero_agente,
                         ativo: true,
                         funcoes: ['Docente'],
-                        // user_id: ??? - If required, we have a problem without creating Auth user.
+                        ...professorData
                     })
 
                 if (insertError) {
@@ -171,12 +204,33 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
     const resetForm = () => {
         setEditMode(false)
         setSelectedProfessorId(null)
+        setActiveTab('pessoal')
         setFormData({
             nome_completo: '',
+            data_nascimento: '',
+            genero: '',
+            estado_civil: '',
+            numero_bi: '',
+            nome_pai: '',
+            nome_mae: '',
+            nacionalidade: 'Angolana',
+            naturalidade: '',
             email: '',
             telefone: '',
-            especialidade: '',
             numero_agente: '',
+            categoria_docente: '',
+            grau_academico: '',
+            area_formacao: '',
+            especialidade: '',
+            data_inicio_funcoes: '',
+            categoria_laboral: '',
+            numero_seguranca_social: '',
+            provincia_residencia: '',
+            municipio_residencia: '',
+            bairro_residencia: '',
+            endereco_completo: '',
+            iban: '',
+            banco: '',
         })
     }
 
@@ -185,10 +239,30 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
         setSelectedProfessorId(professor.id)
         setFormData({
             nome_completo: professor.nome_completo,
+            data_nascimento: professor.data_nascimento || '',
+            genero: professor.genero || '',
+            estado_civil: professor.estado_civil || '',
+            numero_bi: professor.numero_bi || '',
+            nome_pai: professor.nome_pai || '',
+            nome_mae: professor.nome_mae || '',
+            nacionalidade: professor.nacionalidade || 'Angolana',
+            naturalidade: professor.naturalidade || '',
             email: professor.email,
             telefone: professor.telefone || '',
-            especialidade: professor.especialidade || '',
             numero_agente: professor.numero_agente || '',
+            categoria_docente: professor.categoria_docente || '',
+            grau_academico: professor.grau_academico || '',
+            area_formacao: professor.area_formacao || '',
+            especialidade: professor.especialidade || '',
+            data_inicio_funcoes: professor.data_inicio_funcoes || '',
+            categoria_laboral: professor.categoria_laboral || '',
+            numero_seguranca_social: professor.numero_seguranca_social || '',
+            provincia_residencia: professor.provincia_residencia || '',
+            municipio_residencia: professor.municipio_residencia || '',
+            bairro_residencia: professor.bairro_residencia || '',
+            endereco_completo: professor.endereco_completo || '',
+            iban: professor.iban || '',
+            banco: professor.banco || '',
         })
         setShowModal(true)
     }
@@ -357,6 +431,12 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
 
                                 {/* Info */}
                                 <div className="space-y-2 mb-4">
+                                    {prof.categoria_docente && (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
+                                            <Icons.Award className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                                            <span className="text-sm text-slate-700 truncate">{prof.categoria_docente.replace(/_/g, ' ')}</span>
+                                        </div>
+                                    )}
                                     {prof.especialidade && (
                                         <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg">
                                             <svg className="w-4 h-4 text-purple-500 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -445,51 +525,285 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
                                 </button>
                             </div>
                         </CardHeader>
-                        <CardBody className="p-4">
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <Input
-                                    label="Nome Completo"
-                                    type="text"
-                                    value={formData.nome_completo}
-                                    onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
-                                    placeholder="Ex: João da Silva"
-                                    required
-                                />
+                        <CardBody className="p-0">
+                            <div className="flex border-b border-slate-100">
+                                <button
+                                    className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'pessoal' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                                    onClick={() => setActiveTab('pessoal')}
+                                >
+                                    Pessoal
+                                </button>
+                                <button
+                                    className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'profissional' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                                    onClick={() => setActiveTab('profissional')}
+                                >
+                                    Profissional
+                                </button>
+                                <button
+                                    className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'endereco' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+                                    onClick={() => setActiveTab('endereco')}
+                                >
+                                    Endereço & Banco
+                                </button>
+                            </div>
 
-                                <Input
-                                    label="Email"
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                    placeholder="professor@exemplo.com"
-                                    required
-                                />
+                            <form onSubmit={handleSubmit} className="p-4 space-y-4">
+                                {activeTab === 'pessoal' && (
+                                    <div className="space-y-4 animate-fade-in">
+                                        <Input
+                                            label="Nome Completo *"
+                                            type="text"
+                                            value={formData.nome_completo}
+                                            onChange={(e) => setFormData({ ...formData, nome_completo: e.target.value })}
+                                            placeholder="Ex: João da Silva"
+                                            required
+                                        />
 
-                                <Input
-                                    label="Telefone"
-                                    type="tel"
-                                    value={formData.telefone}
-                                    onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
-                                    placeholder="+244 9..."
-                                />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Data de Nascimento"
+                                                type="date"
+                                                value={formData.data_nascimento}
+                                                onChange={(e) => setFormData({ ...formData, data_nascimento: e.target.value })}
+                                            />
+                                            <div>
+                                                <label className="form-label">Género *</label>
+                                                <select
+                                                    value={formData.genero}
+                                                    onChange={(e) => setFormData({ ...formData, genero: e.target.value as '' | 'M' | 'F' })}
+                                                    className="form-input min-h-touch"
+                                                    required
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    <option value="M">Masculino</option>
+                                                    <option value="F">Feminino</option>
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                <Input
-                                    label="Especialidade"
-                                    type="text"
-                                    value={formData.especialidade}
-                                    onChange={(e) => setFormData({ ...formData, especialidade: e.target.value })}
-                                    placeholder="Ex: Matemática, Física"
-                                />
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Número do BI"
+                                                type="text"
+                                                value={formData.numero_bi}
+                                                onChange={(e) => setFormData({ ...formData, numero_bi: e.target.value })}
+                                                placeholder="000000000PO000"
+                                            />
+                                            <div>
+                                                <label className="form-label">Estado Civil</label>
+                                                <select
+                                                    value={formData.estado_civil}
+                                                    onChange={(e) => setFormData({ ...formData, estado_civil: e.target.value })}
+                                                    className="form-input min-h-touch"
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    <option value="Solteiro">Solteiro(a)</option>
+                                                    <option value="Casado">Casado(a)</option>
+                                                    <option value="Divorciado">Divorciado(a)</option>
+                                                    <option value="Viúvo">Viúvo(a)</option>
+                                                    <option value="União de Facto">União de Facto</option>
+                                                </select>
+                                            </div>
+                                        </div>
 
-                                <Input
-                                    label="Número de Agente"
-                                    type="text"
-                                    value={formData.numero_agente}
-                                    onChange={(e) => setFormData({ ...formData, numero_agente: e.target.value })}
-                                    placeholder="Número de identificação escolar"
-                                />
+                                        <Input
+                                            label="Nome do Pai"
+                                            type="text"
+                                            value={formData.nome_pai}
+                                            onChange={(e) => setFormData({ ...formData, nome_pai: e.target.value })}
+                                            placeholder="Nome completo do pai"
+                                        />
+                                        <Input
+                                            label="Nome da Mãe"
+                                            type="text"
+                                            value={formData.nome_mae}
+                                            onChange={(e) => setFormData({ ...formData, nome_mae: e.target.value })}
+                                            placeholder="Nome completo da mãe"
+                                        />
 
-                                <div className="flex gap-3 pt-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Nacionalidade"
+                                                type="text"
+                                                value={formData.nacionalidade}
+                                                onChange={(e) => setFormData({ ...formData, nacionalidade: e.target.value })}
+                                            />
+                                            <Input
+                                                label="Naturalidade"
+                                                type="text"
+                                                value={formData.naturalidade}
+                                                onChange={(e) => setFormData({ ...formData, naturalidade: e.target.value })}
+                                                placeholder="Província de nascimento"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'profissional' && (
+                                    <div className="space-y-4 animate-fade-in">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="form-label">Categoria Docente</label>
+                                                <select
+                                                    value={formData.categoria_docente}
+                                                    onChange={(e) => setFormData({ ...formData, categoria_docente: e.target.value })}
+                                                    className="form-input min-h-touch"
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    <option value="PROFESSOR_TITULAR">Professor Titular</option>
+                                                    <option value="PROFESSOR_AUXILIAR">Professor Auxiliar</option>
+                                                    <option value="PROFESSOR_ESTAGIARIO">Professor Estagiário</option>
+                                                    <option value="PROFESSOR_CONTRATADO">Professor Contratado</option>
+                                                    <option value="MONITOR">Monitor</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="form-label">Categoria Laboral</label>
+                                                <select
+                                                    value={formData.categoria_laboral}
+                                                    onChange={(e) => setFormData({ ...formData, categoria_laboral: e.target.value })}
+                                                    className="form-input min-h-touch"
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    <option value="Quadro Definitivo">Quadro Definitivo</option>
+                                                    <option value="Contratado">Contratado</option>
+                                                    <option value="Colaborador">Colaborador</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Número de Agente"
+                                                type="text"
+                                                value={formData.numero_agente}
+                                                onChange={(e) => setFormData({ ...formData, numero_agente: e.target.value })}
+                                                placeholder="Nº Agente"
+                                            />
+                                            <Input
+                                                label="Número INSS"
+                                                type="text"
+                                                value={formData.numero_seguranca_social}
+                                                onChange={(e) => setFormData({ ...formData, numero_seguranca_social: e.target.value })}
+                                                placeholder="Nº Segurança Social"
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Email *"
+                                                type="email"
+                                                value={formData.email}
+                                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                placeholder="email@exemplo.com"
+                                                required
+                                            />
+                                            <Input
+                                                label="Telefone"
+                                                type="tel"
+                                                value={formData.telefone}
+                                                onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                                                placeholder="+244 9..."
+                                            />
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="form-label">Grau Académico</label>
+                                                <select
+                                                    value={formData.grau_academico}
+                                                    onChange={(e) => setFormData({ ...formData, grau_academico: e.target.value })}
+                                                    className="form-input min-h-touch"
+                                                >
+                                                    <option value="">Selecione</option>
+                                                    <option value="DOUTORADO">Doutoramento</option>
+                                                    <option value="MESTRADO">Mestrado</option>
+                                                    <option value="LICENCIATURA">Licenciatura</option>
+                                                    <option value="BACHARELATO">Bacharelato</option>
+                                                    <option value="TECNICO_MEDIO">Técnico Médio</option>
+                                                    <option value="TECNICO_BASICO">Técnico Básico</option>
+                                                    <option value="SEM_FORMACAO">Sem Formação Superior</option>
+                                                </select>
+                                            </div>
+                                            <Input
+                                                label="Data Início Funções"
+                                                type="date"
+                                                value={formData.data_inicio_funcoes}
+                                                onChange={(e) => setFormData({ ...formData, data_inicio_funcoes: e.target.value })}
+                                            />
+                                        </div>
+
+                                        <Input
+                                            label="Área de Formação"
+                                            type="text"
+                                            value={formData.area_formacao}
+                                            onChange={(e) => setFormData({ ...formData, area_formacao: e.target.value })}
+                                            placeholder="Ex: Matemática"
+                                            list="areas-formacao-list"
+                                        />
+                                        <Input
+                                            label="Especialidade (Disciplinas)"
+                                            type="text"
+                                            value={formData.especialidade}
+                                            onChange={(e) => setFormData({ ...formData, especialidade: e.target.value })}
+                                            placeholder="Ex: Matemática, Física"
+                                        />
+                                    </div>
+                                )}
+
+                                {activeTab === 'endereco' && (
+                                    <div className="space-y-4 animate-fade-in">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <Input
+                                                label="Província"
+                                                type="text"
+                                                value={formData.provincia_residencia}
+                                                onChange={(e) => setFormData({ ...formData, provincia_residencia: e.target.value })}
+                                            />
+                                            <Input
+                                                label="Município"
+                                                type="text"
+                                                value={formData.municipio_residencia}
+                                                onChange={(e) => setFormData({ ...formData, municipio_residencia: e.target.value })}
+                                            />
+                                        </div>
+                                        <Input
+                                            label="Bairro"
+                                            type="text"
+                                            value={formData.bairro_residencia}
+                                            onChange={(e) => setFormData({ ...formData, bairro_residencia: e.target.value })}
+                                        />
+                                        <Input
+                                            label="Endereço Completo"
+                                            type="text"
+                                            value={formData.endereco_completo}
+                                            onChange={(e) => setFormData({ ...formData, endereco_completo: e.target.value })}
+                                            placeholder="Rua, Nº Casa, Ponto de ref."
+                                        />
+
+                                        <div className="border-t border-slate-100 pt-4 mt-2">
+                                            <h4 className="text-sm font-medium text-slate-900 mb-3">Dados Bancários</h4>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <Input
+                                                    label="Banco"
+                                                    type="text"
+                                                    value={formData.banco}
+                                                    onChange={(e) => setFormData({ ...formData, banco: e.target.value })}
+                                                    placeholder="Nome do Banco"
+                                                />
+                                                <Input
+                                                    label="IBAN"
+                                                    type="text"
+                                                    value={formData.iban}
+                                                    onChange={(e) => setFormData({ ...formData, iban: e.target.value })}
+                                                    placeholder="AO06..."
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 pt-4 border-t border-slate-100 mt-4">
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -514,7 +828,7 @@ export const TeachersPage: React.FC<TeachersPageProps> = ({ onNavigate: _onNavig
                                                 A guardar...
                                             </>
                                         ) : (
-                                            editMode ? 'Salvar Alterações' : 'Cadastrar Professor'
+                                            editMode ? 'Salvar' : 'Cadastrar'
                                         )}
                                     </button>
                                 </div>

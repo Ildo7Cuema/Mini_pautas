@@ -12,6 +12,7 @@ interface BlockedSchoolMessageProps {
     type: 'blocked' | 'inactive' | 'deleted'
     escolaCodigo?: string
     escolaNome?: string
+    entityType?: 'escola' | 'direcao_municipal' // Tipo de entidade
     onClose: () => void
 }
 
@@ -20,10 +21,16 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
     type,
     escolaCodigo,
     escolaNome,
+    entityType = 'escola',
     onClose
 }) => {
     const [superAdminContact, setSuperAdminContact] = useState<SuperAdminContact | null>(null)
     const [dadosBancarios, setDadosBancarios] = useState<DadosBancarios | null>(null)
+
+    // Nomenclatura baseada no tipo de entidade
+    const isDirecaoMunicipal = entityType === 'direcao_municipal'
+    const entityName = isDirecaoMunicipal ? 'Direção Municipal' : 'Instituição'
+    const entityNameLower = isDirecaoMunicipal ? 'direção municipal' : 'instituição de ensino'
 
     useEffect(() => {
         // Prevent body scroll when modal is open
@@ -47,17 +54,18 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
 
     const isBlocked = type === 'blocked'
     const isDeleted = type === 'deleted'
-    const isLicenseExpired = reason?.toLowerCase().includes('licença') || reason?.toLowerCase().includes('expirad')
+    const isLicenseExpired = !isDirecaoMunicipal && (reason?.toLowerCase().includes('licença') || reason?.toLowerCase().includes('expirad'))
 
     // Generate WhatsApp link for renewal
     const getWhatsAppLink = () => {
         if (!superAdminContact) return '#'
 
+        const entityLabel = isDirecaoMunicipal ? 'Direção Municipal' : 'Escola'
         const message = encodeURIComponent(
-            `Olá! Gostaria de renovar a licença da minha escola.\n\n` +
-            `📋 Escola: ${escolaNome || 'N/A'}\n` +
-            `🔢 Código: ${escolaCodigo || 'N/A'}\n\n` +
-            `Por favor, envie-me os dados para efectuar o pagamento.`
+            `Olá! Gostaria de ${isDirecaoMunicipal ? 'obter informações sobre o meu registo' : 'renovar a licença da minha escola'}.\n\n` +
+            `📋 ${entityLabel}: ${escolaNome || 'N/A'}\n` +
+            `${!isDirecaoMunicipal ? `🔢 Código: ${escolaCodigo || 'N/A'}\n` : ''}\n` +
+            `Por favor, ${isDirecaoMunicipal ? 'ajude-me a esclarecer a situação' : 'envie-me os dados para efectuar o pagamento'}.`
         )
 
         const cleanPhone = superAdminContact.numero.replace(/[^\d+]/g, '')
@@ -93,7 +101,7 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
                         {/* Title */}
                         <div className="flex-1">
                             <h3 className="text-2xl font-bold text-white mb-1">
-                                {isDeleted ? 'Instituição Encerrada' : isBlocked ? 'Acesso Bloqueado' : 'Acesso Temporariamente Indisponível'}
+                                {isDeleted ? `${entityName} Encerrada` : isBlocked ? 'Acesso Bloqueado' : 'Acesso Temporariamente Indisponível'}
                             </h3>
                             <p className={`${isDeleted ? 'text-slate-300' : 'text-red-100'} text-sm`}>
                                 EduGest Angola - Sistema de Gestão Escolar
@@ -108,14 +116,21 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
                     <div className="mb-6">
                         <div className={`${isDeleted ? 'bg-slate-50 border-slate-300' : isBlocked ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border-l-4 rounded-r-lg p-4 mb-4`}>
                             <p className={`${isDeleted ? 'text-slate-900' : isBlocked ? 'text-red-900' : 'text-amber-900'} font-semibold mb-2`}>
-                                {isDeleted ? '🏫 Instituição Encerrada Definitivamente' : isBlocked ? '🚫 Instituição Bloqueada' : '⏸️ Instituição Inactiva'}
+                                {isDeleted
+                                    ? `${isDirecaoMunicipal ? '🏢' : '🏫'} ${entityName} Encerrada Definitivamente`
+                                    : isBlocked
+                                        ? `🚫 ${entityName} Bloqueada`
+                                        : `⏸️ ${entityName} ${isDirecaoMunicipal ? 'Pendente de Aprovação' : 'Inactiva'}`
+                                }
                             </p>
                             <p className={`${isDeleted ? 'text-slate-700' : isBlocked ? 'text-red-700' : 'text-amber-700'} text-sm leading-relaxed`}>
                                 {reason || (isDeleted
-                                    ? 'Esta instituição de ensino foi encerrada definitivamente pelo administrador do sistema. Todos os dados da escola foram removidos do sistema.'
+                                    ? `Esta ${entityNameLower} foi encerrada definitivamente pelo administrador do sistema.${!isDirecaoMunicipal ? ' Todos os dados da escola foram removidos do sistema.' : ''}`
                                     : isBlocked
-                                        ? 'Esta instituição de ensino foi temporariamente bloqueada pelo administrador do sistema.'
-                                        : 'Esta instituição de ensino encontra-se temporariamente inactiva.'
+                                        ? `Esta ${entityNameLower} foi temporariamente bloqueada pelo administrador do sistema.`
+                                        : isDirecaoMunicipal
+                                            ? 'O seu registo como Direção Municipal está pendente de aprovação. Será notificado quando o acesso for activado.'
+                                            : 'Esta instituição de ensino encontra-se temporariamente inactiva.'
                                 )}
                             </p>
                         </div>
@@ -129,7 +144,7 @@ export const BlockedSchoolMessage: React.FC<BlockedSchoolMessageProps> = ({
                                 <ul className="space-y-2 text-sm text-slate-700">
                                     <li className="flex gap-2">
                                         <span>•</span>
-                                        <span>A sua conta está associada a uma escola que já não existe no sistema</span>
+                                        <span>A sua conta está associada a {isDirecaoMunicipal ? 'uma Direção Municipal' : 'uma escola'} que já não existe no sistema</span>
                                     </li>
                                     <li className="flex gap-2">
                                         <span>•</span>

@@ -10,12 +10,14 @@ import type {
     AlunoProfile,
     EncarregadoProfile,
     SecretarioProfile,
+    DirecaoMunicipalProfile,
     TurmaProfessor,
     Escola,
     Professor,
     Aluno,
     Turma,
-    Secretario
+    Secretario,
+    DirecaoMunicipal
 } from '../types'
 
 interface AuthContextType {
@@ -26,11 +28,13 @@ interface AuthContextType {
     isAluno: boolean
     isEncarregado: boolean
     isSecretario: boolean
+    isDirecaoMunicipal: boolean
     escolaProfile: EscolaProfile | null
     professorProfile: ProfessorProfile | null
     alunoProfile: AlunoProfile | null
     encarregadoProfile: EncarregadoProfile | null
     secretarioProfile: SecretarioProfile | null
+    direcaoMunicipalProfile: DirecaoMunicipalProfile | null
     profile: UserProfile | null  // Added for SUPERADMIN support
     signOut: () => Promise<void>
     refreshProfile: () => Promise<void>
@@ -58,18 +62,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [isAluno, setIsAluno] = useState(false)
     const [isEncarregado, setIsEncarregado] = useState(false)
     const [isSecretario, setIsSecretario] = useState(false)
+    const [isDirecaoMunicipal, setIsDirecaoMunicipal] = useState(false)
     const [escolaProfile, setEscolaProfile] = useState<EscolaProfile | null>(null)
     const [professorProfile, setProfessorProfile] = useState<ProfessorProfile | null>(null)
     const [alunoProfile, setAlunoProfile] = useState<AlunoProfile | null>(null)
     const [encarregadoProfile, setEncarregadoProfile] = useState<EncarregadoProfile | null>(null)
     const [secretarioProfile, setSecretarioProfile] = useState<SecretarioProfile | null>(null)
+    const [direcaoMunicipalProfile, setDirecaoMunicipalProfile] = useState<DirecaoMunicipalProfile | null>(null)
 
     // Blocked school modal state
     const [showBlockedModal, setShowBlockedModal] = useState(false)
     const [blockedModalData, setBlockedModalData] = useState<{
         reason?: string
         type: 'blocked' | 'inactive' | 'deleted'
-    }>({ type: 'blocked' })
+        entityType?: 'escola' | 'direcao_municipal'
+    }>({ type: 'blocked', entityType: 'escola' })
 
     // Flag to prevent race conditions between getSession and onAuthStateChange
     // Using useRef instead of useState for synchronous check
@@ -467,6 +474,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsAluno(profile.tipo_perfil === 'ALUNO')
             setIsEncarregado(profile.tipo_perfil === 'ENCARREGADO')
             setIsSecretario(profile.tipo_perfil === 'SECRETARIO')
+            setIsDirecaoMunicipal(profile.tipo_perfil === 'DIRECAO_MUNICIPAL')
 
             // Handle SUPERADMIN separately (no escola_id required)
             if (profile.tipo_perfil === 'SUPERADMIN') {
@@ -498,6 +506,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             } else if (profile.tipo_perfil === 'SECRETARIO') {
                 console.log('📋 AuthContext: Loading secretario profile...')
                 await loadSecretarioProfile(authUser.id, profile)
+            } else if (profile.tipo_perfil === 'DIRECAO_MUNICIPAL') {
+                console.log('🏛️ AuthContext: Loading direção municipal profile...')
+                await loadDirecaoMunicipalProfile(authUser.id, profile)
             }
 
             // CRITICAL: Always set loading to false, even if profile loading fails
@@ -1094,6 +1105,92 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     }
 
+    const loadDirecaoMunicipalProfile = async (userId: string, profile: UserProfile) => {
+        try {
+            console.log('🏛️ AuthContext: Fetching direção municipal data for user_id:', userId)
+
+            // First, check if there's ANY direcao municipal record (active or not)
+            const { data: anyDirecaoData, error: anyDirecaoError } = await supabase
+                .from('direcoes_municipais')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle()
+
+            if (anyDirecaoError) {
+                console.error('❌ AuthContext: Error loading direção municipal:', anyDirecaoError)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            // Check if direcao municipal exists but is inactive (pending/rejected)
+            if (anyDirecaoData && !anyDirecaoData.ativo) {
+                console.warn('⏳ AuthContext: Direção Municipal is inactive/pending')
+                setBlockedModalData({
+                    reason: 'O seu registo como Direção Municipal está pendente de aprovação. Será notificado quando o acesso for activado.',
+                    type: 'inactive',
+                    entityType: 'direcao_municipal'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                return
+            }
+
+            if (!anyDirecaoData) {
+                console.warn('⚠️ AuthContext: No direção municipal found for user_id:', userId)
+                // Profile exists as DIRECAO_MUNICIPAL but no record in direcoes_municipais - deleted?
+                setBlockedModalData({
+                    reason: 'O seu registo como Direção Municipal foi removido do sistema. Contacte o suporte para mais informações.',
+                    type: 'deleted',
+                    entityType: 'direcao_municipal'
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                return
+            }
+
+            const direcaoData = anyDirecaoData
+
+            console.log('✅ AuthContext: Direção municipal data loaded:', direcaoData)
+            const direcao = direcaoData as DirecaoMunicipal
+
+            // Count escolas in the municipality
+            const { count: escolasCount } = await supabase
+                .from('escolas')
+                .select('*', { count: 'exact', head: true })
+                .eq('municipio', direcao.municipio)
+
+            // Build direção municipal profile
+            const direcaoProfile: DirecaoMunicipalProfile = {
+                ...direcao,
+                user_profile: profile,
+                escolas_count: escolasCount || 0
+            }
+
+            setDirecaoMunicipalProfile(direcaoProfile)
+            setUser({
+                id: userId,
+                email: direcao.email || profile.user_id || '',
+                profile,
+                direcaoMunicipal: direcaoProfile
+            })
+            console.log('✅ AuthContext: Direção municipal profile set successfully')
+
+        } catch (error) {
+            console.error('❌ AuthContext: Unexpected error in loadDirecaoMunicipalProfile:', error)
+            setUser({
+                id: userId,
+                email: profile.user_id || '',
+                profile
+            })
+        }
+    }
+
     const refreshProfile = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
@@ -1109,11 +1206,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsAluno(false)
         setIsEncarregado(false)
         setIsSecretario(false)
+        setIsDirecaoMunicipal(false)
         setEscolaProfile(null)
         setProfessorProfile(null)
         setAlunoProfile(null)
         setEncarregadoProfile(null)
         setSecretarioProfile(null)
+        setDirecaoMunicipalProfile(null)
     }
 
     useEffect(() => {
@@ -1199,11 +1298,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isAluno,
         isEncarregado,
         isSecretario,
+        isDirecaoMunicipal,
         escolaProfile,
         professorProfile,
         alunoProfile,
         encarregadoProfile,
         secretarioProfile,
+        direcaoMunicipalProfile,
         profile: user?.profile || null,  // Expose profile for SUPERADMIN checks
         signOut,
         refreshProfile
@@ -1218,6 +1319,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 <BlockedSchoolMessage
                     reason={blockedModalData.reason}
                     type={blockedModalData.type}
+                    entityType={blockedModalData.entityType}
                     onClose={() => setShowBlockedModal(false)}
                 />
             )}

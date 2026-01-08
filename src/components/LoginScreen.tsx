@@ -34,6 +34,7 @@ export const LoginScreen: React.FC = () => {
     const [schoolStatusType, setSchoolStatusType] = useState<'blocked' | 'inactive' | 'deleted'>('deleted')
     const [schoolStatusReason, setSchoolStatusReason] = useState<string | undefined>(undefined)
     const [schoolInfo, setSchoolInfo] = useState<{ nome?: string; codigo?: string }>({})
+    const [entityType, setEntityType] = useState<'escola' | 'direcao_municipal'>('escola')
 
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -73,6 +74,28 @@ export const LoginScreen: React.FC = () => {
 
                     if (superadminProfile) {
                         // SUPERADMIN can proceed
+                        return
+                    }
+
+                    // Check for DIRECAO_MUNICIPAL profile (may be pending)
+                    const { data: direcaoProfile } = await supabase
+                        .from('user_profiles')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .eq('tipo_perfil', 'DIRECAO_MUNICIPAL')
+                        .maybeSingle()
+
+                    if (direcaoProfile) {
+                        if (!direcaoProfile.ativo) {
+                            // Pending approval
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('inactive')
+                            setSchoolStatusReason('O seu registo como Direção Municipal está pendente de aprovação. Será notificado quando o acesso for activado.')
+                            setEntityType('direcao_municipal')
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        // Active DIRECAO_MUNICIPAL - let AuthContext handle
                         return
                     }
 
@@ -149,6 +172,26 @@ export const LoginScreen: React.FC = () => {
                         // Aluno with valid escola - let AuthContext handle
                         return
                     }
+                    // Check for direcao_municipal directly in direcoes_municipais table
+                    const { data: direcaoMunicipalData } = await supabase
+                        .from('direcoes_municipais')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .maybeSingle()
+
+                    if (direcaoMunicipalData) {
+                        if (!direcaoMunicipalData.ativo) {
+                            // Pending approval
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('inactive')
+                            setSchoolStatusReason('O seu registo como Direção Municipal está pendente de aprovação. Será notificado quando o acesso for activado.')
+                            setEntityType('direcao_municipal')
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        // Active DIRECAO_MUNICIPAL - let AuthContext handle
+                        return
+                    }
 
                     // No profile at all - escola was probably deleted
                     await supabase.auth.signOut()
@@ -160,6 +203,21 @@ export const LoginScreen: React.FC = () => {
 
                 // User has profile - check escola status
                 const escola = profileData.escolas as any
+
+                // DIRECAO_MUNICIPAL doesn't need escola
+                if (profileData.tipo_perfil === 'DIRECAO_MUNICIPAL') {
+                    if (!profileData.ativo) {
+                        await supabase.auth.signOut()
+                        setSchoolStatusType('inactive')
+                        setSchoolStatusReason('O seu registo como Direção Municipal está pendente de aprovação.')
+                        setEntityType('direcao_municipal')
+                        setShowSchoolStatusModal(true)
+                        return
+                    }
+                    // Active - let AuthContext handle
+                    return
+                }
+
                 if (profileData.tipo_perfil !== 'SUPERADMIN' && !escola) {
                     // Escola was deleted
                     await supabase.auth.signOut()
@@ -388,7 +446,7 @@ export const LoginScreen: React.FC = () => {
                         </div>
 
                         {/* Switch to School Registration */}
-                        <div className="text-center">
+                        <div className="text-center space-y-2">
                             <p className="text-sm text-slate-500">
                                 É uma escola?{' '}
                                 <button
@@ -398,6 +456,15 @@ export const LoginScreen: React.FC = () => {
                                 >
                                     Cadastre-se aqui
                                 </button>
+                            </p>
+                            <p className="text-sm text-slate-500">
+                                É uma Direção Municipal?{' '}
+                                <a
+                                    href="/register-direcao-municipal"
+                                    className="text-primary-600 hover:text-primary-700 font-semibold transition-colors hover:underline underline-offset-2"
+                                >
+                                    Cadastre-se aqui
+                                </a>
                             </p>
                         </div>
                     </CardBody>
@@ -564,10 +631,12 @@ export const LoginScreen: React.FC = () => {
                     reason={schoolStatusReason}
                     escolaNome={schoolInfo.nome}
                     escolaCodigo={schoolInfo.codigo}
+                    entityType={entityType}
                     onClose={() => {
                         setShowSchoolStatusModal(false)
                         setSchoolStatusReason(undefined)
                         setSchoolInfo({})
+                        setEntityType('escola')
                     }}
                 />
             )}
