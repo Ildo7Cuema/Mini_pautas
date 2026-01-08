@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import { useCirculares } from '../hooks/useCirculares';
 import type { TipoCircular, CreateCircularRequest, CircularMunicipal } from '../types';
+import { supabase } from '../../../lib/supabaseClient';
 
 interface CircularesPageProps {
     onNavigate?: (page: string, params?: Record<string, any>) => void;
@@ -22,15 +23,43 @@ export function CircularesPage({ onNavigate }: CircularesPageProps) {
     const [showModal, setShowModal] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
     const [formData, setFormData] = useState<CreateCircularRequest>({ titulo: '', conteudo: '', tipo: 'circular', urgente: false });
+    const [file, setFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
 
     const handleCreate = async () => {
         if (!formData.titulo.trim() || !formData.conteudo.trim()) return;
         setSaving(true);
         try {
-            await criar(formData);
+            let anexo_url = undefined;
+            let anexo_filename = undefined;
+
+            if (file) {
+                const fileExt = file.name.split('.').pop();
+                const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+                const filePath = `${fileName}`;
+
+                const { error: uploadError } = await supabase.storage
+                    .from('circulares')
+                    .upload(filePath, file);
+
+                if (uploadError) throw uploadError;
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from('circulares')
+                    .getPublicUrl(filePath);
+
+                anexo_url = publicUrl;
+                anexo_filename = file.name;
+            }
+
+            await criar({
+                ...formData,
+                anexo_url,
+                anexo_filename
+            });
             setShowModal(false);
             setFormData({ titulo: '', conteudo: '', tipo: 'circular', urgente: false });
+            setFile(null);
         } catch (err) { alert('Erro: ' + (err instanceof Error ? err.message : 'Desconhecido')); }
         finally { setSaving(false); }
     };
@@ -118,6 +147,22 @@ export function CircularesPage({ onNavigate }: CircularesPageProps) {
                             <input type="text" value={formData.titulo} onChange={e => setFormData({ ...formData, titulo: e.target.value })} placeholder="Título *" className="w-full px-4 py-2 border rounded-lg" />
                             <textarea value={formData.conteudo} onChange={e => setFormData({ ...formData, conteudo: e.target.value })} placeholder="Conteúdo *" rows={6} className="w-full px-4 py-2 border rounded-lg" />
                             <label className="flex items-center gap-2"><input type="checkbox" checked={formData.urgente} onChange={e => setFormData({ ...formData, urgente: e.target.checked })} className="rounded" /><span>🔴 Urgente</span></label>
+
+                            <div className="border rounded-lg p-4 bg-gray-50">
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Anexar Documento (PDF ou Imagem)</label>
+                                <input
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    onChange={e => setFile(e.target.files ? e.target.files[0] : null)}
+                                    className="block w-full text-sm text-gray-500
+                                        file:mr-4 file:py-2 file:px-4
+                                        file:rounded-full file:border-0
+                                        file:text-sm file:font-semibold
+                                        file:bg-blue-50 file:text-blue-700
+                                        hover:file:bg-blue-100"
+                                />
+                                {file && <div className="mt-2 text-sm text-green-600">Arquivo selecionado: {file.name}</div>}
+                            </div>
                         </div>
                         <div className="flex gap-3 mt-6">
                             <button onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border rounded-lg">Cancelar</button>
@@ -142,6 +187,22 @@ export function CircularesPage({ onNavigate }: CircularesPageProps) {
                             <div><h4 className="text-green-700 mb-2">✓ Leram</h4>{leituras.map(l => <div key={l.id} className="bg-green-50 p-2 rounded mb-1">{l.escola?.nome}</div>)}</div>
                             <div><h4 className="text-yellow-700 mb-2">⏳ Pendentes</h4>{escolasPendentes.map(e => <div key={e.id} className="bg-yellow-50 p-2 rounded mb-1">{e.nome}</div>)}</div>
                         </div>
+
+                        {selectedCircular.anexo_url && (
+                            <div className="mt-6 border-t pt-4">
+                                <h3 className="font-semibold mb-3">📎 Anexo</h3>
+                                <a
+                                    href={selectedCircular.anexo_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors"
+                                >
+                                    <span>📄</span>
+                                    {selectedCircular.anexo_filename || 'Visualizar documento'}
+                                    <span className="text-xs opacity-50">↗</span>
+                                </a>
+                            </div>
+                        )}
                         <button onClick={() => setShowDetails(false)} className="w-full mt-6 px-4 py-2 bg-gray-100 rounded-lg">Fechar</button>
                     </div>
                 </div>

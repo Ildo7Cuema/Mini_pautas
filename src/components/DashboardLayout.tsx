@@ -12,7 +12,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { NotificationPanel } from './NotificationPanel'
 import { NotificationDetailModal } from './NotificationDetailModal'
 import { AppNotification } from '../utils/notificationUtils'
-import { fetchNotifications, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications } from '../utils/notificationApi'
+import { fetchNotifications, markAsRead, markAllAsRead, deleteNotification, deleteAllNotifications, subscribeToNotifications } from '../utils/notificationApi'
 import { isSuperAdmin } from '../utils/permissions'
 
 interface SidebarProps {
@@ -103,6 +103,19 @@ export const DashboardLayout: React.FC<SidebarProps> = ({ children, currentPage,
         setNotifications(data)
         setLoadingNotifications(false)
     }
+
+    // Subscribe to real-time notifications
+    useEffect(() => {
+        if (!user) return
+
+        const unsubscribe = subscribeToNotifications(user.id, (newNotification) => {
+            setNotifications(prev => [newNotification, ...prev])
+        })
+
+        return () => {
+            unsubscribe()
+        }
+    }, [user])
 
     const handleMarkAsRead = async (id: string) => {
         await markAsRead(id)
