@@ -17,7 +17,7 @@ export async function createNotification(
         const { data, error } = await supabase
             .from('notificacoes')
             .insert({
-                user_id: destinatarioId,
+                destinatario_id: destinatarioId,
                 tipo,
                 titulo,
                 mensagem: mensagem || '',
@@ -47,7 +47,7 @@ export async function fetchNotifications(
         const { data, error } = await supabase
             .from('notificacoes')
             .select('*')
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
             .order('created_at', { ascending: false })
             .limit(limit)
 
@@ -70,7 +70,7 @@ export async function fetchUnreadCount(
         const { count, error } = await supabase
             .from('notificacoes')
             .select('*', { count: 'exact', head: true })
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
             .eq('lida', false)
 
         if (error) throw error
@@ -113,7 +113,7 @@ export async function markAllAsRead(
         const { error } = await supabase
             .from('notificacoes')
             .update({ lida: true })
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
             .eq('lida', false)
 
         if (error) throw error
@@ -156,7 +156,7 @@ export async function deleteAllNotifications(
         const { error } = await supabase
             .from('notificacoes')
             .delete()
-            .eq('user_id', userId)
+            .eq('destinatario_id', userId)
 
         if (error) throw error
 
@@ -182,7 +182,7 @@ export function subscribeToNotifications(
                 event: 'INSERT',
                 schema: 'public',
                 table: 'notificacoes',
-                filter: `user_id=eq.${userId}`
+                filter: `destinatario_id=eq.${userId}`
             },
             (payload) => {
                 callback(payload.new as AppNotification)

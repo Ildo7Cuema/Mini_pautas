@@ -7,9 +7,10 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { AppNotification, getNotificationIcon, getRelativeTime } from '../utils/notificationUtils'
+import { supabase } from '../lib/supabaseClient'
 
 interface NotificationDetailModalProps {
     notification: AppNotification | null
@@ -26,6 +27,9 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
     onDelete,
     onNavigate
 }) => {
+    const [circularDetails, setCircularDetails] = useState<any>(null);
+    const [loadingDetails, setLoadingDetails] = useState(false);
+
     // Close on escape key
     useEffect(() => {
         const handleEscape = (event: KeyboardEvent) => {
@@ -43,6 +47,28 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             }
         }
     }, [isOpen, onClose])
+
+    // Fetch details for circulars
+    useEffect(() => {
+        if (isOpen && notification && notification.tipo === 'nova_circular_municipal' && notification.dados_adicionais?.circular_id) {
+            setLoadingDetails(true);
+            const fetchDetails = async () => {
+                const { data, error } = await supabase
+                    .from('circulares_municipais')
+                    .select('anexo_url, anexo_filename, conteudo')
+                    .eq('id', notification.dados_adicionais.circular_id)
+                    .single();
+
+                if (data && !error) {
+                    setCircularDetails(data);
+                }
+                setLoadingDetails(false);
+            };
+            fetchDetails();
+        } else {
+            setCircularDetails(null);
+        }
+    }, [isOpen, notification]);
 
     if (!isOpen || !notification) return null
 
@@ -79,7 +105,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             'relatorio_gerado': 'Relatório Gerado',
             'sistema': 'Sistema',
             'escola_nova': 'Nova Escola',
-            'atualizacao_sistema': 'Actualização do Sistema'
+            'atualizacao_sistema': 'Actualização do Sistema',
+            'nova_circular_municipal': 'Comunicação Oficial'
         }
         return labels[tipo] || 'Notificação'
     }
@@ -136,14 +163,41 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                     {/* Body */}
                     <div className="p-6 md:p-8 space-y-6">
                         {/* Message */}
-                        {notification.mensagem && (
+                        {(notification.mensagem || circularDetails?.conteudo) && (
                             <div className="mb-6">
                                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
                                     Mensagem
                                 </h4>
-                                <p className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
-                                    {notification.mensagem}
-                                </p>
+                                <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-wrap">
+                                    {/* Use full content if available, otherwise message */}
+                                    {circularDetails?.conteudo || notification.mensagem}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Loading State */}
+                        {loadingDetails && (
+                            <div className="flex justify-center p-4">
+                                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                            </div>
+                        )}
+
+                        {/* Attachment Button */}
+                        {circularDetails?.anexo_url && (
+                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
+                                <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Anexo Disponível</h4>
+                                <a
+                                    href={circularDetails.anexo_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-200 hover:shadow-md transition-all text-blue-700 font-medium"
+                                >
+                                    <span className="text-2xl">📄</span>
+                                    <span className="flex-1 truncate">{circularDetails.anexo_filename || 'Visualizar Documento'}</span>
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                </a>
                             </div>
                         )}
 

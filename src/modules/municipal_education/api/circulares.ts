@@ -90,22 +90,34 @@ export async function createCircular(
     provincia: string,
     request: CreateCircularRequest
 ): Promise<CircularMunicipal> {
+    console.log('[createCircular] Starting with:', { municipio, provincia, request });
+
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Utilizador não autenticado');
 
+    console.log('[createCircular] User authenticated:', user.id);
+
+    const insertData = {
+        ...request,
+        municipio,
+        provincia,
+        created_by: user.id,
+        publicado: true
+    };
+    console.log('[createCircular] Inserting:', insertData);
+
     const { data, error } = await supabase
         .from('circulares_municipais')
-        .insert({
-            ...request,
-            municipio,
-            provincia,
-            created_by: user.id,
-            publicado: true
-        })
+        .insert(insertData)
         .select()
         .single();
 
-    if (error) throw error;
+    console.log('[createCircular] Response:', { data, error });
+
+    if (error) {
+        console.error('[createCircular] Error:', error);
+        throw error;
+    }
 
     return data;
 }
@@ -284,4 +296,34 @@ export async function fetchCircularesStats(municipio: string): Promise<{
         urgentes: circulares.filter(c => c.urgente).length,
         este_mes: circulares.filter(c => new Date(c.created_at) >= inicioMes).length
     };
+}
+
+/**
+ * Get the next circular number for a given type in the current year
+ * Format: NNN/YYYY (e.g. 001/2026)
+ */
+export async function getNextCircularNumber(
+    municipio: string,
+    tipo: TipoCircular
+): Promise<string> {
+    const now = new Date();
+    const year = now.getFullYear();
+    const startOfYear = new Date(year, 0, 1).toISOString();
+    const endOfYear = new Date(year, 11, 31, 23, 59, 59).toISOString();
+
+    const { count, error } = await supabase
+        .from('circulares_municipais')
+        .select('*', { count: 'exact', head: true })
+        .eq('municipio', municipio)
+        .eq('tipo', tipo)
+        .gte('created_at', startOfYear)
+        .lte('created_at', endOfYear);
+
+    if (error) {
+        console.error('Error fetching circular count:', error);
+        return ''; // Return empty string on error to allow manual input
+    }
+
+    const nextNumber = (count || 0) + 1;
+    return `${nextNumber.toString().padStart(3, '0')}/${year}`;
 }

@@ -2,7 +2,7 @@
  * Circulares Page - Official communications management
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCirculares } from '../hooks/useCirculares';
 import type { TipoCircular, CreateCircularRequest, CircularMunicipal } from '../types';
 import { supabase } from '../../../lib/supabaseClient';
@@ -19,12 +19,21 @@ const tipoLabels: Record<TipoCircular, { label: string; icon: string }> = {
 };
 
 export function CircularesPage({ onNavigate }: CircularesPageProps) {
-    const { circulares, loading, stats, selectedCircular, leituras, escolasPendentes, filtros, setFiltros, refresh, selectCircular, criar, eliminar } = useCirculares();
+    const { circulares, loading, stats, selectedCircular, leituras, escolasPendentes, filtros, setFiltros, refresh, selectCircular, criar, eliminar, getNextNumber } = useCirculares();
     const [showModal, setShowModal] = useState(false);
     const [showDetails, setShowDetails] = useState(false);
     const [formData, setFormData] = useState<CreateCircularRequest>({ titulo: '', conteudo: '', tipo: 'circular', urgente: false });
     const [file, setFile] = useState<File | null>(null);
     const [saving, setSaving] = useState(false);
+
+    // Auto-generate number when modal opens or type changes
+    useEffect(() => {
+        if (showModal && formData.tipo) {
+            getNextNumber(formData.tipo).then(number => {
+                setFormData(prev => ({ ...prev, numero_circular: number }));
+            });
+        }
+    }, [showModal, formData.tipo, getNextNumber]);
 
     const handleCreate = async () => {
         if (!formData.titulo.trim() || !formData.conteudo.trim()) return;
@@ -60,7 +69,11 @@ export function CircularesPage({ onNavigate }: CircularesPageProps) {
             setShowModal(false);
             setFormData({ titulo: '', conteudo: '', tipo: 'circular', urgente: false });
             setFile(null);
-        } catch (err) { alert('Erro: ' + (err instanceof Error ? err.message : 'Desconhecido')); }
+        } catch (err: any) {
+            console.error('Erro ao criar circular:', err);
+            const errorMessage = err.message || err.error_description || JSON.stringify(err) || 'Erro desconhecido';
+            alert('Erro: ' + errorMessage);
+        }
         finally { setSaving(false); }
     };
 

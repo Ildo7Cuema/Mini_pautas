@@ -4,7 +4,7 @@ export type NotificationType = 'aluno_novo' | 'nota_lancada' | 'nota_lancada_adm
 
 export interface AppNotification {
     id: string
-    user_id: string
+    destinatario_id: string
     escola_id?: string
     tipo: string  // Can be NotificationType or other custom types from database
     titulo: string
@@ -13,6 +13,7 @@ export interface AppNotification {
     lida: boolean
     created_at: string
     updated_at?: string
+    dados_adicionais?: any
 }
 
 export interface NotificationIconConfig {

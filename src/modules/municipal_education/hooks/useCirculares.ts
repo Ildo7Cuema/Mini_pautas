@@ -14,7 +14,8 @@ import {
     deleteCircular,
     fetchLeituras,
     fetchEscolasPendentes,
-    fetchCircularesStats
+    fetchCircularesStats,
+    getNextCircularNumber
 } from '../api/circulares';
 
 interface UseCircularesReturn {
@@ -40,6 +41,7 @@ interface UseCircularesReturn {
     criar: (request: CreateCircularRequest) => Promise<CircularMunicipal>;
     actualizar: (circularId: string, updates: Partial<CreateCircularRequest>) => Promise<void>;
     eliminar: (circularId: string) => Promise<void>;
+    getNextNumber: (tipo: TipoCircular) => Promise<string>;
 }
 
 export function useCirculares(): UseCircularesReturn {
@@ -129,6 +131,11 @@ export function useCirculares(): UseCircularesReturn {
         await refresh();
     }, [refresh]);
 
+    const getNextNumber = useCallback(async (tipo: TipoCircular) => {
+        if (!municipio) return '';
+        return await getNextCircularNumber(municipio, tipo);
+    }, [municipio]);
+
     return {
         circulares,
         loading,
@@ -143,6 +150,7 @@ export function useCirculares(): UseCircularesReturn {
         selectCircular,
         criar,
         actualizar,
-        eliminar
+        eliminar,
+        getNextNumber
     };
 }
