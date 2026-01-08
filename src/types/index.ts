@@ -744,6 +744,40 @@ export interface EscolaBackup {
     created_at: string;
 }
 
+// Sistema de Rastreamento de Acessos
+export interface SystemVisit {
+    id: string;
+    user_id?: string;
+    escola_id?: string;
+    tipo_perfil?: string;
+    ip_address?: string;
+    user_agent?: string;
+    device_type: 'mobile' | 'tablet' | 'desktop' | 'unknown';
+    browser?: string;
+    os?: string;
+    session_duration_seconds?: number;
+    page_views: number;
+    created_at: string;
+    // Joined fields
+    user_email?: string;
+    escola_nome?: string;
+}
+
+export interface SystemVisitStats {
+    total_visits: number;
+    unique_users: number;
+    visits_today: number;
+    unique_users_today: number;
+    visits_last_7_days: number;
+    unique_users_last_7_days: number;
+    visits_last_30_days: number;
+    unique_users_last_30_days: number;
+    mobile_visits: number;
+    tablet_visits: number;
+    desktop_visits: number;
+    visits_by_profile: Array<{ tipo: string; count: number }>;
+}
+
 // ============================================
 // LICENSING TYPES
 // ============================================

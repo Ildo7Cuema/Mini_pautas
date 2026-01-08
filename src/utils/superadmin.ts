@@ -1,10 +1,168 @@
 import { supabase } from '../lib/supabaseClient'
-import type { SuperAdminStats, SuperAdminAction, Escola, EscolaBackup } from '../types'
+import type { SuperAdminStats, SuperAdminAction, Escola, EscolaBackup, SystemVisit, SystemVisitStats } from '../types'
 
 /**
  * SUPERADMIN Utility Functions
  * Provides API functions for SUPERADMIN operations
  */
+
+// ============================================
+// SYSTEM VISIT TRACKING FUNCTIONS
+// ============================================
+
+/**
+ * Detect device type from user agent
+ */
+function detectDeviceType(userAgent: string): 'mobile' | 'tablet' | 'desktop' | 'unknown' {
+    if (!userAgent) return 'unknown'
+    const ua = userAgent.toLowerCase()
+    if (/tablet|ipad|playbook|silk/i.test(ua)) return 'tablet'
+    if (/mobile|iphone|ipod|android|blackberry|opera mini|windows phone/i.test(ua)) return 'mobile'
+    if (/windows|macintosh|linux/i.test(ua)) return 'desktop'
+    return 'unknown'
+}
+
+/**
+ * Detect browser from user agent
+ */
+function detectBrowser(userAgent: string): string {
+    if (!userAgent) return 'unknown'
+    const ua = userAgent.toLowerCase()
+    if (ua.includes('edg/')) return 'Edge'
+    if (ua.includes('chrome')) return 'Chrome'
+    if (ua.includes('firefox')) return 'Firefox'
+    if (ua.includes('safari') && !ua.includes('chrome')) return 'Safari'
+    if (ua.includes('opera') || ua.includes('opr/')) return 'Opera'
+    return 'unknown'
+}
+
+/**
+ * Detect OS from user agent
+ */
+function detectOS(userAgent: string): string {
+    if (!userAgent) return 'unknown'
+    const ua = userAgent.toLowerCase()
+    if (ua.includes('windows')) return 'Windows'
+    if (ua.includes('mac')) return 'macOS'
+    if (ua.includes('linux')) return 'Linux'
+    if (ua.includes('android')) return 'Android'
+    if (ua.includes('iphone') || ua.includes('ipad')) return 'iOS'
+    return 'unknown'
+}
+
+/**
+ * Log a system visit (call after successful login)
+ */
+export async function logSystemVisit(
+    escolaId?: string,
+    tipoPerfil?: string
+): Promise<void> {
+    try {
+        const userAgent = navigator.userAgent
+        const deviceType = detectDeviceType(userAgent)
+        const browser = detectBrowser(userAgent)
+        const os = detectOS(userAgent)
+
+        const { error } = await supabase.rpc('log_system_visit', {
+            p_escola_id: escolaId || null,
+            p_tipo_perfil: tipoPerfil || null,
+            p_device_type: deviceType,
+            p_browser: browser,
+            p_os: os
+        })
+
+        if (error) {
+            console.error('Error logging system visit:', error)
+            // Don't throw - logging failure shouldn't break the main operation
+        }
+    } catch (error) {
+        console.error('Error logging system visit:', error)
+        // Don't throw - logging failure shouldn't break the main operation
+    }
+}
+
+/**
+ * Fetch system visit statistics for SuperAdmin dashboard
+ */
+export async function fetchSystemVisitStats(): Promise<SystemVisitStats | null> {
+    try {
+        const { data, error } = await supabase
+            .from('system_visit_stats')
+            .select('*')
+            .single()
+
+        if (error) {
+            console.error('Error fetching visit stats:', error)
+            return null
+        }
+
+        return data as SystemVisitStats
+    } catch (error) {
+        console.error('Error fetching visit stats:', error)
+        return null
+    }
+}
+
+/**
+ * Fetch system visits with filters (for SuperAdmin)
+ */
+export async function fetchSystemVisits(filters?: {
+    tipoPerfil?: string
+    escolaId?: string
+    startDate?: string
+    endDate?: string
+    deviceType?: string
+    limit?: number
+}): Promise<SystemVisit[]> {
+    try {
+        let query = supabase
+            .from('system_visits')
+            .select(`
+                *,
+                escolas:escola_id (nome)
+            `)
+            .order('created_at', { ascending: false })
+
+        if (filters?.tipoPerfil) {
+            query = query.eq('tipo_perfil', filters.tipoPerfil)
+        }
+
+        if (filters?.escolaId) {
+            query = query.eq('escola_id', filters.escolaId)
+        }
+
+        if (filters?.startDate) {
+            query = query.gte('created_at', filters.startDate)
+        }
+
+        if (filters?.endDate) {
+            query = query.lte('created_at', filters.endDate)
+        }
+
+        if (filters?.deviceType) {
+            query = query.eq('device_type', filters.deviceType)
+        }
+
+        if (filters?.limit) {
+            query = query.limit(filters.limit)
+        } else {
+            query = query.limit(100)
+        }
+
+        const { data, error } = await query
+
+        if (error) throw error
+
+        // Map escola name from joined data
+        return (data || []).map(visit => ({
+            ...visit,
+            escola_nome: visit.escolas?.nome
+        }))
+    } catch (error) {
+        console.error('Error fetching system visits:', error)
+        throw error
+    }
+}
 
 /**
  * Fetch system-wide statistics for SUPERADMIN dashboard

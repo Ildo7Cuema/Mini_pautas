@@ -16,6 +16,7 @@ import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { SchoolRegistration } from './SchoolRegistration'
 import { BlockedSchoolMessage } from './BlockedSchoolMessage'
+import { logSystemVisit } from '../utils/superadmin'
 
 type AuthMode = 'login' | 'signup' | 'school-registration'
 
@@ -73,7 +74,8 @@ export const LoginScreen: React.FC = () => {
                         .maybeSingle()
 
                     if (superadminProfile) {
-                        // SUPERADMIN can proceed
+                        // SUPERADMIN can proceed - log visit
+                        logSystemVisit(undefined, 'SUPERADMIN')
                         return
                     }
 
@@ -96,6 +98,7 @@ export const LoginScreen: React.FC = () => {
                             return
                         }
                         // Active DIRECAO_MUNICIPAL - let AuthContext handle
+                        logSystemVisit(undefined, 'DIRECAO_MUNICIPAL')
                         return
                     }
 
@@ -133,6 +136,7 @@ export const LoginScreen: React.FC = () => {
                             return
                         }
                         // Professor with valid escola - let AuthContext handle
+                        logSystemVisit(professorData.escola_id, 'PROFESSOR')
                         return
                     }
 
@@ -170,6 +174,7 @@ export const LoginScreen: React.FC = () => {
                             return
                         }
                         // Aluno with valid escola - let AuthContext handle
+                        logSystemVisit(escola.id, 'ALUNO')
                         return
                     }
                     // Check for direcao_municipal directly in direcoes_municipais table
@@ -190,6 +195,7 @@ export const LoginScreen: React.FC = () => {
                             return
                         }
                         // Active DIRECAO_MUNICIPAL - let AuthContext handle
+                        logSystemVisit(undefined, 'DIRECAO_MUNICIPAL')
                         return
                     }
 
@@ -215,6 +221,7 @@ export const LoginScreen: React.FC = () => {
                         return
                     }
                     // Active - let AuthContext handle
+                    logSystemVisit(undefined, 'DIRECAO_MUNICIPAL')
                     return
                 }
 
@@ -247,6 +254,9 @@ export const LoginScreen: React.FC = () => {
                 }
 
                 // All good - let AuthContext handle the rest of the login flow
+                // Log the visit with escola and profile type
+                const escolaId = escola?.id || profileData.escola_id
+                logSystemVisit(escolaId, profileData.tipo_perfil)
             }
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro'

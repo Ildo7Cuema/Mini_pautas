@@ -26,6 +26,7 @@ const ResetPasswordPage = lazy(() => import('./components/ResetPasswordPage').th
 const SuperAdminDashboard = lazy(() => import('./components/SuperAdminDashboard').then(m => ({ default: m.SuperAdminDashboard })))
 const EscolaManagement = lazy(() => import('./components/EscolaManagement').then(m => ({ default: m.EscolaManagement })))
 const SuperAdminAuditLog = lazy(() => import('./components/SuperAdminAuditLog').then(m => ({ default: m.SuperAdminAuditLog })))
+const SystemAccessLog = lazy(() => import('./components/SystemAccessLog').then(m => ({ default: m.SystemAccessLog })))
 const LicenseManagement = lazy(() => import('./components/LicenseManagement').then(m => ({ default: m.LicenseManagement })))
 const AlunoNotasPage = lazy(() => import('./components/AlunoNotasPage').then(m => ({ default: m.AlunoNotasPage })))
 const EncarregadoNotasPage = lazy(() => import('./components/EncarregadoNotasPage').then(m => ({ default: m.EncarregadoNotasPage })))
@@ -174,6 +175,8 @@ function App() {
                     return <TutoriaisManagementPage />
                 case 'superadmin-direcoes-municipais':
                     return <DirecoesMunicipaisManagement onNavigate={handleNavigate} />
+                case 'superadmin-acessos':
+                    return <SystemAccessLog />
                 case 'settings':
                     return <SettingsPage />
                 default:
