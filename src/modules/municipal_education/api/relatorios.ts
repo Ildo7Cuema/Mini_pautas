@@ -68,6 +68,8 @@ export async function generateRelatorioEscolas(municipio: string): Promise<{
         estado: string;
         professores: number;
         alunos: number;
+        alunos_masculino: number;
+        alunos_feminino: number;
         turmas: number;
         media: number;
         taxa_aprovacao: number;
@@ -77,20 +79,45 @@ export async function generateRelatorioEscolas(municipio: string): Promise<{
         activas: number;
         suspensas: number;
         bloqueadas: number;
+        total_alunos: number;
+        total_masculino: number;
+        total_feminino: number;
     };
 }> {
     const escolas = await fetchEscolasMunicipio(municipio);
     const indicadores = await fetchIndicadoresMunicipio(municipio);
     const indicadoresMap = new Map(indicadores.map(i => [i.escola_id, i]));
 
+    // Get gender breakdown for each school in parallel
+    const genderCounts = await Promise.all(escolas.map(async (escola) => {
+        const [{ count: masculino }, { count: feminino }] = await Promise.all([
+            supabase
+                .from('alunos')
+                .select('*', { count: 'exact', head: true })
+                .eq('escola_id', escola.id)
+                .eq('genero', 'M'),
+            supabase
+                .from('alunos')
+                .select('*', { count: 'exact', head: true })
+                .eq('escola_id', escola.id)
+                .eq('genero', 'F')
+        ]);
+        return { escola_id: escola.id, masculino: masculino || 0, feminino: feminino || 0 };
+    }));
+
+    const genderMap = new Map(genderCounts.map(g => [g.escola_id, g]));
+
     const escolasData = escolas.map(escola => {
         const indicador = indicadoresMap.get(escola.id);
+        const gender = genderMap.get(escola.id);
         return {
             nome: escola.nome,
             codigo: escola.codigo_escola,
             estado: getEstadoEscola(escola),
             professores: indicador?.total_turmas || 0, // Would need separate count
             alunos: indicador?.total_alunos || 0,
+            alunos_masculino: gender?.masculino || 0,
+            alunos_feminino: gender?.feminino || 0,
             turmas: indicador?.total_turmas || 0,
             media: indicador?.media_geral || 0,
             taxa_aprovacao: indicador?.taxa_aprovacao || 0
@@ -98,6 +125,11 @@ export async function generateRelatorioEscolas(municipio: string): Promise<{
     });
 
     const estados = await fetchEstatisticasEstados(municipio);
+
+    // Calculate totals
+    const total_masculino = escolasData.reduce((sum, e) => sum + e.alunos_masculino, 0);
+    const total_feminino = escolasData.reduce((sum, e) => sum + e.alunos_feminino, 0);
+    const total_alunos = escolasData.reduce((sum, e) => sum + e.alunos, 0);
 
     return {
         titulo: 'Relatório de Escolas do Município',
@@ -108,7 +140,10 @@ export async function generateRelatorioEscolas(municipio: string): Promise<{
             total: estados.total,
             activas: estados.activas,
             suspensas: estados.suspensas,
-            bloqueadas: estados.bloqueadas
+            bloqueadas: estados.bloqueadas,
+            total_alunos,
+            total_masculino,
+            total_feminino
         }
     };
 }
@@ -127,7 +162,10 @@ export async function generateRelatorioAprovacao(
     periodo: { ano_lectivo?: string; trimestre?: number };
     escolas: Array<{
         nome: string;
+        escola_id: string;
         total_alunos: number;
+        alunos_masculino: number;
+        alunos_feminino: number;
         aprovados: number;
         reprovados: number;
         taxa_aprovacao: number;
@@ -141,6 +179,8 @@ export async function generateRelatorioAprovacao(
     }>;
     totais: {
         total_alunos: number;
+        total_masculino: number;
+        total_feminino: number;
         total_aprovados: number;
         total_reprovados: number;
         taxa_aprovacao_media: number;
@@ -149,20 +189,49 @@ export async function generateRelatorioAprovacao(
 }> {
     const indicadores = await fetchIndicadoresMunicipio(municipio, anoLectivo, trimestre);
 
-    const escolas = indicadores.map(i => ({
-        nome: i.escola_nome,
-        total_alunos: i.total_alunos,
-        aprovados: Math.round(i.total_alunos * i.taxa_aprovacao / 100),
-        reprovados: Math.round(i.total_alunos * i.taxa_reprovacao / 100),
-        taxa_aprovacao: i.taxa_aprovacao,
-        media: i.media_geral,
-        classificacao: i.notas_por_classificacao
+    // Get gender breakdown for each school in parallel
+    const genderCounts = await Promise.all(indicadores.map(async (ind) => {
+        const [{ count: masculino }, { count: feminino }] = await Promise.all([
+            supabase
+                .from('alunos')
+                .select('*', { count: 'exact', head: true })
+                .eq('escola_id', ind.escola_id)
+                .eq('genero', 'M'),
+            supabase
+                .from('alunos')
+                .select('*', { count: 'exact', head: true })
+                .eq('escola_id', ind.escola_id)
+                .eq('genero', 'F')
+        ]);
+        return { escola_id: ind.escola_id, masculino: masculino || 0, feminino: feminino || 0 };
     }));
+
+    const genderMap = new Map(genderCounts.map(g => [g.escola_id, g]));
+
+    const escolas = indicadores.map(i => {
+        const gender = genderMap.get(i.escola_id);
+        return {
+            nome: i.escola_nome,
+            escola_id: i.escola_id,
+            total_alunos: i.total_alunos,
+            alunos_masculino: gender?.masculino || 0,
+            alunos_feminino: gender?.feminino || 0,
+            aprovados: Math.round(i.total_alunos * i.taxa_aprovacao / 100),
+            reprovados: Math.round(i.total_alunos * i.taxa_reprovacao / 100),
+            taxa_aprovacao: i.taxa_aprovacao,
+            media: i.media_geral,
+            classificacao: i.notas_por_classificacao
+        };
+    });
 
     const total_alunos = indicadores.reduce((sum, i) => sum + i.total_alunos, 0);
     const soma_taxas = indicadores.reduce((sum, i) => sum + i.taxa_aprovacao, 0);
     const soma_medias = indicadores.reduce((sum, i) => sum + i.media_geral, 0);
     const count = indicadores.length || 1;
+
+    // Calculate gender totals
+    const total_masculino = escolas.reduce((sum, e) => sum + e.alunos_masculino, 0);
+    const total_feminino = escolas.reduce((sum, e) => sum + e.alunos_feminino, 0);
 
     return {
         titulo: 'Relatório de Aproveitamento Escolar',
@@ -172,6 +241,8 @@ export async function generateRelatorioAprovacao(
         escolas,
         totais: {
             total_alunos,
+            total_masculino,
+            total_feminino,
             total_aprovados: escolas.reduce((sum, e) => sum + e.aprovados, 0),
             total_reprovados: escolas.reduce((sum, e) => sum + e.reprovados, 0),
             taxa_aprovacao_media: Math.round(soma_taxas / count),
