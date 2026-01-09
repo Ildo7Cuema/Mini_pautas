@@ -593,6 +593,10 @@ export async function fetchAllDirecoesMunicipais(filters?: {
     needsAttention?: boolean
 }): Promise<DirecaoMunicipal[]> {
     try {
+        // Log session info for debugging RLS issues
+        const { data: { user } } = await supabase.auth.getUser()
+        console.log('🔐 fetchAllDirecoesMunicipais - Current user:', user?.id)
+
         let query = supabase.from('direcoes_municipais').select('*')
 
         if (filters?.needsAttention) {
@@ -622,11 +626,13 @@ export async function fetchAllDirecoesMunicipais(filters?: {
 
         const { data, error } = await query.order('created_at', { ascending: false })
 
+        console.log('🔍 fetchAllDirecoesMunicipais result:', { data, error, filters })
+
         if (error) throw error
 
         return data || []
     } catch (error) {
-        console.error('Error fetching direções municipais:', error)
+        console.error('❌ Error fetching direções municipais:', error)
         throw error
     }
 }
@@ -732,6 +738,184 @@ export async function unblockDirecaoMunicipal(direcaoId: string): Promise<void> 
         })
     } catch (error) {
         console.error('Error unblocking direção municipal:', error)
+        throw error
+    }
+}
+
+// ============================================
+// DIREÇÃO PROVINCIAL MANAGEMENT FUNCTIONS
+// ============================================
+
+export interface DirecaoProvincial {
+    id: string
+    user_id: string | null
+    nome: string
+    provincia: string
+    email: string
+    telefone: string | null
+    cargo: string
+    numero_funcionario: string | null
+    ativo: boolean
+    bloqueado: boolean
+    bloqueado_motivo: string | null
+    bloqueado_em: string | null
+    bloqueado_por: string | null
+    created_at: string
+    updated_at: string
+}
+
+/**
+ * Fetch all direções provinciais with optional filters
+ */
+export async function fetchAllDirecoesProvinciais(filters?: {
+    ativo?: boolean
+    bloqueado?: boolean
+    provincia?: string
+    search?: string
+    needsAttention?: boolean
+}): Promise<DirecaoProvincial[]> {
+    try {
+        // Log session info for debugging RLS issues
+        const { data: { user } } = await supabase.auth.getUser()
+        console.log('🔐 fetchAllDirecoesProvinciais - Current user:', user?.id)
+
+        let query = supabase.from('direcoes_provinciais').select('*')
+
+        if (filters?.needsAttention) {
+            // Needs attention: inactive OR blocked
+            query = query.or('ativo.eq.false,bloqueado.eq.true')
+        } else {
+            if (filters?.ativo !== undefined) {
+                query = query.eq('ativo', filters.ativo)
+            }
+
+            if (filters?.bloqueado !== undefined) {
+                query = query.eq('bloqueado', filters.bloqueado)
+            }
+        }
+
+        if (filters?.provincia) {
+            query = query.eq('provincia', filters.provincia)
+        }
+
+        if (filters?.search) {
+            query = query.or(`nome.ilike.%${filters.search}%,provincia.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)
+        }
+
+        const { data, error } = await query.order('created_at', { ascending: false })
+
+        console.log('🔍 fetchAllDirecoesProvinciais result:', { data, error, filters })
+
+        if (error) throw error
+
+        return data || []
+    } catch (error) {
+        console.error('❌ Error fetching direções provinciais:', error)
+        throw error
+    }
+}
+
+/**
+ * Activate a direção provincial
+ */
+export async function activateDirecaoProvincial(direcaoId: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('direcoes_provinciais')
+            .update({ ativo: true })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('ACTIVATE_DIRECAO_PROVINCIAL', null, {
+            action: 'Direção Provincial activated',
+            direcao_id: direcaoId
+        })
+    } catch (error) {
+        console.error('Error activating direção provincial:', error)
+        throw error
+    }
+}
+
+/**
+ * Deactivate a direção provincial
+ */
+export async function deactivateDirecaoProvincial(direcaoId: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('direcoes_provinciais')
+            .update({ ativo: false })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('DEACTIVATE_DIRECAO_PROVINCIAL', null, {
+            action: 'Direção Provincial deactivated',
+            direcao_id: direcaoId
+        })
+    } catch (error) {
+        console.error('Error deactivating direção provincial:', error)
+        throw error
+    }
+}
+
+/**
+ * Block a direção provincial with reason
+ */
+export async function blockDirecaoProvincial(direcaoId: string, motivo: string): Promise<void> {
+    try {
+        const { data: { user } } = await supabase.auth.getUser()
+
+        const { error } = await supabase
+            .from('direcoes_provinciais')
+            .update({
+                bloqueado: true,
+                bloqueado_motivo: motivo,
+                bloqueado_em: new Date().toISOString(),
+                bloqueado_por: user?.id
+            })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('BLOCK_DIRECAO_PROVINCIAL', null, {
+            action: 'Direção Provincial blocked',
+            direcao_id: direcaoId,
+            motivo: motivo
+        })
+    } catch (error) {
+        console.error('Error blocking direção provincial:', error)
+        throw error
+    }
+}
+
+/**
+ * Unblock a direção provincial
+ */
+export async function unblockDirecaoProvincial(direcaoId: string): Promise<void> {
+    try {
+        const { error } = await supabase
+            .from('direcoes_provinciais')
+            .update({
+                bloqueado: false,
+                bloqueado_motivo: null,
+                bloqueado_em: null,
+                bloqueado_por: null
+            })
+            .eq('id', direcaoId)
+
+        if (error) throw error
+
+        // Log the action
+        await logSuperAdminAction('UNBLOCK_DIRECAO_PROVINCIAL', null, {
+            action: 'Direção Provincial unblocked',
+            direcao_id: direcaoId
+        })
+    } catch (error) {
+        console.error('Error unblocking direção provincial:', error)
         throw error
     }
 }

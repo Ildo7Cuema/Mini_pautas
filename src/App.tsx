@@ -43,6 +43,7 @@ const EscolasOverviewPage = lazy(() => import('./components/EscolasOverviewPage'
 const SolicitacoesPage = lazy(() => import('./components/SolicitacoesPage'))
 const DirecaoMunicipalRegistration = lazy(() => import('./components/DirecaoMunicipalRegistration').then(m => ({ default: m.DirecaoMunicipalRegistration })))
 const DirecoesMunicipaisManagement = lazy(() => import('./components/DirecoesMunicipaisManagement').then(m => ({ default: m.DirecoesMunicipaisManagement })))
+const DirecoesProvinciaisManagement = lazy(() => import('./components/DirecoesProvinciaisManagement').then(m => ({ default: m.DirecoesProvinciaisManagement })))
 const ProfessorDocumentRequestsPage = lazy(() => import('./components/ProfessorDocumentRequestsPage').then(m => ({ default: m.ProfessorDocumentRequestsPage })))
 
 // Municipal Education Module - New Features
@@ -192,6 +193,8 @@ function App() {
                     return <TutoriaisManagementPage />
                 case 'superadmin-direcoes-municipais':
                     return <DirecoesMunicipaisManagement onNavigate={handleNavigate} />
+                case 'superadmin-direcoes-provinciais':
+                    return <DirecoesProvinciaisManagement onNavigate={handleNavigate} />
                 case 'superadmin-acessos':
                     return <SystemAccessLog />
                 case 'settings':
