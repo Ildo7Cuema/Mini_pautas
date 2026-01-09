@@ -341,25 +341,6 @@ export const LoginScreen: React.FC = () => {
                 {/* Auth Card */}
                 <div className="auth-card rounded-2xl animate-slide-up">
                     <CardBody className="p-6 sm:p-8">
-                        {/* Mode Tabs */}
-                        <div className="flex gap-2 mb-6 p-1.5 bg-slate-100/80 rounded-xl">
-                            <button
-                                onClick={() => setMode('login')}
-                                className={`flex-1 py-2.5 px-4 rounded-lg font-semibold text-sm transition-all duration-200 ${mode === 'login'
-                                    ? 'bg-white text-primary-600 shadow-sm'
-                                    : 'text-slate-500 hover:text-slate-700'
-                                    }`}
-                            >
-                                Entrar
-                            </button>
-                            <button
-                                onClick={() => setMode('school-registration')}
-                                className="flex-1 py-2.5 px-3 rounded-lg font-semibold text-xs sm:text-sm transition-all duration-200 text-slate-500 hover:text-slate-700"
-                            >
-                                Cadastrar Escola
-                            </button>
-                        </div>
-
                         {/* Welcome Text */}
                         <div className="mb-6">
                             <h2 className="text-xl sm:text-2xl font-bold text-slate-900 mb-1">
@@ -451,31 +432,86 @@ export const LoginScreen: React.FC = () => {
                                 <div className="w-full border-t border-slate-200" />
                             </div>
                             <div className="relative flex justify-center text-sm">
-                                <span className="px-3 bg-white text-slate-400">ou</span>
+                                <span className="px-3 bg-white text-slate-400">Novo por aqui?</span>
                             </div>
                         </div>
 
-                        {/* Switch to School Registration */}
-                        <div className="text-center space-y-2">
-                            <p className="text-sm text-slate-500">
-                                É uma escola?{' '}
-                                <button
-                                    type="button"
-                                    onClick={() => setMode('school-registration')}
-                                    className="text-primary-600 hover:text-primary-700 font-semibold transition-colors hover:underline underline-offset-2"
-                                >
-                                    Cadastre-se aqui
-                                </button>
-                            </p>
-                            <p className="text-sm text-slate-500">
-                                É uma Direção Municipal?{' '}
+                        {/* Registration Options */}
+                        <div className="space-y-4">
+                            {/* Primary - School Registration */}
+                            <button
+                                type="button"
+                                onClick={() => setMode('school-registration')}
+                                className="w-full group relative overflow-hidden rounded-xl border-2 border-primary-100 bg-gradient-to-br from-primary-50 to-blue-50 p-4 transition-all duration-300 hover:border-primary-300 hover:shadow-lg hover:shadow-primary-100/50 hover:-translate-y-0.5"
+                            >
+                                <div className="flex items-center gap-4">
+                                    <div className="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-blue-600 flex items-center justify-center shadow-lg shadow-primary-200/50 group-hover:scale-110 transition-transform duration-300">
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                                        </svg>
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <h3 className="font-bold text-slate-800 group-hover:text-primary-700 transition-colors">
+                                            Cadastrar Escola
+                                        </h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">
+                                            Registar estabelecimento de ensino
+                                        </p>
+                                    </div>
+                                    <div className="flex-shrink-0 text-primary-400 group-hover:text-primary-600 group-hover:translate-x-1 transition-all">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </div>
+                                </div>
+                            </button>
+
+                            {/* Institutional Registration Grid */}
+                            <div className="grid grid-cols-2 gap-3">
+                                {/* Municipal Direction */}
                                 <a
                                     href="/register-direcao-municipal"
-                                    className="text-primary-600 hover:text-primary-700 font-semibold transition-colors hover:underline underline-offset-2"
+                                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-md hover:-translate-y-0.5"
                                 >
-                                    Cadastre-se aqui
+                                    <div className="flex flex-col items-center text-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-sm text-slate-700 group-hover:text-emerald-700 transition-colors">
+                                                Direção Municipal
+                                            </h3>
+                                            <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                                                Órgão municipal de educação
+                                            </p>
+                                        </div>
+                                    </div>
                                 </a>
-                            </p>
+
+                                {/* Provincial Direction */}
+                                <a
+                                    href="/register-direcao-provincial"
+                                    className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white p-4 transition-all duration-300 hover:border-purple-300 hover:bg-purple-50/50 hover:shadow-md hover:-translate-y-0.5"
+                                >
+                                    <div className="flex flex-col items-center text-center gap-3">
+                                        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center shadow-md group-hover:scale-110 transition-transform duration-300">
+                                            <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-semibold text-sm text-slate-700 group-hover:text-purple-700 transition-colors">
+                                                Direção Provincial
+                                            </h3>
+                                            <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                                                Órgão provincial de educação
+                                            </p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
                         </div>
                     </CardBody>
                 </div>

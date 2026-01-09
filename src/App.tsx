@@ -51,8 +51,17 @@ const FuncionariosConsulta = lazy(() => import('./modules/municipal_education/co
 const CircularesPage = lazy(() => import('./modules/municipal_education/components/CircularesPage').then(m => ({ default: m.CircularesPage })))
 const RelatoriosMunicipaisPage = lazy(() => import('./modules/municipal_education/components/RelatoriosPage').then(m => ({ default: m.RelatoriosPage })))
 
+// Provincial Education Module
+const DirecaoProvincialDashboard = lazy(() => import('./modules/provincial_education/components/DirecaoProvincialDashboard').then(m => ({ default: m.DirecaoProvincialDashboard })))
+const DirecoesMunicipaisGestao = lazy(() => import('./modules/provincial_education/components/DirecoesMunicipaisGestao').then(m => ({ default: m.DirecoesMunicipaisGestao })))
+const EscolasProvincialOverview = lazy(() => import('./modules/provincial_education/components/EscolasProvincialOverview').then(m => ({ default: m.EscolasProvincialOverview })))
+const SupervisaoPedagogicaProvincial = lazy(() => import('./modules/provincial_education/components/SupervisaoPedagogicaProvincial').then(m => ({ default: m.SupervisaoPedagogicaProvincial })))
+const CircularesProvinciaisPage = lazy(() => import('./modules/provincial_education/components/CircularesProvinciaisPage').then(m => ({ default: m.CircularesProvinciaisPage })))
+const RelatoriosProvinciaisPage = lazy(() => import('./modules/provincial_education/components/RelatoriosProvinciaisPage').then(m => ({ default: m.RelatoriosProvinciaisPage })))
+const DirecaoProvincialRegistration = lazy(() => import('./components/DirecaoProvincialRegistration').then(m => ({ default: m.DirecaoProvincialRegistration })))
+
 function App() {
-    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, isDirecaoMunicipal, escolaProfile, profile } = useAuth()
+    const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, isDirecaoMunicipal, isDirecaoProvincial, escolaProfile, profile } = useAuth()
     const [currentPage, setCurrentPage] = useState('dashboard')
     const [navigationParams, setNavigationParams] = useState<{ turmaId?: string; filter?: string }>({})
     const [searchQuery, setSearchQuery] = useState('')
@@ -123,6 +132,14 @@ function App() {
         return (
             <Suspense fallback={<PageSkeleton />}>
                 <DirecaoMunicipalRegistration />
+            </Suspense>
+        )
+    }
+
+    if (window.location.pathname === '/register-direcao-provincial') {
+        return (
+            <Suspense fallback={<PageSkeleton />}>
+                <DirecaoProvincialRegistration />
             </Suspense>
         )
     }
@@ -207,6 +224,28 @@ function App() {
                     return <SettingsPage />
                 default:
                     return <DirecaoMunicipalDashboard onNavigate={handleNavigate} />
+            }
+        }
+
+        // DIREÇÃO PROVINCIAL routes
+        if (isDirecaoProvincial) {
+            switch (currentPage) {
+                case 'dashboard':
+                    return <DirecaoProvincialDashboard />
+                case 'provincial-direcoes-municipais':
+                    return <DirecoesMunicipaisGestao />
+                case 'provincial-escolas':
+                    return <EscolasProvincialOverview />
+                case 'provincial-supervisao':
+                    return <SupervisaoPedagogicaProvincial />
+                case 'provincial-circulares':
+                    return <CircularesProvinciaisPage />
+                case 'provincial-relatorios':
+                    return <RelatoriosProvinciaisPage />
+                case 'settings':
+                    return <SettingsPage />
+                default:
+                    return <DirecaoProvincialDashboard />
             }
         }
 

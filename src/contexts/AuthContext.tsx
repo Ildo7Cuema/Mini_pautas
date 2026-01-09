@@ -17,7 +17,10 @@ import type {
     Aluno,
     Turma,
     Secretario,
-    DirecaoMunicipal
+
+    DirecaoMunicipal,
+    DirecaoProvincial,
+    DirecaoProvincialProfile
 } from '../types'
 
 interface AuthContextType {
@@ -29,12 +32,14 @@ interface AuthContextType {
     isEncarregado: boolean
     isSecretario: boolean
     isDirecaoMunicipal: boolean
+    isDirecaoProvincial: boolean
     escolaProfile: EscolaProfile | null
     professorProfile: ProfessorProfile | null
     alunoProfile: AlunoProfile | null
     encarregadoProfile: EncarregadoProfile | null
     secretarioProfile: SecretarioProfile | null
     direcaoMunicipalProfile: DirecaoMunicipalProfile | null
+    direcaoProvincialProfile: DirecaoProvincialProfile | null
     profile: UserProfile | null  // Added for SUPERADMIN support
     signOut: () => Promise<void>
     refreshProfile: () => Promise<void>
@@ -63,12 +68,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     const [isEncarregado, setIsEncarregado] = useState(false)
     const [isSecretario, setIsSecretario] = useState(false)
     const [isDirecaoMunicipal, setIsDirecaoMunicipal] = useState(false)
+    const [isDirecaoProvincial, setIsDirecaoProvincial] = useState(false)
     const [escolaProfile, setEscolaProfile] = useState<EscolaProfile | null>(null)
     const [professorProfile, setProfessorProfile] = useState<ProfessorProfile | null>(null)
     const [alunoProfile, setAlunoProfile] = useState<AlunoProfile | null>(null)
     const [encarregadoProfile, setEncarregadoProfile] = useState<EncarregadoProfile | null>(null)
     const [secretarioProfile, setSecretarioProfile] = useState<SecretarioProfile | null>(null)
     const [direcaoMunicipalProfile, setDirecaoMunicipalProfile] = useState<DirecaoMunicipalProfile | null>(null)
+    const [direcaoProvincialProfile, setDirecaoProvincialProfile] = useState<DirecaoProvincialProfile | null>(null)
 
     // Blocked school modal state
     const [showBlockedModal, setShowBlockedModal] = useState(false)
@@ -310,7 +317,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                 console.log('🔍 AuthContext: Checking if user is an encarregado...')
                 const { data: encarregadoData, error: encarregadoError } = await supabase
                     .from('alunos')
-                    .select('*, turmas(id, nome, escola_id, escolas(id, nome, codigo_escola, bloqueado, bloqueado_motivo, ativo))')
+                    .select('*, turmas(id, nome, escola_id, escolas(*))')
                     .eq('encarregado_user_id', authUser.id)
                     .eq('ativo', true)
 
@@ -326,8 +333,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     setIsAluno(false)
 
                     // Extract escola from first aluno's turma
-                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: { id: string; nome: string; codigo_escola?: string; bloqueado?: boolean; bloqueado_motivo?: string; ativo?: boolean } } | null
-                    const escolaData = firstAlunoTurma?.escolas || null
+                    const firstAlunoTurma = encarregadoData[0]?.turmas as { id: string; nome: string; escola_id: string; escolas?: Escola } | null
+                    const escolaData = (firstAlunoTurma?.escolas as Escola) || null
 
                     // Check if escola was deleted (not found)
                     if (!escolaData) {
@@ -374,12 +381,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     }
 
                     // Create inline encarregado profile with escola
-                    const encarregadoProfile = {
+                    const encarregadoProfile: EncarregadoProfile = {
                         alunos_associados: encarregadoData.map((aluno: any) => {
-                            const turmaData = aluno.turmas as { id: string; nome: string; escola_id: string; escolas?: any } | null
+                            const turmaData = aluno.turmas as { id: string; nome: string; escola_id: string; escolas?: Escola } | null
                             return {
                                 ...aluno,
-                                turma: turmaData ? { id: turmaData.id, nome: turmaData.nome, escola_id: turmaData.escola_id } : undefined
+                                turma: turmaData ? { id: turmaData.id, nome: turmaData.nome, escola_id: turmaData.escola_id } : undefined,
+                                escola: turmaData?.escolas,
+                                user_profile: null as any
                             }
                         }),
                         escola: escolaData,
@@ -452,6 +461,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
                     return
                 }
 
+                // Check for inactive DIRECAO_PROVINCIAL (pending approval)
+                console.log('🔍 AuthContext: Checking for inactive DIRECAO_PROVINCIAL profile...')
+                const { data: inactiveProfileData } = await supabase
+                    .from('user_profiles')
+                    .select('*')
+                    .eq('user_id', authUser.id)
+                    .eq('tipo_perfil', 'DIRECAO_PROVINCIAL')
+                    .eq('ativo', false)
+                    .maybeSingle()
+
+                if (inactiveProfileData) {
+                    console.warn('⏳ AuthContext: Found inactive DIRECAO_PROVINCIAL profile - pending approval')
+                    setBlockedModalData({
+                        reason: 'O seu registo como Direção Provincial está pendente de aprovação. Será notificado quando o acesso for activado.',
+                        type: 'inactive',
+                        entityType: 'direcao_municipal'
+                    })
+                    setShowBlockedModal(true)
+                    await supabase.auth.signOut()
+                    setUser(null)
+                    isLoadingProfileRef.current = false
+                    setLoading(false)
+                    return
+                }
+
                 // No profile found at all
                 console.warn('⚠️ AuthContext: User has no profile in any table')
                 console.log('🔄 AuthContext: Clearing invalid session...')
@@ -475,6 +509,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             setIsEncarregado(profile.tipo_perfil === 'ENCARREGADO')
             setIsSecretario(profile.tipo_perfil === 'SECRETARIO')
             setIsDirecaoMunicipal(profile.tipo_perfil === 'DIRECAO_MUNICIPAL')
+            setIsDirecaoProvincial(profile.tipo_perfil === 'DIRECAO_PROVINCIAL')
 
             // Handle SUPERADMIN separately (no escola_id required)
             if (profile.tipo_perfil === 'SUPERADMIN') {
@@ -509,6 +544,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
             } else if (profile.tipo_perfil === 'DIRECAO_MUNICIPAL') {
                 console.log('🏛️ AuthContext: Loading direção municipal profile...')
                 await loadDirecaoMunicipalProfile(authUser.id, profile)
+            } else if (profile.tipo_perfil === 'DIRECAO_PROVINCIAL') {
+                console.log('🏛️ AuthContext: Loading direção provincial profile...')
+                await loadDirecaoProvincialProfile(authUser.id, profile)
             }
 
             // CRITICAL: Always set loading to false, even if profile loading fails
@@ -1191,6 +1229,95 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         }
     }
 
+    const loadDirecaoProvincialProfile = async (userId: string, profile: UserProfile) => {
+        try {
+            console.log('🏛️ AuthContext: Fetching direção provincial data for user_id:', userId)
+
+            const { data: direcaoData, error: direcaoError } = await supabase
+                .from('direcoes_provinciais')
+                .select('*')
+                .eq('user_id', userId)
+                .maybeSingle()
+
+            if (direcaoError) {
+                console.error('❌ AuthContext: Error loading direção provincial:', direcaoError)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            // Check if direcao provincial exists but is inactive (pending/rejected)
+            if (direcaoData && !direcaoData.ativo) {
+                console.warn('⏳ AuthContext: Direção Provincial is inactive/pending')
+                setBlockedModalData({
+                    reason: 'O seu registo como Direção Provincial está pendente de aprovação. Será notificado quando o acesso for activado.',
+                    type: 'inactive',
+                    entityType: 'direcao_municipal' // Reuse existing type style for now
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                return
+            }
+
+            if (direcaoError) {
+                console.error('❌ AuthContext: Error loading direção provincial:', direcaoError)
+                setUser({
+                    id: userId,
+                    email: profile.user_id || '',
+                    profile
+                })
+                return
+            }
+
+            if (!direcaoData) {
+                console.warn('⚠️ AuthContext: No direção provincial found for user_id:', userId)
+                // Profile exists but no record
+                setBlockedModalData({
+                    reason: 'O seu registo como Direção Provincial foi removido do sistema.',
+                    type: 'deleted',
+                    entityType: 'direcao_municipal' // Reuse modal type for now or add new one
+                })
+                setShowBlockedModal(true)
+                await supabase.auth.signOut()
+                setUser(null)
+                return
+            }
+
+            const direcao = direcaoData as DirecaoProvincial
+
+            // For now, we don't have a direct "escolas_count" for province in the profile type
+            // but we can add it or just ignore. The types/index.ts definition of DirecaoProvincialProfile
+            // extends DirecaoProvincial. Let's check if it has extra fields.
+            // Based on previous grep, it just extends. I'll stick to the base data + user_profile.
+
+            const direcaoProfile: DirecaoProvincialProfile = {
+                ...direcao,
+                user_profile: profile
+            }
+
+            setDirecaoProvincialProfile(direcaoProfile)
+            setUser({
+                id: userId,
+                email: direcao.email || profile.user_id || '',
+                profile,
+                direcaoProvincial: direcaoProfile
+            })
+            console.log('✅ AuthContext: Direção provincial profile set successfully')
+
+        } catch (error) {
+            console.error('❌ AuthContext: Unexpected error in loadDirecaoProvincialProfile:', error)
+            setUser({
+                id: userId,
+                email: profile.user_id || '',
+                profile
+            })
+        }
+    }
+
     const refreshProfile = async () => {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         if (authUser) {
@@ -1207,29 +1334,31 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         setIsEncarregado(false)
         setIsSecretario(false)
         setIsDirecaoMunicipal(false)
+        setIsDirecaoProvincial(false)
         setEscolaProfile(null)
         setProfessorProfile(null)
         setAlunoProfile(null)
         setEncarregadoProfile(null)
         setSecretarioProfile(null)
         setDirecaoMunicipalProfile(null)
+        setDirecaoProvincialProfile(null)
     }
 
     useEffect(() => {
         // Flag to track if initial auth check is complete
         let initialAuthChecked = false
 
-        // Safety timeout: never let loading stay true for more than 5 seconds
+        // Safety timeout: never let loading stay true for more than 10 seconds
         const safetyTimeout = setTimeout(() => {
             setLoading(prevLoading => {
                 if (prevLoading) {
-                    console.error('⏰ AuthContext: Safety timeout triggered! Setting loading=false after 5 seconds')
+                    console.warn('⏰ AuthContext: Safety timeout triggered! Setting loading=false after 10 seconds')
                     isLoadingProfileRef.current = false
                     return false
                 }
                 return prevLoading
             })
-        }, 5000)
+        }, 10000)
 
         console.log('🚀 AuthContext: Starting initial auth check...')
 
@@ -1299,12 +1428,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         isEncarregado,
         isSecretario,
         isDirecaoMunicipal,
+        isDirecaoProvincial,
         escolaProfile,
         professorProfile,
         alunoProfile,
         encarregadoProfile,
         secretarioProfile,
         direcaoMunicipalProfile,
+        direcaoProvincialProfile,
         profile: user?.profile || null,  // Expose profile for SUPERADMIN checks
         signOut,
         refreshProfile

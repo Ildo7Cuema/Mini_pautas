@@ -393,13 +393,13 @@ export interface ImportError {
 // USER ROLES AND PROFILES
 // ============================================
 
-export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO' | 'SECRETARIO' | 'DIRECAO_MUNICIPAL';
+export type UserRole = 'ESCOLA' | 'PROFESSOR' | 'SUPERADMIN' | 'ALUNO' | 'ENCARREGADO' | 'SECRETARIO' | 'DIRECAO_MUNICIPAL' | 'DIRECAO_PROVINCIAL';
 
 export interface UserProfile {
     id: string;
     user_id: string;
     tipo_perfil: UserRole;
-    escola_id: string | null;  // Nullable for SUPERADMIN and DIRECAO_MUNICIPAL users
+    escola_id: string | null;  // Nullable for SUPERADMIN, DIRECAO_MUNICIPAL and DIRECAO_PROVINCIAL users
     ativo: boolean;
     metadata: Record<string, any>;
     created_at: string;
@@ -468,6 +468,31 @@ export interface DirecaoMunicipal {
 export interface DirecaoMunicipalProfile extends DirecaoMunicipal {
     user_profile: UserProfile;
     escolas_count?: number;
+}
+
+// ============================================
+// DIREÇÃO PROVINCIAL TYPES
+// ============================================
+
+export interface DirecaoProvincial {
+    id: string;
+    user_id?: string;
+    nome: string;
+    provincia: string;
+    email: string;
+    telefone?: string;
+    cargo?: string;
+    numero_funcionario?: string;
+    ativo: boolean;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface DirecaoProvincialProfile extends DirecaoProvincial {
+    user_profile: UserProfile;
+    municipios_count?: number;
+    escolas_count?: number;
+    direcoes_municipais_count?: number;
 }
 
 // ============================================
@@ -596,6 +621,7 @@ export interface AuthUser {
     encarregado?: EncarregadoProfile;
     secretario?: SecretarioProfile;
     direcaoMunicipal?: DirecaoMunicipalProfile;
+    direcaoProvincial?: DirecaoProvincialProfile;
 }
 
 // ALUNO Profile - Student with turma and escola info
