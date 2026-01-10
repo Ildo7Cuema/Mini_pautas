@@ -17,6 +17,7 @@ import { translateError } from '../utils/translations'
 import { SchoolRegistration } from './SchoolRegistration'
 import { BlockedSchoolMessage } from './BlockedSchoolMessage'
 import { logSystemVisit } from '../utils/superadmin'
+import { sendSuggestionToSuperAdmin } from '../utils/notificationApi'
 
 type AuthMode = 'login' | 'signup' | 'school-registration'
 
@@ -36,6 +37,14 @@ export const LoginScreen: React.FC = () => {
     const [schoolStatusReason, setSchoolStatusReason] = useState<string | undefined>(undefined)
     const [schoolInfo, setSchoolInfo] = useState<{ nome?: string; codigo?: string }>({})
     const [entityType, setEntityType] = useState<'escola' | 'direcao_municipal'>('escola')
+    // Suggestion modal state
+    const [showSuggestionModal, setShowSuggestionModal] = useState(false)
+    const [suggestionName, setSuggestionName] = useState('')
+    const [suggestionEmail, setSuggestionEmail] = useState('')
+    const [suggestionMessage, setSuggestionMessage] = useState('')
+    const [suggestionLoading, setSuggestionLoading] = useState(false)
+    const [suggestionSuccess, setSuggestionSuccess] = useState(false)
+    const [suggestionError, setSuggestionError] = useState<string | null>(null)
 
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -326,6 +335,38 @@ export const LoginScreen: React.FC = () => {
         }
     }
 
+    const handleSuggestionSubmit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        setSuggestionLoading(true)
+        setSuggestionError(null)
+
+        try {
+            const { success, error } = await sendSuggestionToSuperAdmin(
+                suggestionName,
+                suggestionEmail,
+                suggestionMessage
+            )
+
+            if (!success) {
+                throw new Error(error || 'Ocorreu um erro ao enviar a sugestão.')
+            }
+
+            setSuggestionSuccess(true)
+            setTimeout(() => {
+                setShowSuggestionModal(false)
+                setSuggestionSuccess(false)
+                setSuggestionName('')
+                setSuggestionEmail('')
+                setSuggestionMessage('')
+            }, 3000)
+        } catch (err) {
+            const errorMessage = err instanceof Error ? err.message : 'Ocorreu um erro'
+            setSuggestionError(errorMessage)
+        } finally {
+            setSuggestionLoading(false)
+        }
+    }
+
     const handleForgotPassword = async (e: React.FormEvent) => {
         e.preventDefault()
         setResetLoading(true)
@@ -578,14 +619,31 @@ export const LoginScreen: React.FC = () => {
 
                 {/* Footer */}
                 <div className="mt-8 text-center space-y-3">
-                    {/* Tutorials Link */}
-                    <a
-                        href="/tutoriais"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-xl text-sm font-medium text-primary-600 hover:text-primary-700 shadow-sm hover:shadow transition-all"
-                    >
-                        <span>📹</span>
-                        Ver Tutoriais
-                    </a>
+                    {/* Action Links */}
+                    <div className="flex flex-wrap items-center justify-center gap-3">
+                        {/* Tutorials Link */}
+                        <a
+                            href="/tutoriais"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-xl text-sm font-medium text-primary-600 hover:text-primary-700 shadow-sm hover:shadow transition-all"
+                        >
+                            <span>📹</span>
+                            Ver Tutoriais
+                        </a>
+
+                        {/* Suggestions Button */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setShowSuggestionModal(true)
+                                setSuggestionError(null)
+                                setSuggestionSuccess(false)
+                            }}
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-xl text-sm font-medium text-amber-600 hover:text-amber-700 shadow-sm hover:shadow transition-all"
+                        >
+                            <span>💡</span>
+                            Enviar Sugestão
+                        </button>
+                    </div>
 
                     <p className="text-slate-500 text-sm">
                         © 2025 EduGest Angola · Sistema de Gestão Escolar
@@ -718,6 +776,167 @@ export const LoginScreen: React.FC = () => {
                                                         icon={<Icons.Send />}
                                                     >
                                                         {resetLoading ? 'Enviando...' : 'Enviar Link'}
+                                                    </Button>
+                                                </div>
+                                            </form>
+                                        </>
+                                    )}
+                                </CardBody>
+                            </Card>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Suggestion Modal */}
+            {showSuggestionModal && (
+                <div className="modal-mobile-fullscreen">
+                    <div className="modal-overlay" onClick={() => {
+                        setShowSuggestionModal(false)
+                        setSuggestionError(null)
+                        setSuggestionName('')
+                        setSuggestionEmail('')
+                        setSuggestionMessage('')
+                    }}>
+                        <div
+                            className="modal-content"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <Card className="rounded-2xl shadow-2xl">
+                                <CardBody className="p-6 sm:p-8">
+                                    {suggestionSuccess ? (
+                                        <div className="text-center py-4">
+                                            <div className="success-ring inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-5">
+                                                <svg className="success-checkmark w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                                                </svg>
+                                            </div>
+                                            <h3 className="text-xl sm:text-2xl font-bold text-slate-900 mb-3">
+                                                Sugestão Enviada!
+                                            </h3>
+                                            <p className="text-slate-600 text-sm sm:text-base mb-2">
+                                                A sua sugestão foi enviada com sucesso.
+                                            </p>
+                                            <p className="text-slate-400 text-sm">
+                                                Obrigado pela sua contribuição!
+                                            </p>
+                                            <div className="mt-4 flex items-center justify-center gap-2 text-xs text-slate-400">
+                                                <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+                                                Fechando automaticamente...
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            {/* Modal Header */}
+                                            <div className="flex items-center justify-between mb-6">
+                                                <div>
+                                                    <h3 className="text-xl font-bold text-slate-900">
+                                                        💡 Enviar Sugestão
+                                                    </h3>
+                                                    <p className="text-slate-500 text-sm mt-1">
+                                                        Partilhe as suas ideias para melhorar o sistema
+                                                    </p>
+                                                </div>
+                                                <button
+                                                    onClick={() => {
+                                                        setShowSuggestionModal(false)
+                                                        setSuggestionError(null)
+                                                        setSuggestionName('')
+                                                        setSuggestionEmail('')
+                                                        setSuggestionMessage('')
+                                                    }}
+                                                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-all touch-feedback"
+                                                    aria-label="Fechar"
+                                                >
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                                    </svg>
+                                                </button>
+                                            </div>
+
+                                            {/* Error in Modal */}
+                                            {suggestionError && (
+                                                <div
+                                                    className="flex items-start gap-3 p-4 mb-5 bg-red-50 border border-red-100 rounded-xl animate-slide-down"
+                                                    role="alert"
+                                                >
+                                                    <div className="flex-shrink-0 w-5 h-5 mt-0.5 text-red-500">
+                                                        <svg className="w-full h-full" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                    <p className="text-sm text-red-700 font-medium">{suggestionError}</p>
+                                                </div>
+                                            )}
+
+                                            <form onSubmit={handleSuggestionSubmit} className="space-y-5">
+                                                <div className="input-glow rounded-xl">
+                                                    <Input
+                                                        label="Nome"
+                                                        type="text"
+                                                        value={suggestionName}
+                                                        onChange={(e) => setSuggestionName(e.target.value)}
+                                                        placeholder="O seu nome"
+                                                        required
+                                                        icon={<Icons.User />}
+                                                        inputSize="md"
+                                                    />
+                                                </div>
+
+                                                <div className="input-glow rounded-xl">
+                                                    <Input
+                                                        label="Email de Contacto"
+                                                        type="email"
+                                                        value={suggestionEmail}
+                                                        onChange={(e) => setSuggestionEmail(e.target.value)}
+                                                        placeholder="seu.email@exemplo.com"
+                                                        required
+                                                        icon={<Icons.Email />}
+                                                        inputSize="md"
+                                                    />
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                                                        Sugestão
+                                                    </label>
+                                                    <textarea
+                                                        value={suggestionMessage}
+                                                        onChange={(e) => setSuggestionMessage(e.target.value)}
+                                                        placeholder="Descreva a sua sugestão, ideia ou feedback..."
+                                                        required
+                                                        rows={4}
+                                                        className="w-full px-4 py-3 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all resize-none"
+                                                    />
+                                                </div>
+
+                                                <div className="flex gap-3 pt-2">
+                                                    <Button
+                                                        type="button"
+                                                        variant="ghost"
+                                                        size="lg"
+                                                        onClick={() => {
+                                                            setShowSuggestionModal(false)
+                                                            setSuggestionError(null)
+                                                            setSuggestionName('')
+                                                            setSuggestionEmail('')
+                                                            setSuggestionMessage('')
+                                                        }}
+                                                        fullWidth
+                                                        className="!py-3"
+                                                    >
+                                                        Cancelar
+                                                    </Button>
+                                                    <Button
+                                                        type="submit"
+                                                        variant="primary"
+                                                        size="lg"
+                                                        loading={suggestionLoading}
+                                                        fullWidth
+                                                        className="btn-premium !py-3"
+                                                        icon={<Icons.Send />}
+                                                    >
+                                                        {suggestionLoading ? 'Enviando...' : 'Enviar Sugestão'}
                                                     </Button>
                                                 </div>
                                             </form>
