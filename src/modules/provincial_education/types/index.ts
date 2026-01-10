@@ -234,6 +234,21 @@ export interface RelatorioProvincial {
 export interface RelatorioConsolidadoProvincia {
     provincia: string;
     periodo: string;
+    data_geracao: string;
+    estatisticas_gerais: {
+        total_escolas: number;
+        total_alunos: number;
+        total_professores: number;
+        taxa_aprovacao_media: number;
+        escolas_inactivas: number;
+        escolas_bloqueadas: number;
+    };
+    dados_por_municipio: {
+        municipio: string;
+        total_escolas: number;
+        total_alunos: number;
+        taxa_aprovacao: number;
+    }[];
     estatisticas: EstatisticasProvincia;
     comparativo_municipios: ComparativoMunicipios[];
     direcoes_municipais: DirecaoMunicipalResumida[];

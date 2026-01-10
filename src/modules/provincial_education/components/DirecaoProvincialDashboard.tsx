@@ -1,6 +1,7 @@
 /**
  * Provincial Education Dashboard
  * Main dashboard for the Provincial Education Direction
+ * Mobile-first design with native app-like experience
  */
 
 import React, { useState } from 'react';
@@ -18,32 +19,123 @@ interface StatCardProps {
     title: string;
     value: number | string;
     icon: React.ReactNode;
-    color: string;
+    iconBg: string;
     subtitle?: string;
     onClick?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle, onClick }) => {
-    const Content = (
-        <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${color} hover:shadow-xl transition-shadow ${onClick ? 'cursor-pointer' : ''}`}>
-            <div className="flex items-center justify-between">
-                <div>
-                    <p className="text-sm text-gray-500 font-medium">{title}</p>
-                    <p className="text-3xl font-bold text-gray-800 mt-1">{value}</p>
-                    {subtitle && <p className="text-xs text-gray-400 mt-1">{subtitle}</p>}
-                </div>
-                <div className={`p-3 rounded-full bg-opacity-10 ${color.replace('border', 'bg')}`}>
+// Mobile-first stat card with touch feedback
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, iconBg, subtitle, onClick }) => {
+    return (
+        <button
+            onClick={onClick}
+            disabled={!onClick}
+            className={`
+                w-full bg-white rounded-2xl p-4 sm:p-5 
+                border border-slate-200/60 shadow-sm
+                transition-all duration-200
+                ${onClick
+                    ? 'cursor-pointer hover:shadow-md hover:border-slate-300 active:scale-[0.98]'
+                    : 'cursor-default'
+                }
+                text-left
+            `}
+        >
+            <div className="flex items-center gap-3">
+                <div className={`flex-shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-xl ${iconBg} flex items-center justify-center`}>
                     {icon}
                 </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-2xl sm:text-3xl font-bold text-slate-900 leading-none">
+                        {value}
+                    </p>
+                    <p className="text-sm text-slate-500 font-medium mt-0.5 truncate">
+                        {title}
+                    </p>
+                    {subtitle && (
+                        <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>
+                    )}
+                </div>
+                {onClick && (
+                    <Icons.ChevronRight className="w-5 h-5 text-slate-300 flex-shrink-0" />
+                )}
+            </div>
+        </button>
+    );
+};
+
+// Quick action button with touch feedback
+interface QuickActionProps {
+    label: string;
+    icon: React.ReactNode;
+    iconBg: string;
+    onClick: () => void;
+}
+
+const QuickAction: React.FC<QuickActionProps> = ({ label, icon, iconBg, onClick }) => (
+    <button
+        onClick={onClick}
+        className="
+            flex flex-col items-center gap-2 p-4 
+            bg-white rounded-2xl border border-slate-200/60
+            transition-all duration-200
+            hover:shadow-md hover:border-slate-300 
+            active:scale-[0.96]
+            min-h-[100px] min-w-[80px]
+        "
+    >
+        <div className={`w-12 h-12 rounded-xl ${iconBg} flex items-center justify-center`}>
+            {icon}
+        </div>
+        <span className="text-xs font-medium text-slate-700 text-center leading-tight">
+            {label}
+        </span>
+    </button>
+);
+
+// Mobile direction card
+interface DirectionCardProps {
+    municipio: string;
+    nome: string;
+    email: string;
+    escolas_count: number;
+    ativo: boolean;
+    onClick?: () => void;
+}
+
+const DirectionCard: React.FC<DirectionCardProps> = ({
+    municipio, nome, escolas_count, ativo, onClick
+}) => (
+    <button
+        onClick={onClick}
+        className="
+            w-full bg-white rounded-2xl p-4
+            border border-slate-200/60 shadow-sm
+            transition-all duration-200
+            hover:shadow-md active:scale-[0.98]
+            text-left
+        "
+    >
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <Icons.Building className="w-5 h-5 text-indigo-600" />
+                </div>
+                <div className="min-w-0">
+                    <p className="font-semibold text-slate-900 truncate">{municipio}</p>
+                    <p className="text-sm text-slate-500 truncate">{nome}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-sm font-medium text-slate-600">{escolas_count}</span>
+                <span className={`
+                    w-2.5 h-2.5 rounded-full
+                    ${ativo ? 'bg-emerald-500' : 'bg-red-500'}
+                `} />
             </div>
         </div>
-    );
-
-    if (onClick) {
-        return <div onClick={onClick}>{Content}</div>;
-    }
-    return Content;
-};
+    </button>
+);
 
 export const DirecaoProvincialDashboard: React.FC<DirecaoProvincialDashboardProps> = ({ onNavigate }) => {
     const { user } = useAuth();
@@ -63,230 +155,242 @@ export const DirecaoProvincialDashboard: React.FC<DirecaoProvincialDashboardProp
 
     const loading = loadingPedagogic || loadingDirecoes || loadingCirculares;
 
-    // Get recent history or alerts
+    // Get alerts
     const direcoesInactivas = direcoes.filter(d => !d.ativo);
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
-            {/* Header */}
-            <div className="mb-8">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-3xl font-bold text-gray-800">
-                            Dashboard Provincial
+        <div className="min-h-screen bg-slate-50">
+            {/* Header - Mobile optimized */}
+            <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-6">
+                <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0">
+                        <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-slate-900">
+                            Dashboard
                         </h1>
-                        <p className="text-gray-600 mt-1 flex items-center gap-2">
-                            <Icons.LocationMarker className="w-4 h-4" />
-                            <span>{provincia}</span>
-                            <span className="text-gray-400">|</span>
-                            <span>{nomeDirector}</span>
-                        </p>
+                        <div className="flex items-center gap-2 mt-1 text-slate-500">
+                            <Icons.LocationMarker className="w-4 h-4 flex-shrink-0" />
+                            <span className="text-sm truncate">{provincia}</span>
+                        </div>
                     </div>
                     <button
                         onClick={handleRefresh}
                         disabled={refreshing}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50"
+                        className="flex-shrink-0 p-3 bg-primary-600 text-white rounded-xl shadow-sm hover:bg-primary-700 active:scale-95 transition-all min-w-[48px] min-h-[48px] flex items-center justify-center"
                     >
-                        <Icons.Refresh className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                        Actualizar
+                        <Icons.Refresh className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
                     </button>
                 </div>
             </div>
 
             {loading ? (
                 <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+                    <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary-600 border-t-transparent" />
                 </div>
             ) : (
-                <>
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="px-4 pb-6 sm:px-6 space-y-6">
+                    {/* Key Stats - 2x2 grid on mobile */}
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
                         <StatCard
                             title="Municípios"
                             value={estatisticas.total_municipios}
-                            icon={<Icons.LocationMarker className="w-6 h-6 text-indigo-600" />}
-                            color="border-indigo-600"
-                            subtitle={`${estatsDirecoes.activas} direções activas`}
+                            icon={<Icons.LocationMarker className="w-5 h-5 sm:w-6 sm:h-6 text-indigo-600" />}
+                            iconBg="bg-gradient-to-br from-indigo-50 to-indigo-100"
                         />
                         <StatCard
-                            title="Direções Municipais"
+                            title="Direções"
                             value={estatisticas.total_direcoes_municipais}
-                            icon={<Icons.Building className="w-6 h-6 text-blue-600" />}
-                            color="border-blue-600"
+                            icon={<Icons.Building className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />}
+                            iconBg="bg-gradient-to-br from-blue-50 to-blue-100"
+                            subtitle={`${estatsDirecoes.activas} activas`}
                             onClick={() => onNavigate?.('provincial-direcoes-municipais')}
-                            subtitle={`${estatsDirecoes.inactivas} inactivas`}
                         />
                         <StatCard
                             title="Escolas"
                             value={estatisticas.total_escolas}
-                            icon={<Icons.School className="w-6 h-6 text-green-600" />}
-                            color="border-green-600"
-                            onClick={() => onNavigate?.('provincial-escolas')}
+                            icon={<Icons.School className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />}
+                            iconBg="bg-gradient-to-br from-emerald-50 to-emerald-100"
                             subtitle={`${estatisticas.escolas_activas} activas`}
+                            onClick={() => onNavigate?.('provincial-escolas')}
                         />
                         <StatCard
-                            title="Professores"
-                            value={estatisticas.total_professores}
-                            icon={<Icons.Users className="w-6 h-6 text-purple-600" />}
-                            color="border-purple-600"
+                            title="Alunos"
+                            value={estatisticas.total_alunos.toLocaleString()}
+                            icon={<Icons.AcademicCap className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />}
+                            iconBg="bg-gradient-to-br from-orange-50 to-orange-100"
                         />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    {/* Secondary Stats - Horizontal scroll on mobile */}
+                    <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-3 lg:grid-cols-4">
                         <StatCard
-                            title="Alunos"
-                            value={estatisticas.total_alunos}
-                            icon={<Icons.AcademicCap className="w-6 h-6 text-orange-600" />}
-                            color="border-orange-600"
+                            title="Professores"
+                            value={estatisticas.total_professores.toLocaleString()}
+                            icon={<Icons.Users className="w-5 h-5 text-purple-600" />}
+                            iconBg="bg-gradient-to-br from-purple-50 to-purple-100"
                         />
                         <StatCard
                             title="Turmas"
-                            value={estatisticas.total_turmas}
-                            icon={<Icons.ClipboardList className="w-6 h-6 text-teal-600" />}
-                            color="border-teal-600"
+                            value={estatisticas.total_turmas.toLocaleString()}
+                            icon={<Icons.ClipboardList className="w-5 h-5 text-teal-600" />}
+                            iconBg="bg-gradient-to-br from-teal-50 to-teal-100"
                         />
                         <StatCard
-                            title="Circulares Activas"
+                            title="Circulares"
                             value={estatsCirculares.publicadas}
-                            icon={<Icons.DocumentText className="w-6 h-6 text-pink-600" />}
-                            color="border-pink-600"
-                            onClick={() => onNavigate?.('provincial-circulares')}
+                            icon={<Icons.DocumentText className="w-5 h-5 text-pink-600" />}
+                            iconBg="bg-gradient-to-br from-pink-50 to-pink-100"
                             subtitle={`${estatsCirculares.rascunhos} rascunhos`}
-                        />
-                        <StatCard
-                            title="Supervisão Pedagógica"
-                            value="Ver"
-                            icon={<Icons.TrendingUp className="w-6 h-6 text-amber-600" />}
-                            color="border-amber-600"
-                            onClick={() => onNavigate?.('provincial-supervisao')}
+                            onClick={() => onNavigate?.('provincial-circulares')}
                         />
                     </div>
 
-                    {/* Alerts and Quick Actions */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                        {/* Alerts */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                                <Icons.ExclamationCircle className="w-5 h-5 text-orange-500" />
-                                Alertas
-                            </h2>
-                            {direcoesInactivas.length > 0 ? (
-                                <div className="space-y-3">
-                                    {direcoesInactivas.slice(0, 5).map(direcao => (
-                                        <div
-                                            key={direcao.id}
-                                            className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100"
-                                        >
-                                            <div>
-                                                <p className="font-medium text-gray-800">{direcao.nome}</p>
-                                                <p className="text-sm text-gray-500">{direcao.municipio}</p>
-                                            </div>
-                                            <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-                                                Inactiva
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="text-center py-8 text-gray-500">
-                                    <Icons.ExclamationCircle className="w-12 h-12 mx-auto text-gray-300 mb-2" />
-                                    <p>Nenhum alerta no momento</p>
-                                </div>
-                            )}
+                    {/* Quick Actions - Horizontal scroll on mobile */}
+                    <div>
+                        <h2 className="text-base font-semibold text-slate-900 mb-3">
+                            Acções Rápidas
+                        </h2>
+                        <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:grid sm:grid-cols-4 lg:grid-cols-5">
+                            <QuickAction
+                                label="Direções"
+                                icon={<Icons.Building className="w-6 h-6 text-blue-600" />}
+                                iconBg="bg-gradient-to-br from-blue-50 to-blue-100"
+                                onClick={() => onNavigate?.('provincial-direcoes-municipais')}
+                            />
+                            <QuickAction
+                                label="Escolas"
+                                icon={<Icons.School className="w-6 h-6 text-emerald-600" />}
+                                iconBg="bg-gradient-to-br from-emerald-50 to-emerald-100"
+                                onClick={() => onNavigate?.('provincial-escolas')}
+                            />
+                            <QuickAction
+                                label="Supervisão"
+                                icon={<Icons.TrendingUp className="w-6 h-6 text-amber-600" />}
+                                iconBg="bg-gradient-to-br from-amber-50 to-amber-100"
+                                onClick={() => onNavigate?.('provincial-supervisao')}
+                            />
+                            <QuickAction
+                                label="Circulares"
+                                icon={<Icons.DocumentText className="w-6 h-6 text-pink-600" />}
+                                iconBg="bg-gradient-to-br from-pink-50 to-pink-100"
+                                onClick={() => onNavigate?.('provincial-circulares')}
+                            />
+                            <QuickAction
+                                label="Relatórios"
+                                icon={<Icons.BarChart className="w-6 h-6 text-indigo-600" />}
+                                iconBg="bg-gradient-to-br from-indigo-50 to-indigo-100"
+                                onClick={() => onNavigate?.('provincial-relatorios')}
+                            />
                         </div>
+                    </div>
 
-                        {/* Quick Actions */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-                                Acções Rápidas
-                            </h2>
-                            <div className="grid grid-cols-2 gap-4">
+                    {/* Alerts - Only show if there are any */}
+                    {direcoesInactivas.length > 0 && (
+                        <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200/60">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Icons.ExclamationCircle className="w-5 h-5 text-amber-600" />
+                                <h2 className="text-base font-semibold text-slate-900">
+                                    Alertas ({direcoesInactivas.length})
+                                </h2>
+                            </div>
+                            <div className="space-y-2">
+                                {direcoesInactivas.slice(0, 3).map(direcao => (
+                                    <div
+                                        key={direcao.id}
+                                        className="flex items-center justify-between p-3 bg-white/70 rounded-xl"
+                                    >
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-slate-800 truncate">{direcao.municipio}</p>
+                                            <p className="text-sm text-slate-500 truncate">{direcao.nome}</p>
+                                        </div>
+                                        <span className="flex-shrink-0 px-2.5 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full border border-red-200">
+                                            Inactiva
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                            {direcoesInactivas.length > 3 && (
                                 <button
                                     onClick={() => onNavigate?.('provincial-direcoes-municipais')}
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-colors cursor-pointer"
+                                    className="mt-3 text-sm font-medium text-amber-700 hover:text-amber-800"
                                 >
-                                    <Icons.Building className="w-5 h-5 text-blue-600" />
-                                    <span className="font-medium text-gray-700">Gerir Direcções</span>
-                                    <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
+                                    Ver mais {direcoesInactivas.length - 3} alertas →
                                 </button>
-                                <button
-                                    onClick={() => onNavigate?.('provincial-escolas')}
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-colors cursor-pointer"
-                                >
-                                    <Icons.School className="w-5 h-5 text-green-600" />
-                                    <span className="font-medium text-gray-700">Ver Escolas</span>
-                                    <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </button>
-                                <button
-                                    onClick={() => onNavigate?.('provincial-circulares')}
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg hover:from-pink-100 hover:to-pink-200 transition-colors cursor-pointer"
-                                >
-                                    <Icons.DocumentText className="w-5 h-5 text-pink-600" />
-                                    <span className="font-medium text-gray-700">Nova Circular</span>
-                                    <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </button>
-                                <button
-                                    onClick={() => onNavigate?.('provincial-relatorios')}
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg hover:from-amber-100 hover:to-amber-200 transition-colors cursor-pointer"
-                                >
-                                    <Icons.TrendingUp className="w-5 h-5 text-amber-600" />
-                                    <span className="font-medium text-gray-700">Relatórios</span>
-                                    <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </button>
-                            </div>
+                            )}
                         </div>
-                    </div>
+                    )}
 
-                    {/* Municipal Directions Overview */}
-                    <div className="bg-white rounded-xl shadow-lg p-6">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-semibold text-gray-800">
+                    {/* Directions List - Cards on mobile, table on desktop */}
+                    <div>
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-base font-semibold text-slate-900">
                                 Direções Municipais
                             </h2>
                             <button
                                 onClick={() => onNavigate?.('provincial-direcoes-municipais')}
-                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 cursor-pointer"
+                                className="text-sm font-medium text-primary-600 hover:text-primary-700 flex items-center gap-1"
                             >
                                 Ver todas
                                 <Icons.ChevronRight className="w-4 h-4" />
                             </button>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
+
+                        {/* Mobile: Cards */}
+                        <div className="space-y-3 md:hidden">
+                            {direcoes.slice(0, 5).map(direcao => (
+                                <DirectionCard
+                                    key={direcao.id}
+                                    municipio={direcao.municipio}
+                                    nome={direcao.nome}
+                                    email={direcao.email}
+                                    escolas_count={direcao.escolas_count}
+                                    ativo={direcao.ativo}
+                                    onClick={() => onNavigate?.('provincial-direcoes-municipais')}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Desktop: Table */}
+                        <div className="hidden md:block bg-white rounded-2xl border border-slate-200/60 overflow-hidden">
+                            <table className="min-w-full divide-y divide-slate-200">
+                                <thead className="bg-slate-50">
                                     <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                             Município
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                             Director
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                             Escolas
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">
                                             Estado
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
+                                <tbody className="bg-white divide-y divide-slate-100">
                                     {direcoes.slice(0, 5).map(direcao => (
-                                        <tr key={direcao.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="font-medium text-gray-900">{direcao.municipio}</div>
+                                        <tr key={direcao.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="px-5 py-4 whitespace-nowrap">
+                                                <span className="font-medium text-slate-900">{direcao.municipio}</span>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="text-gray-900">{direcao.nome}</div>
-                                                <div className="text-gray-500 text-sm">{direcao.email}</div>
+                                            <td className="px-5 py-4 whitespace-nowrap">
+                                                <div>
+                                                    <p className="text-slate-900">{direcao.nome}</p>
+                                                    <p className="text-sm text-slate-500">{direcao.email}</p>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-gray-900">
+                                            <td className="px-5 py-4 whitespace-nowrap text-slate-700">
                                                 {direcao.escolas_count}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${direcao.ativo
-                                                    ? 'bg-green-100 text-green-800'
-                                                    : 'bg-red-100 text-red-800'
-                                                    }`}>
+                                            <td className="px-5 py-4 whitespace-nowrap">
+                                                <span className={`
+                                                    inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium
+                                                    ${direcao.ativo
+                                                        ? 'bg-emerald-100 text-emerald-700 border border-emerald-200'
+                                                        : 'bg-red-100 text-red-700 border border-red-200'
+                                                    }
+                                                `}>
                                                     {direcao.ativo ? 'Activa' : 'Inactiva'}
                                                 </span>
                                             </td>
@@ -296,7 +400,7 @@ export const DirecaoProvincialDashboard: React.FC<DirecaoProvincialDashboardProp
                             </table>
                         </div>
                     </div>
-                </>
+                </div>
             )}
         </div>
     );

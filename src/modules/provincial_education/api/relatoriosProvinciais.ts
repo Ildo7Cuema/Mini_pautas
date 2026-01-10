@@ -35,12 +35,29 @@ export async function generateRelatorioConsolidado(
     const now = new Date();
     const periodo = `${now.getFullYear()}`;
 
+    // Transform to expected format
     return {
         provincia,
         periodo,
+        data_geracao: now.toISOString(),
+        estatisticas_gerais: {
+            total_escolas: estatisticas.total_escolas,
+            total_alunos: estatisticas.total_alunos,
+            total_professores: estatisticas.total_professores,
+            taxa_aprovacao_media: 0, // TODO: Calculate from pedagogic data
+            escolas_inactivas: estatisticas.total_escolas - estatisticas.escolas_activas,
+            escolas_bloqueadas: 0
+        },
+        dados_por_municipio: comparativo.map(m => ({
+            municipio: m.municipio,
+            total_escolas: m.total_escolas,
+            total_alunos: m.total_alunos,
+            taxa_aprovacao: m.media_aprovacao
+        })),
+        // Keep original fields for backward compatibility
         estatisticas: {
             ...estatisticas,
-            media_geral: 0, // TODO: Calculate from pedagogic data
+            media_geral: 0,
             taxa_aprovacao: 0,
             circulares_activas: 0
         },

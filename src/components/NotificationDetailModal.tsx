@@ -48,25 +48,31 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
         }
     }, [isOpen, onClose])
 
-    // Fetch details for circulars
+    // Fetch details for circulars (municipal and provincial)
     useEffect(() => {
-        if (isOpen && notification && notification.tipo === 'nova_circular_municipal' && notification.dados_adicionais?.circular_id) {
-            setLoadingDetails(true);
-            const fetchDetails = async () => {
-                const { data, error } = await supabase
-                    .from('circulares_municipais')
-                    .select('anexo_url, anexo_filename, conteudo')
-                    .eq('id', notification.dados_adicionais.circular_id)
-                    .single();
+        if (isOpen && notification) {
+            const isMunicipalCircular = notification.tipo === 'nova_circular_municipal' && notification.dados_adicionais?.circular_id;
+            const isProvincialCircular = notification.tipo === 'nova_circular_provincial' && notification.dados_adicionais?.circular_id;
 
-                if (data && !error) {
-                    setCircularDetails(data);
-                }
-                setLoadingDetails(false);
-            };
-            fetchDetails();
-        } else {
-            setCircularDetails(null);
+            if (isMunicipalCircular || isProvincialCircular) {
+                setLoadingDetails(true);
+                const fetchDetails = async () => {
+                    const tableName = isMunicipalCircular ? 'circulares_municipais' : 'circulares_provinciais';
+                    const { data, error } = await supabase
+                        .from(tableName)
+                        .select('anexo_url, anexo_filename, conteudo')
+                        .eq('id', notification.dados_adicionais.circular_id)
+                        .single();
+
+                    if (data && !error) {
+                        setCircularDetails(data);
+                    }
+                    setLoadingDetails(false);
+                };
+                fetchDetails();
+            } else {
+                setCircularDetails(null);
+            }
         }
     }, [isOpen, notification]);
 
@@ -106,7 +112,8 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
             'sistema': 'Sistema',
             'escola_nova': 'Nova Escola',
             'atualizacao_sistema': 'Actualização do Sistema',
-            'nova_circular_municipal': 'Comunicação Oficial'
+            'nova_circular_municipal': 'Comunicação Oficial',
+            'nova_circular_provincial': 'Circular Provincial'
         }
         return labels[tipo] || 'Notificação'
     }
@@ -162,16 +169,37 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
 
                     {/* Body */}
                     <div className="p-6 md:p-8 space-y-6">
-                        {/* Message */}
+                        {/* Message / Circular Content */}
                         {(notification.mensagem || circularDetails?.conteudo) && (
                             <div className="mb-6">
                                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                    Mensagem
+                                    {(notification.tipo === 'nova_circular_provincial' || notification.tipo === 'nova_circular_municipal')
+                                        ? 'Conteúdo da Circular'
+                                        : 'Mensagem'}
                                 </h4>
                                 <div className="text-sm text-slate-700 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100 whitespace-pre-wrap">
                                     {/* Use full content if available, otherwise message */}
                                     {circularDetails?.conteudo || notification.mensagem}
                                 </div>
+                            </div>
+                        )}
+
+                        {/* Circular Info Badge */}
+                        {(notification.tipo === 'nova_circular_provincial' || notification.tipo === 'nova_circular_municipal') && (
+                            <div className="flex flex-wrap gap-2 mb-4">
+                                {notification.dados_adicionais?.urgente && (
+                                    <span className="px-3 py-1 bg-red-100 text-red-700 text-xs font-bold rounded-full flex items-center gap-1">
+                                        🔴 URGENTE
+                                    </span>
+                                )}
+                                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 text-xs font-medium rounded-full">
+                                    {notification.dados_adicionais?.tipo || 'Circular'}
+                                </span>
+                                {notification.dados_adicionais?.provincia && (
+                                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
+                                        📍 {notification.dados_adicionais.provincia}
+                                    </span>
+                                )}
                             </div>
                         )}
 
@@ -182,21 +210,31 @@ export const NotificationDetailModal: React.FC<NotificationDetailModalProps> = (
                             </div>
                         )}
 
-                        {/* Attachment Button */}
+                        {/* Attachment Download Section */}
                         {circularDetails?.anexo_url && (
-                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-100">
-                                <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Anexo Disponível</h4>
+                            <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-200 shadow-sm">
+                                <h4 className="text-sm font-bold text-blue-800 mb-3 flex items-center gap-2">
+                                    📎 Documento Anexo
+                                </h4>
                                 <a
                                     href={circularDetails.anexo_url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-3 p-3 bg-white rounded-lg border border-blue-200 hover:shadow-md transition-all text-blue-700 font-medium"
+                                    download
+                                    className="flex items-center gap-3 p-4 bg-white rounded-lg border border-blue-200 hover:border-blue-400 hover:shadow-lg transition-all text-blue-700 font-medium group"
                                 >
-                                    <span className="text-2xl">📄</span>
-                                    <span className="flex-1 truncate">{circularDetails.anexo_filename || 'Visualizar Documento'}</span>
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                                    </svg>
+                                    <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                                        <span className="text-2xl">📄</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold truncate">{circularDetails.anexo_filename || 'Documento'}</p>
+                                        <p className="text-xs text-blue-500">Clique para descarregar</p>
+                                    </div>
+                                    <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white group-hover:bg-blue-700 transition-colors">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    </div>
                                 </a>
                             </div>
                         )}

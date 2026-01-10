@@ -8,6 +8,21 @@ import type { Escola } from '../../../types';
 import type { FiltrosEscolasProvincia } from '../types';
 
 /**
+ * Normalize municipality name for consistent grouping
+ * Handles variations in capitalization and whitespace
+ */
+function normalizeMunicipio(municipio: string): string {
+    const trimmed = municipio?.trim() || '';
+    if (trimmed.length === 0) return trimmed;
+    // Capitalize first letter of each word
+    return trimmed
+        .toLowerCase()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+}
+
+/**
  * Fetch all schools in the province
  */
 export async function fetchEscolasProvincia(
@@ -53,13 +68,14 @@ export async function fetchEscolasAgrupadasPorMunicipio(provincia: string): Prom
 }[]> {
     const escolas = await fetchEscolasProvincia(provincia);
 
-    // Group by municipality
+    // Group by normalized municipality name
     const grouped: Record<string, Escola[]> = {};
     for (const escola of escolas) {
-        if (!grouped[escola.municipio]) {
-            grouped[escola.municipio] = [];
+        const normalizedMunicipio = normalizeMunicipio(escola.municipio);
+        if (!grouped[normalizedMunicipio]) {
+            grouped[normalizedMunicipio] = [];
         }
-        grouped[escola.municipio].push(escola);
+        grouped[normalizedMunicipio].push(escola);
     }
 
     // Transform to array with counts
@@ -100,10 +116,12 @@ export async function fetchEstatisticasEscolasProvincia(provincia: string): Prom
             stats.escolas_activas++;
         }
 
-        if (!stats.total_por_municipio[escola.municipio]) {
-            stats.total_por_municipio[escola.municipio] = 0;
+        // Use normalized municipality name for grouping
+        const normalizedMunicipio = normalizeMunicipio(escola.municipio);
+        if (!stats.total_por_municipio[normalizedMunicipio]) {
+            stats.total_por_municipio[normalizedMunicipio] = 0;
         }
-        stats.total_por_municipio[escola.municipio]++;
+        stats.total_por_municipio[normalizedMunicipio]++;
     }
 
     return stats;
@@ -167,7 +185,8 @@ export async function fetchEscolaDetalhesProvincial(escolaId: string): Promise<{
  */
 export async function fetchMunicipiosProvincia(provincia: string): Promise<string[]> {
     const escolas = await fetchEscolasProvincia(provincia);
-    const municipios = [...new Set(escolas.map(e => e.municipio))];
+    // Use normalized municipality names to avoid duplicates
+    const municipios = [...new Set(escolas.map(e => normalizeMunicipio(e.municipio)))];
     return municipios.sort();
 }
 

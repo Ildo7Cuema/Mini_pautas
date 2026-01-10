@@ -21,6 +21,7 @@ type TipoRelatorio = 'consolidado' | 'comparativo' | 'direcoes_municipais' | 'es
 
 interface UseRelatoriosProvinciaisReturn {
     loading: boolean;
+    loadingExport: boolean;
     error: string | null;
 
     // Report generation
@@ -35,6 +36,11 @@ interface UseRelatoriosProvinciaisReturn {
 
     // Clear
     limpar: () => void;
+
+    // Portuguese aliases
+    gerarRelatorioConsolidado: (anoLectivo?: string, trimestre?: 1 | 2 | 3) => Promise<RelatorioConsolidadoProvincia | null>;
+    exportarRelatorioCSV: (relatorio: RelatorioConsolidadoProvincia) => Promise<void>;
+    exportarRelatorioJSON: (relatorio: RelatorioConsolidadoProvincia) => Promise<void>;
 }
 
 export function useRelatoriosProvinciais(): UseRelatoriosProvinciaisReturn {
@@ -124,6 +130,23 @@ export function useRelatoriosProvinciais(): UseRelatoriosProvinciaisReturn {
         }
     }, [provincia]);
 
+    // Helper functions with Portuguese names for page compatibility
+    const gerarRelatorioConsolidado = useCallback(async (
+        _anoLectivo?: string,
+        trimestre?: 1 | 2 | 3
+    ): Promise<RelatorioConsolidadoProvincia | null> => {
+        const result = await generateRelatorio('consolidado', { trimestre });
+        return result as RelatorioConsolidadoProvincia | null;
+    }, [generateRelatorio]);
+
+    const exportarRelatorioCSV = useCallback(async (_relatorio: RelatorioConsolidadoProvincia): Promise<void> => {
+        await exportar('csv');
+    }, [exportar]);
+
+    const exportarRelatorioJSON = useCallback(async (_relatorio: RelatorioConsolidadoProvincia): Promise<void> => {
+        await exportar('json');
+    }, [exportar]);
+
     const limpar = useCallback(() => {
         setRelatorioAtual(null);
         setTipoAtual(null);
@@ -132,11 +155,16 @@ export function useRelatoriosProvinciais(): UseRelatoriosProvinciaisReturn {
 
     return {
         loading,
+        loadingExport: loading,
         error,
         generateRelatorio,
         relatorioAtual,
         tipoAtual,
         exportar,
-        limpar
+        limpar,
+        // Portuguese aliases for page compatibility
+        gerarRelatorioConsolidado,
+        exportarRelatorioCSV,
+        exportarRelatorioJSON
     };
 }

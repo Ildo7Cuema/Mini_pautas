@@ -1,12 +1,35 @@
 /**
  * Provincial Reports Page
  * Generate and export consolidated reports
+ * Mobile-first design with summarized view and clear export feedback
  */
 
 import React, { useState } from 'react';
 import { Icons } from '../../../components/ui/Icons';
 import { useRelatoriosProvinciais } from '../hooks/useRelatoriosProvinciais';
-import type { RelatorioConsolidadoProvincial } from '../types';
+import type { RelatorioConsolidadoProvincia } from '../types';
+
+// Report card for municipalities
+const MunicipioCard: React.FC<{
+    municipio: string;
+    total_alunos: number;
+    taxa_aprovacao: number;
+}> = ({ municipio, total_alunos, taxa_aprovacao }) => (
+    <div className="bg-white rounded-xl border border-slate-200/60 p-4">
+        <div className="flex items-center justify-between">
+            <div className="min-w-0">
+                <p className="font-semibold text-slate-900 truncate">{municipio}</p>
+                <p className="text-sm text-slate-500">{total_alunos.toLocaleString()} alunos</p>
+            </div>
+            <div className="text-right">
+                <p className={`text-xl font-bold ${taxa_aprovacao >= 70 ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {taxa_aprovacao.toFixed(1)}%
+                </p>
+                <p className="text-xs text-slate-400">aprovação</p>
+            </div>
+        </div>
+    </div>
+);
 
 export const RelatoriosProvinciaisPage: React.FC = () => {
     const {
@@ -20,7 +43,8 @@ export const RelatoriosProvinciaisPage: React.FC = () => {
 
     const [trimestre, setTrimestre] = useState<1 | 2 | 3 | undefined>(undefined);
     const [anoLectivo, setAnoLectivo] = useState(new Date().getFullYear().toString());
-    const [relatorio, setRelatorio] = useState<RelatorioConsolidadoProvincial | null>(null);
+    const [relatorio, setRelatorio] = useState<RelatorioConsolidadoProvincia | null>(null);
+    const [exportSuccess, setExportSuccess] = useState<string | null>(null);
 
     const handleGerarRelatorio = async () => {
         try {
@@ -35,6 +59,8 @@ export const RelatoriosProvinciaisPage: React.FC = () => {
         if (!relatorio) return;
         try {
             await exportarRelatorioCSV(relatorio);
+            setExportSuccess('CSV exportado com sucesso!');
+            setTimeout(() => setExportSuccess(null), 3000);
         } catch (err) {
             console.error('Error exporting CSV:', err);
         }
@@ -44,176 +70,177 @@ export const RelatoriosProvinciaisPage: React.FC = () => {
         if (!relatorio) return;
         try {
             await exportarRelatorioJSON(relatorio);
+            setExportSuccess('JSON exportado com sucesso!');
+            setTimeout(() => setExportSuccess(null), 3000);
         } catch (err) {
             console.error('Error exporting JSON:', err);
         }
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 p-6">
+        <div className="min-h-screen bg-slate-50">
             {/* Header */}
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">Relatórios Consolidados</h1>
-                <p className="text-gray-600 mt-1">Gere e exporte relatórios provinciais completos</p>
+            <div className="px-4 pt-4 pb-2 sm:px-6">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Relatórios</h1>
+                <p className="text-sm text-slate-500">Gere relatórios consolidados</p>
             </div>
 
-            {/* Controls */}
-            <div className="bg-white rounded-xl shadow-lg p-6 mb-8">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            <Icons.Calendar className="w-4 h-4 inline mr-1" />
-                            Ano Lectivo
-                        </label>
-                        <select
-                            value={anoLectivo}
-                            onChange={(e) => setAnoLectivo(e.target.value)}
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="2024">2024</option>
-                            <option value="2025">2025</option>
-                            <option value="2026">2026</option>
-                        </select>
+            <div className="px-4 sm:px-6 pb-6 space-y-4">
+                {/* Controls */}
+                <div className="bg-white rounded-2xl border border-slate-200/60 p-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                                Ano Lectivo
+                            </label>
+                            <select
+                                value={anoLectivo}
+                                onChange={(e) => setAnoLectivo(e.target.value)}
+                                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 min-h-[44px]"
+                            >
+                                <option value="">Todos</option>
+                                <option value="2024">2024</option>
+                                <option value="2024/2025">2024/2025</option>
+                                <option value="2025">2025</option>
+                                <option value="2025/2026">2025/2026</option>
+                                <option value="2026">2026</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                                Trimestre
+                            </label>
+                            <select
+                                value={trimestre || ''}
+                                onChange={(e) => setTrimestre(e.target.value ? Number(e.target.value) as 1 | 2 | 3 : undefined)}
+                                className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-primary-500 min-h-[44px]"
+                            >
+                                <option value="">Todo o Ano</option>
+                                <option value="1">1º Trimestre</option>
+                                <option value="2">2º Trimestre</option>
+                                <option value="3">3º Trimestre</option>
+                            </select>
+                        </div>
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                            Trimestre
-                        </label>
-                        <select
-                            value={trimestre || ''}
-                            onChange={(e) => setTrimestre(e.target.value ? Number(e.target.value) as 1 | 2 | 3 : undefined)}
-                            className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                        >
-                            <option value="">Todo o Ano</option>
-                            <option value="1">1º Trimestre</option>
-                            <option value="2">2º Trimestre</option>
-                            <option value="3">3º Trimestre</option>
-                        </select>
-                    </div>
-
-                    <div className="md:col-span-2">
-                        <button
-                            onClick={handleGerarRelatorio}
-                            disabled={loading}
-                            className="w-full md:w-auto px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            <Icons.Refresh className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                            {loading ? 'A Gerar...' : 'Gerar Relatório'}
-                        </button>
-                    </div>
+                    <button
+                        onClick={handleGerarRelatorio}
+                        disabled={loading}
+                        className="w-full py-3.5 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[48px] shadow-sm"
+                    >
+                        <Icons.Refresh className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        {loading ? 'A gerar...' : 'Gerar Relatório'}
+                    </button>
                 </div>
-            </div>
 
-            {error && (
-                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-                    <Icons.ExclamationCircle className="w-5 h-5 inline mr-2" />
-                    {error}
-                </div>
-            )}
-
-            {/* Report Display */}
-            {relatorio && (
-                <div className="space-y-6 animate-fade-in">
-                    {/* Actions Bar */}
-                    <div className="flex justify-end gap-3">
-                        <button
-                            onClick={handleExportCSV}
-                            disabled={loadingExport}
-                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 shadow-sm"
-                        >
-                            <Icons.FileSpreadsheet className="w-4 h-4" />
-                            Exportar CSV
-                        </button>
-                        <button
-                            onClick={handleExportJSON}
-                            disabled={loadingExport}
-                            className="flex items-center gap-2 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 shadow-sm"
-                        >
-                            <Icons.FileJson className="w-4 h-4" />
-                            Exportar JSON
-                        </button>
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center gap-2">
+                        <Icons.ExclamationCircle className="w-5 h-5 flex-shrink-0" />
+                        <span>{error}</span>
                     </div>
+                )}
 
-                    {/* Summary Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-blue-500">
-                            <p className="text-gray-500 text-sm">Total de Escolas</p>
-                            <p className="text-3xl font-bold text-gray-800">{relatorio.estatisticas_gerais.total_escolas}</p>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-indigo-500">
-                            <p className="text-gray-500 text-sm">Total de Alunos</p>
-                            <p className="text-3xl font-bold text-gray-800">{relatorio.estatisticas_gerais.total_alunos.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-purple-500">
-                            <p className="text-gray-500 text-sm">Total de Professores</p>
-                            <p className="text-3xl font-bold text-gray-800">{relatorio.estatisticas_gerais.total_professores.toLocaleString()}</p>
-                        </div>
-                        <div className="bg-white p-6 rounded-xl shadow-lg border-l-4 border-green-500">
-                            <p className="text-gray-500 text-sm">Taxa Média Aprovação</p>
-                            <p className="text-3xl font-bold text-green-600">{relatorio.estatisticas_gerais.taxa_aprovacao_media.toFixed(1)}%</p>
-                        </div>
+                {/* Export success toast */}
+                {exportSuccess && (
+                    <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-6 sm:w-auto bg-emerald-600 text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-slide-up z-50">
+                        <Icons.CheckCircle className="w-5 h-5" />
+                        {exportSuccess}
                     </div>
+                )}
 
-                    {/* Report Content - Sections */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Municipalities Performance */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <Icons.BarChart className="w-5 h-5 text-indigo-500" />
-                                Desempenho por Município
-                            </h3>
-                            <div className="space-y-4">
+                {/* Report Display */}
+                {relatorio && (
+                    <div className="space-y-4 animate-fade-in">
+                        {/* Export actions - sticky on mobile */}
+                        <div className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur-sm py-3 -mx-4 px-4 sm:mx-0 sm:px-0 sm:static sm:bg-transparent">
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleExportCSV}
+                                    disabled={loadingExport}
+                                    className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[44px] shadow-sm disabled:opacity-50"
+                                >
+                                    <Icons.FileSpreadsheet className="w-4 h-4" />
+                                    CSV
+                                </button>
+                                <button
+                                    onClick={handleExportJSON}
+                                    disabled={loadingExport}
+                                    className="flex-1 py-3 bg-slate-800 text-white rounded-xl font-medium hover:bg-slate-900 active:scale-[0.98] transition-all flex items-center justify-center gap-2 min-h-[44px] shadow-sm disabled:opacity-50"
+                                >
+                                    <Icons.FileJson className="w-4 h-4" />
+                                    JSON
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Summary Cards - 2x2 grid on mobile */}
+                        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
+                                <p className="text-xs text-slate-500 font-medium">Escolas</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">{relatorio.estatisticas_gerais.total_escolas}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
+                                <p className="text-xs text-slate-500 font-medium">Alunos</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">{relatorio.estatisticas_gerais.total_alunos.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
+                                <p className="text-xs text-slate-500 font-medium">Professores</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-slate-900 mt-1">{relatorio.estatisticas_gerais.total_professores.toLocaleString()}</p>
+                            </div>
+                            <div className="bg-white p-4 rounded-2xl border border-slate-200/60 shadow-sm">
+                                <p className="text-xs text-slate-500 font-medium">Aprovação</p>
+                                <p className="text-2xl sm:text-3xl font-bold text-emerald-600 mt-1">{relatorio.estatisticas_gerais.taxa_aprovacao_media.toFixed(1)}%</p>
+                            </div>
+                        </div>
+
+                        {/* Municipality Performance - vertical list on mobile */}
+                        <div>
+                            <h2 className="text-base font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                                <Icons.BarChart className="w-5 h-5 text-primary-600" />
+                                Por Município
+                            </h2>
+                            <div className="space-y-3">
                                 {relatorio.dados_por_municipio.map(mun => (
-                                    <div key={mun.municipio} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                                        <div>
-                                            <p className="font-semibold text-gray-800">{mun.municipio}</p>
-                                            <p className="text-xs text-gray-500">{mun.total_alunos} alunos</p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className={`font-bold ${mun.taxa_aprovacao >= 70 ? 'text-green-600' : 'text-yellow-600'}`}>
-                                                {mun.taxa_aprovacao.toFixed(1)}%
-                                            </p>
-                                            <p className="text-xs text-gray-400">Aprovação</p>
-                                        </div>
-                                    </div>
+                                    <MunicipioCard
+                                        key={mun.municipio}
+                                        municipio={mun.municipio}
+                                        total_alunos={mun.total_alunos}
+                                        taxa_aprovacao={mun.taxa_aprovacao}
+                                    />
                                 ))}
                             </div>
                         </div>
 
-                        {/* Problems distribution */}
-                        <div className="bg-white rounded-xl shadow-lg p-6">
-                            <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                                <Icons.ExclamationCircle className="w-5 h-5 text-red-500" />
-                                Alertas e Problemas
-                            </h3>
-                            <div className="space-y-4">
-                                <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-100">
-                                    <h4 className="font-semibold">Escolas Inactivas</h4>
-                                    <p className="text-3xl font-bold mt-2">{relatorio.estatisticas_gerais.escolas_inactivas}</p>
-                                </div>
-                                <div className="p-4 bg-yellow-50 text-yellow-800 rounded-lg border border-yellow-100">
-                                    <h4 className="font-semibold">Escolas Bloqueadas</h4>
-                                    <p className="text-3xl font-bold mt-2">{relatorio.estatisticas_gerais.escolas_bloqueadas}</p>
-                                </div>
+                        {/* Alerts section - compact cards */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="p-4 bg-red-50 rounded-xl border border-red-200">
+                                <p className="text-xs font-medium text-red-700">Inactivas</p>
+                                <p className="text-2xl font-bold text-red-700 mt-1">{relatorio.estatisticas_gerais.escolas_inactivas}</p>
+                            </div>
+                            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                                <p className="text-xs font-medium text-amber-700">Bloqueadas</p>
+                                <p className="text-2xl font-bold text-amber-700 mt-1">{relatorio.estatisticas_gerais.escolas_bloqueadas}</p>
                             </div>
                         </div>
-                    </div>
 
-                    {/* Generated At Footer */}
-                    <div className="text-center text-sm text-gray-400 mt-8">
-                        Relatório gerado em: {new Date(relatorio.data_geracao).toLocaleString('pt-AO')}
+                        {/* Generated footer */}
+                        <p className="text-center text-xs text-slate-400 pt-4">
+                            Gerado em {new Date(relatorio.data_geracao).toLocaleString('pt-AO')}
+                        </p>
                     </div>
-                </div>
-            )}
+                )}
 
-            {!relatorio && !loading && (
-                <div className="text-center py-20 bg-white rounded-xl shadow-sm border border-gray-100">
-                    <Icons.DocumentText className="w-16 h-16 text-gray-200 mx-auto mb-4" />
-                    <h3 className="text-xl font-medium text-gray-400">Nenhum relatório gerado</h3>
-                    <p className="text-gray-400 mt-2">Seleccione as opções acima e clique em "Gerar Relatório"</p>
-                </div>
-            )}
+                {/* Empty state */}
+                {!relatorio && !loading && (
+                    <div className="text-center py-16 bg-white rounded-2xl border border-slate-200/60">
+                        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                            <Icons.DocumentText className="w-8 h-8 text-slate-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-slate-500">Nenhum relatório</h3>
+                        <p className="text-sm text-slate-400 mt-1">Seleccione as opções e gere o relatório</p>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

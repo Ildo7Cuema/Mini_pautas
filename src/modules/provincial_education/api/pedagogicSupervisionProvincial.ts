@@ -26,7 +26,13 @@ export async function fetchIndicadoresPedagogicosProvinciais(
         .eq('ativo', true);
 
     const escolaIds = escolas?.map(e => e.id) || [];
-    const municipios = [...new Set(escolas?.map(e => e.municipio) || [])];
+
+    // Normalize municipality names for accurate counting
+    const normalizeMunicipio = (m: string) => {
+        const trimmed = m?.trim() || '';
+        return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    };
+    const municipios = [...new Set(escolas?.map(e => normalizeMunicipio(e.municipio)) || [])];
 
     if (escolaIds.length === 0) {
         return {
@@ -121,17 +127,24 @@ export async function fetchIndicadoresPorMunicipio(
     if (error) {
         console.warn('RPC get_estatisticas_por_municipio failed, falling back to manual query:', error);
 
-        // Fallback: Manual calculation
+        // Fallback: Manual calculation with normalized municipality names
         const { data: escolas } = await supabase
             .from('escolas')
             .select('*')
             .eq('provincia', provincia);
 
-        const municipios = [...new Set(escolas?.map(e => e.municipio) || [])];
+        // Normalize municipality names: trim and capitalize
+        const normalizeMunicipio = (m: string) => {
+            const trimmed = m?.trim() || '';
+            return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+        };
+
+        const municipios = [...new Set(escolas?.map(e => normalizeMunicipio(e.municipio)) || [])];
         const results: IndicadoresPorMunicipio[] = [];
 
         for (const municipio of municipios) {
-            const escolasMunicipio = escolas?.filter(e => e.municipio === municipio) || [];
+            // Filter schools matching normalized municipality name
+            const escolasMunicipio = escolas?.filter(e => normalizeMunicipio(e.municipio) === municipio) || [];
             const escolaIds = escolasMunicipio.map(e => e.id);
 
             // Count professores
@@ -235,11 +248,17 @@ export async function fetchTaxaAprovacaoPorMunicipio(
         .eq('provincia', provincia)
         .eq('ativo', true);
 
-    const municipios = [...new Set(escolas?.map(e => e.municipio) || [])];
+    // Normalize municipality names
+    const normalizeMunicipio = (m: string) => {
+        const trimmed = m?.trim() || '';
+        return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+    };
+
+    const municipios = [...new Set(escolas?.map(e => normalizeMunicipio(e.municipio)) || [])];
     const results: { municipio: string; taxa_aprovacao: number }[] = [];
 
     for (const municipio of municipios) {
-        const escolaIds = escolas?.filter(e => e.municipio === municipio).map(e => e.id) || [];
+        const escolaIds = escolas?.filter(e => normalizeMunicipio(e.municipio) === municipio).map(e => e.id) || [];
 
         // Get turmas
         const { data: turmas } = await supabase

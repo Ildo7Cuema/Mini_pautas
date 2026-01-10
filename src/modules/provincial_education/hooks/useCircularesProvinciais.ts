@@ -57,6 +57,12 @@ interface UseCircularesProvinciaisReturn {
     selectedCircular: CircularProvincial | null;
     selectCircular: (id: string) => Promise<void>;
     clearSelection: () => void;
+
+    // Portuguese aliases
+    criarCircular: (data: CreateCircularProvincialRequest) => Promise<CircularProvincial>;
+    actualizarCircular: (id: string, data: Partial<CreateCircularProvincialRequest>) => Promise<CircularProvincial>;
+    eliminarCircular: (id: string) => Promise<void>;
+    publicarCircular: (id: string, publicar: boolean) => Promise<CircularProvincial>;
 }
 
 export function useCircularesProvinciais(): UseCircularesProvinciaisReturn {
@@ -165,6 +171,17 @@ export function useCircularesProvinciais(): UseCircularesProvinciaisReturn {
         estatisticas,
         selectedCircular,
         selectCircular,
-        clearSelection
+        clearSelection,
+        // Portuguese aliases for compatibility
+        criarCircular: create,
+        actualizarCircular: update,
+        eliminarCircular: remove,
+        publicarCircular: async (id: string, publicar: boolean) => {
+            if (publicar) {
+                return await publish(id);
+            } else {
+                return await unpublish(id);
+            }
+        }
     };
 }
