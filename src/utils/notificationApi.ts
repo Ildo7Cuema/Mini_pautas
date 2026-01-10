@@ -239,7 +239,7 @@ export async function sendSuggestionToSuperAdmin(
             return { success: false, error: 'Nenhum administrador do sistema encontrado.' }
         }
 
-        // Create notification for SuperAdmin
+        // Create notification for SuperAdmin (no .select() to avoid RLS conflict for anonymous users)
         const { error: notifError } = await supabase
             .from('notificacoes')
             .insert({
@@ -249,8 +249,6 @@ export async function sendSuggestionToSuperAdmin(
                 mensagem: `${mensagem}\n\n📧 Email de contacto: ${emailRemetente}`,
                 lida: false
             })
-            .select()
-            .single()
 
         if (notifError) throw notifError
 
