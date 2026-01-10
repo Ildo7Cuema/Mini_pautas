@@ -234,7 +234,7 @@ function App() {
         if (isDirecaoProvincial) {
             switch (currentPage) {
                 case 'dashboard':
-                    return <DirecaoProvincialDashboard />
+                    return <DirecaoProvincialDashboard onNavigate={handleNavigate} />
                 case 'provincial-direcoes-municipais':
                     return <DirecoesMunicipaisGestao />
                 case 'provincial-escolas':

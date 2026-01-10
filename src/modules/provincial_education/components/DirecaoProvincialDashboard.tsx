@@ -4,12 +4,15 @@
  */
 
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { Icons } from '../../../components/ui/Icons';
 import { useAuth } from '../../../contexts/AuthContext';
 import { usePedagogicDataProvincial } from '../hooks/usePedagogicDataProvincial';
 import { useDirecoesMunicipais } from '../hooks/useDirecoesMunicipais';
 import { useCircularesProvinciais } from '../hooks/useCircularesProvinciais';
+
+interface DirecaoProvincialDashboardProps {
+    onNavigate?: (page: string, params?: Record<string, any>) => void;
+}
 
 interface StatCardProps {
     title: string;
@@ -17,12 +20,12 @@ interface StatCardProps {
     icon: React.ReactNode;
     color: string;
     subtitle?: string;
-    link?: string;
+    onClick?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle, link }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle, onClick }) => {
     const Content = (
-        <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${color} hover:shadow-xl transition-shadow`}>
+        <div className={`bg-white rounded-xl shadow-lg p-6 border-l-4 ${color} hover:shadow-xl transition-shadow ${onClick ? 'cursor-pointer' : ''}`}>
             <div className="flex items-center justify-between">
                 <div>
                     <p className="text-sm text-gray-500 font-medium">{title}</p>
@@ -36,13 +39,13 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, subtitle
         </div>
     );
 
-    if (link) {
-        return <Link to={link}>{Content}</Link>;
+    if (onClick) {
+        return <div onClick={onClick}>{Content}</div>;
     }
     return Content;
 };
 
-export const DirecaoProvincialDashboard: React.FC = () => {
+export const DirecaoProvincialDashboard: React.FC<DirecaoProvincialDashboardProps> = ({ onNavigate }) => {
     const { user } = useAuth();
     const { estatisticas, loading: loadingPedagogic, refresh: refreshPedagogic } = usePedagogicDataProvincial();
     const { direcoes, estatisticas: estatsDirecoes, loading: loadingDirecoes, refresh: refreshDirecoes } = useDirecoesMunicipais();
@@ -110,7 +113,7 @@ export const DirecaoProvincialDashboard: React.FC = () => {
                             value={estatisticas.total_direcoes_municipais}
                             icon={<Icons.Building className="w-6 h-6 text-blue-600" />}
                             color="border-blue-600"
-                            link="/provincial-direcoes-municipais"
+                            onClick={() => onNavigate?.('provincial-direcoes-municipais')}
                             subtitle={`${estatsDirecoes.inactivas} inactivas`}
                         />
                         <StatCard
@@ -118,7 +121,7 @@ export const DirecaoProvincialDashboard: React.FC = () => {
                             value={estatisticas.total_escolas}
                             icon={<Icons.School className="w-6 h-6 text-green-600" />}
                             color="border-green-600"
-                            link="/provincial-escolas"
+                            onClick={() => onNavigate?.('provincial-escolas')}
                             subtitle={`${estatisticas.escolas_activas} activas`}
                         />
                         <StatCard
@@ -147,7 +150,7 @@ export const DirecaoProvincialDashboard: React.FC = () => {
                             value={estatsCirculares.publicadas}
                             icon={<Icons.DocumentText className="w-6 h-6 text-pink-600" />}
                             color="border-pink-600"
-                            link="/provincial-circulares"
+                            onClick={() => onNavigate?.('provincial-circulares')}
                             subtitle={`${estatsCirculares.rascunhos} rascunhos`}
                         />
                         <StatCard
@@ -155,7 +158,7 @@ export const DirecaoProvincialDashboard: React.FC = () => {
                             value="Ver"
                             icon={<Icons.TrendingUp className="w-6 h-6 text-amber-600" />}
                             color="border-amber-600"
-                            link="/provincial-supervisao"
+                            onClick={() => onNavigate?.('provincial-supervisao')}
                         />
                     </div>
 
@@ -198,38 +201,38 @@ export const DirecaoProvincialDashboard: React.FC = () => {
                                 Acções Rápidas
                             </h2>
                             <div className="grid grid-cols-2 gap-4">
-                                <Link
-                                    to="/provincial-direcoes-municipais"
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-colors"
+                                <button
+                                    onClick={() => onNavigate?.('provincial-direcoes-municipais')}
+                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-colors cursor-pointer"
                                 >
                                     <Icons.Building className="w-5 h-5 text-blue-600" />
                                     <span className="font-medium text-gray-700">Gerir Direcções</span>
                                     <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </Link>
-                                <Link
-                                    to="/provincial-escolas"
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-colors"
+                                </button>
+                                <button
+                                    onClick={() => onNavigate?.('provincial-escolas')}
+                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:from-green-100 hover:to-green-200 transition-colors cursor-pointer"
                                 >
                                     <Icons.School className="w-5 h-5 text-green-600" />
                                     <span className="font-medium text-gray-700">Ver Escolas</span>
                                     <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </Link>
-                                <Link
-                                    to="/provincial-circulares"
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg hover:from-pink-100 hover:to-pink-200 transition-colors"
+                                </button>
+                                <button
+                                    onClick={() => onNavigate?.('provincial-circulares')}
+                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-pink-50 to-pink-100 rounded-lg hover:from-pink-100 hover:to-pink-200 transition-colors cursor-pointer"
                                 >
                                     <Icons.DocumentText className="w-5 h-5 text-pink-600" />
                                     <span className="font-medium text-gray-700">Nova Circular</span>
                                     <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </Link>
-                                <Link
-                                    to="/provincial-relatorios"
-                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg hover:from-amber-100 hover:to-amber-200 transition-colors"
+                                </button>
+                                <button
+                                    onClick={() => onNavigate?.('provincial-relatorios')}
+                                    className="flex items-center gap-3 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg hover:from-amber-100 hover:to-amber-200 transition-colors cursor-pointer"
                                 >
                                     <Icons.TrendingUp className="w-5 h-5 text-amber-600" />
                                     <span className="font-medium text-gray-700">Relatórios</span>
                                     <Icons.ChevronRight className="w-4 h-4 text-gray-400 ml-auto" />
-                                </Link>
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -240,13 +243,13 @@ export const DirecaoProvincialDashboard: React.FC = () => {
                             <h2 className="text-xl font-semibold text-gray-800">
                                 Direções Municipais
                             </h2>
-                            <Link
-                                to="/provincial-direcoes-municipais"
-                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1"
+                            <button
+                                onClick={() => onNavigate?.('provincial-direcoes-municipais')}
+                                className="text-indigo-600 hover:text-indigo-800 text-sm font-medium flex items-center gap-1 cursor-pointer"
                             >
                                 Ver todas
                                 <Icons.ChevronRight className="w-4 h-4" />
-                            </Link>
+                            </button>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="min-w-full divide-y divide-gray-200">

@@ -102,6 +102,29 @@ export const LoginScreen: React.FC = () => {
                         return
                     }
 
+                    // Check for DIRECAO_PROVINCIAL profile (may be pending)
+                    const { data: direcaoProvincialProfile } = await supabase
+                        .from('user_profiles')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .eq('tipo_perfil', 'DIRECAO_PROVINCIAL')
+                        .maybeSingle()
+
+                    if (direcaoProvincialProfile) {
+                        if (!direcaoProvincialProfile.ativo) {
+                            // Pending approval
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('inactive')
+                            setSchoolStatusReason('O seu registo como Direção Provincial está pendente de aprovação. Será notificado quando o acesso for activado.')
+                            setEntityType('direcao_municipal') // Reuse existing modal style
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        // Active DIRECAO_PROVINCIAL - let AuthContext handle
+                        logSystemVisit(undefined, 'DIRECAO_PROVINCIAL')
+                        return
+                    }
+
                     // Check if this might be a professor/aluno/encarregado direct record
                     const { data: professorData } = await supabase
                         .from('professores')
@@ -199,6 +222,28 @@ export const LoginScreen: React.FC = () => {
                         return
                     }
 
+                    // Check for direcao_provincial directly in direcoes_provinciais table
+                    const { data: direcaoProvincialData } = await supabase
+                        .from('direcoes_provinciais')
+                        .select('*')
+                        .eq('user_id', userId)
+                        .maybeSingle()
+
+                    if (direcaoProvincialData) {
+                        if (!direcaoProvincialData.ativo) {
+                            // Pending approval
+                            await supabase.auth.signOut()
+                            setSchoolStatusType('inactive')
+                            setSchoolStatusReason('O seu registo como Direção Provincial está pendente de aprovação. Será notificado quando o acesso for activado.')
+                            setEntityType('direcao_municipal') // Reuse existing modal style
+                            setShowSchoolStatusModal(true)
+                            return
+                        }
+                        // Active DIRECAO_PROVINCIAL - let AuthContext handle
+                        logSystemVisit(undefined, 'DIRECAO_PROVINCIAL')
+                        return
+                    }
+
                     // No profile at all - escola was probably deleted
                     await supabase.auth.signOut()
                     setSchoolStatusType('deleted')
@@ -222,6 +267,21 @@ export const LoginScreen: React.FC = () => {
                     }
                     // Active - let AuthContext handle
                     logSystemVisit(undefined, 'DIRECAO_MUNICIPAL')
+                    return
+                }
+
+                // DIRECAO_PROVINCIAL doesn't need escola
+                if (profileData.tipo_perfil === 'DIRECAO_PROVINCIAL') {
+                    if (!profileData.ativo) {
+                        await supabase.auth.signOut()
+                        setSchoolStatusType('inactive')
+                        setSchoolStatusReason('O seu registo como Direção Provincial está pendente de aprovação.')
+                        setEntityType('direcao_municipal') // Reuse existing modal style
+                        setShowSchoolStatusModal(true)
+                        return
+                    }
+                    // Active - let AuthContext handle
+                    logSystemVisit(undefined, 'DIRECAO_PROVINCIAL')
                     return
                 }
 
