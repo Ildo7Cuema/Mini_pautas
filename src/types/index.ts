@@ -550,6 +550,7 @@ export interface SolicitacaoDocumento {
     tipo_documento?: TipoDocumento;
     escola?: Escola;
     solicitante_nome?: string;
+    solicitante_cargo?: string;
 }
 
 export interface SolicitacaoStats {

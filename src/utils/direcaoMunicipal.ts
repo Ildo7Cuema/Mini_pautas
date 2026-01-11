@@ -319,21 +319,24 @@ export async function fetchSolicitacoes(filters?: {
         const solicitacoesComNome = await Promise.all(
             (data || []).map(async (sol) => {
                 let solicitante_nome = 'Desconhecido'
+                let solicitante_cargo = 'Funcionário'
 
                 if (sol.solicitante_tipo === 'PROFESSOR') {
                     const { data: prof } = await supabase
                         .from('professores')
-                        .select('nome_completo')
+                        .select('nome_completo, categoria_docente')
                         .eq('user_id', sol.solicitante_user_id)
                         .single()
                     solicitante_nome = prof?.nome_completo || 'Professor'
+                    solicitante_cargo = prof?.categoria_docente || 'Professor'
                 } else if (sol.solicitante_tipo === 'SECRETARIO') {
                     const { data: sec } = await supabase
                         .from('secretarios')
-                        .select('nome_completo')
+                        .select('nome_completo, cargo')
                         .eq('user_id', sol.solicitante_user_id)
                         .single()
                     solicitante_nome = sec?.nome_completo || 'Secretário'
+                    solicitante_cargo = sec?.cargo || 'Secretaria'
                 } else if (sol.solicitante_tipo === 'ESCOLA') {
                     const { data: esc } = await supabase
                         .from('escolas')
@@ -341,11 +344,13 @@ export async function fetchSolicitacoes(filters?: {
                         .eq('user_id', sol.solicitante_user_id)
                         .single()
                     solicitante_nome = esc?.nome || 'Escola'
+                    solicitante_cargo = 'Direcção da Escola'
                 }
 
                 return {
                     ...sol,
-                    solicitante_nome
+                    solicitante_nome,
+                    solicitante_cargo
                 }
             })
         )

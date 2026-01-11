@@ -60,6 +60,7 @@ const SupervisaoPedagogicaProvincial = lazy(() => import('./modules/provincial_e
 const CircularesProvinciaisPage = lazy(() => import('./modules/provincial_education/components/CircularesProvinciaisPage').then(m => ({ default: m.CircularesProvinciaisPage })))
 const RelatoriosProvinciaisPage = lazy(() => import('./modules/provincial_education/components/RelatoriosProvinciaisPage').then(m => ({ default: m.RelatoriosProvinciaisPage })))
 const DirecaoProvincialRegistration = lazy(() => import('./components/DirecaoProvincialRegistration').then(m => ({ default: m.DirecaoProvincialRegistration })))
+const ConfiguracaoDocumentos = lazy(() => import('./components/ConfiguracaoDocumentos').then(m => ({ default: m.ConfiguracaoDocumentos })))
 
 function App() {
     const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, isDirecaoMunicipal, isDirecaoProvincial, escolaProfile, profile } = useAuth()
@@ -221,6 +222,8 @@ function App() {
                     return <RelatoriosMunicipaisPage onNavigate={handleNavigate} />
                 case 'solicitacoes':
                     return <SolicitacoesPage onNavigate={handleNavigate} />
+                case 'config-documentos':
+                    return <ConfiguracaoDocumentos />
                 case 'reports':
                     return <ReportsPage searchQuery={searchQuery} />
                 case 'settings':

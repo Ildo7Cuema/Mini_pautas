@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../contexts/AuthContext'
 import { fetchSolicitacoes, fetchSolicitacaoStats, updateSolicitacaoStatus } from '../utils/direcaoMunicipal'
 import { getEstadoLabel, formatDataSolicitacao } from '../utils/solicitacoes'
+import { generatePDF, defaultTemplate, fetchEmployeeDataForDocument, type DocumentData } from '../utils/documentGenerator'
+import { createNotification } from '../utils/notificationApi'
+import { supabase } from '../lib/supabaseClient'
 import type { SolicitacaoDocumento, SolicitacaoStats, EstadoSolicitacao } from '../types'
 
 interface SolicitacoesPageProps {
@@ -53,13 +56,130 @@ export default function SolicitacoesPage({ onNavigate }: SolicitacoesPageProps) 
 
     const handleUpdateStatus = async (solicitacaoId: string, estado: EstadoSolicitacao, resposta?: string) => {
         try {
-            await updateSolicitacaoStatus(solicitacaoId, estado, resposta)
+            let finalEstado = estado
+            let finalResposta = resposta
+
+            // If approving, generate document and mark as concluded
+            if (estado === 'aprovado') {
+                const solicitacao = solicitacoes.find(s => s.id === solicitacaoId)
+
+                if (solicitacao) {
+                    // Fetch complete employee data from database
+                    const employeeData = await fetchEmployeeDataForDocument(
+                        solicitacao.solicitante_user_id,
+                        solicitacao.solicitante_tipo as 'PROFESSOR' | 'SECRETARIO' | 'ESCOLA',
+                        solicitacao.escola_id
+                    )
+
+                    if (employeeData) {
+                        // Build the complete document data object
+                        const docData: DocumentData = {
+                            funcionario: employeeData,
+                            documento: {
+                                tipo: solicitacao.tipo_documento?.nome || solicitacao.assunto,
+                                assunto: solicitacao.assunto,
+                                data_solicitacao: solicitacao.created_at,
+                                numero_protocolo: solicitacao.id.slice(0, 8).toUpperCase()
+                            },
+                            direcao: {
+                                municipio: municipio,
+                                provincia: direcaoMunicipalProfile?.provincia || '',
+                                director_nome: direcaoMunicipalProfile?.nome || "Director Municipal"
+                            }
+                        }
+
+                        // Try to fetch custom template for this document type
+                        let templateToUse = defaultTemplate
+                        if (solicitacao.tipo_documento_id) {
+                            const { data: customTemplate } = await supabase
+                                .from('modelos_documento')
+                                .select('*')
+                                .eq('municipio', municipio)
+                                .eq('tipo_documento_id', solicitacao.tipo_documento_id)
+                                .eq('ativo', true)
+                                .single()
+
+                            if (customTemplate) {
+                                templateToUse = {
+                                    conteudo_html: customTemplate.conteudo_html,
+                                    cabecalho: customTemplate.cabecalho_config,
+                                    rodape: customTemplate.rodape_config
+                                }
+                            }
+                        }
+
+                        // Generate the PDF
+                        const pdfBlob = await generatePDF(docData, templateToUse)
+
+                        // Download the generated PDF
+                        const url = URL.createObjectURL(pdfBlob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `${solicitacao.tipo_documento?.nome || 'Documento'}_${employeeData.nome}.pdf`
+                        document.body.appendChild(a)
+                        a.click()
+                        document.body.removeChild(a)
+                        URL.revokeObjectURL(url)
+
+                        // Mark as concluded since document was generated
+                        finalEstado = 'concluido'
+                        finalResposta = resposta ? `${resposta}\n\nDocumento gerado com sucesso.` : "Documento gerado com sucesso e emitido."
+                    } else {
+                        throw new Error('Não foi possível obter os dados do funcionário.')
+                    }
+                }
+            }
+
+            await updateSolicitacaoStatus(solicitacaoId, finalEstado, finalResposta)
+
+            // Send notification to the employee who requested the document
+            const solicitacao = solicitacoes.find(s => s.id === solicitacaoId)
+            if (solicitacao?.solicitante_user_id) {
+                const estadoLabels: Record<string, { emoji: string; titulo: string; mensagem: string }> = {
+                    'em_analise': {
+                        emoji: '🔍',
+                        titulo: 'Solicitação em Análise',
+                        mensagem: `A sua solicitação de "${solicitacao.tipo_documento?.nome || solicitacao.assunto}" está a ser analisada pela Direcção Municipal.`
+                    },
+                    'pendente_info': {
+                        emoji: '⚠️',
+                        titulo: 'Informação Adicional Necessária',
+                        mensagem: `A Direcção Municipal precisa de informações adicionais sobre a sua solicitação de "${solicitacao.tipo_documento?.nome || solicitacao.assunto}".`
+                    },
+                    'aprovado': {
+                        emoji: '✅',
+                        titulo: 'Solicitação Aprovada',
+                        mensagem: `A sua solicitação de "${solicitacao.tipo_documento?.nome || solicitacao.assunto}" foi aprovada!`
+                    },
+                    'concluido': {
+                        emoji: '📄',
+                        titulo: 'Documento Emitido',
+                        mensagem: `O seu documento "${solicitacao.tipo_documento?.nome || solicitacao.assunto}" foi gerado e está pronto!`
+                    },
+                    'rejeitado': {
+                        emoji: '❌',
+                        titulo: 'Solicitação Rejeitada',
+                        mensagem: `Lamentamos, a sua solicitação de "${solicitacao.tipo_documento?.nome || solicitacao.assunto}" foi rejeitada.${finalResposta ? ` Motivo: ${finalResposta}` : ''}`
+                    }
+                }
+
+                const notifConfig = estadoLabels[finalEstado]
+                if (notifConfig) {
+                    await createNotification(
+                        solicitacao.solicitante_user_id,
+                        'documento_status',
+                        `${notifConfig.emoji} ${notifConfig.titulo}`,
+                        notifConfig.mensagem
+                    )
+                }
+            }
+
             await loadData()
             setShowDetailModal(false)
             setSelectedSolicitacao(null)
         } catch (error) {
             console.error('Error updating status:', error)
-            alert('Erro ao atualizar solicitação')
+            alert('Erro ao atualizar solicitação: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
         }
     }
 
@@ -183,6 +303,19 @@ export default function SolicitacoesPage({ onNavigate }: SolicitacoesPageProps) 
                 >
                     <span className={`w-2 h-2 rounded-full ${filterUrgente === true ? 'bg-red-500 animate-pulse' : 'bg-red-400'}`}></span>
                     Urgentes
+                </button>
+                <button
+                    onClick={() => loadData()}
+                    className="px-4 py-3 bg-white border border-slate-200 text-slate-600 rounded-xl hover:bg-slate-50 transition-colors flex items-center gap-2"
+                    title="Actualizar lista"
+                >
+                    🔄
+                </button>
+                <button
+                    onClick={() => onNavigate?.('config-documentos')}
+                    className="px-5 py-3 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors font-medium flex items-center gap-2 shadow-sm"
+                >
+                    ⚙️ Configurar Modelos
                 </button>
             </div>
 
@@ -366,7 +499,16 @@ function SolicitacaoDetailModal({
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto relative">
+                {/* Loading Overlay */}
+                {processing && (
+                    <div className="absolute inset-0 bg-white/80 flex items-center justify-center z-10 rounded-2xl">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                            <p className="text-sm text-gray-600 font-medium">A processar...</p>
+                        </div>
+                    </div>
+                )}
                 {/* Header */}
                 <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white">
                     <div className="flex items-center gap-3">

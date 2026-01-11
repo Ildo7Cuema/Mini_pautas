@@ -7,7 +7,9 @@ import {
     updateSolicitacaoStatus
 } from '../utils/direcaoMunicipal'
 import { getEstadoLabel, formatDataSolicitacao } from '../utils/solicitacoes'
+import { generatePDF, defaultTemplate, fetchEmployeeDataForDocument, type DocumentData } from '../utils/documentGenerator'
 import type { MunicipioStats, SolicitacaoDocumento, SolicitacaoStats, EstadoSolicitacao } from '../types'
+import { supabase } from '../lib/supabaseClient'
 
 interface DirecaoMunicipalDashboardProps {
     onNavigate?: (page: string, params?: Record<string, any>) => void
@@ -52,11 +54,83 @@ export default function DirecaoMunicipalDashboard({ onNavigate }: DirecaoMunicip
     const handleQuickAction = async (solicitacaoId: string, action: 'approve' | 'analyze') => {
         setProcessingId(solicitacaoId)
         try {
-            const estado: EstadoSolicitacao = action === 'approve' ? 'aprovado' : 'em_analise'
-            await updateSolicitacaoStatus(solicitacaoId, estado)
+            const estado: EstadoSolicitacao = action === 'approve' ? 'concluido' : 'em_analise'
+            let resposta = undefined
+
+            if (action === 'approve') {
+                // Get the full request data
+                const solicitacaoFull = solicitacoes.find(s => s.id === solicitacaoId)
+
+                if (solicitacaoFull) {
+                    // Fetch complete employee data from database
+                    const employeeData = await fetchEmployeeDataForDocument(
+                        solicitacaoFull.solicitante_user_id,
+                        solicitacaoFull.solicitante_tipo as 'PROFESSOR' | 'SECRETARIO' | 'ESCOLA',
+                        solicitacaoFull.escola_id
+                    )
+
+                    if (employeeData) {
+                        // Build the complete document data object
+                        const docData: DocumentData = {
+                            funcionario: employeeData,
+                            documento: {
+                                tipo: solicitacaoFull.tipo_documento?.nome || solicitacaoFull.assunto,
+                                assunto: solicitacaoFull.assunto,
+                                data_solicitacao: solicitacaoFull.created_at,
+                                numero_protocolo: solicitacaoFull.id.slice(0, 8).toUpperCase()
+                            },
+                            direcao: {
+                                municipio: municipio,
+                                provincia: provincia,
+                                director_nome: direcaoMunicipalProfile?.nome || "Director Municipal"
+                            }
+                        }
+
+                        // Try to fetch custom template for this document type
+                        let templateToUse = defaultTemplate
+                        if (solicitacaoFull.tipo_documento_id) {
+                            const { data: customTemplate } = await supabase
+                                .from('modelos_documento')
+                                .select('*')
+                                .eq('municipio', municipio)
+                                .eq('tipo_documento_id', solicitacaoFull.tipo_documento_id)
+                                .eq('ativo', true)
+                                .single()
+
+                            if (customTemplate) {
+                                templateToUse = {
+                                    conteudo_html: customTemplate.conteudo_html,
+                                    cabecalho: customTemplate.cabecalho_config,
+                                    rodape: customTemplate.rodape_config
+                                }
+                            }
+                        }
+
+                        // Generate the PDF
+                        const pdfBlob = await generatePDF(docData, templateToUse)
+
+                        // Download the generated PDF
+                        const url = URL.createObjectURL(pdfBlob)
+                        const a = document.createElement('a')
+                        a.href = url
+                        a.download = `${solicitacaoFull.tipo_documento?.nome || 'Documento'}_${employeeData.nome}.pdf`
+                        document.body.appendChild(a)
+                        a.click()
+                        document.body.removeChild(a)
+                        URL.revokeObjectURL(url)
+
+                        resposta = "Documento gerado com sucesso e emitido."
+                    } else {
+                        throw new Error('Não foi possível obter os dados do funcionário.')
+                    }
+                }
+            }
+
+            await updateSolicitacaoStatus(solicitacaoId, estado, resposta)
             await loadData()
         } catch (error) {
             console.error('Error updating solicitação:', error)
+            alert("Erro ao processar solicitação: " + (error instanceof Error ? error.message : 'Erro desconhecido'))
         } finally {
             setProcessingId(null)
         }
@@ -309,6 +383,11 @@ export default function DirecaoMunicipalDashboard({ onNavigate }: DirecaoMunicip
                                             icon="📈"
                                             label="Relatórios"
                                             onClick={() => onNavigate?.('relatorios-municipais')}
+                                        />
+                                        <ActionButton
+                                            icon="⚙️"
+                                            label="Config. Documentos"
+                                            onClick={() => onNavigate?.('config-documentos')}
                                         />
                                     </div>
                                 </div>
