@@ -183,6 +183,96 @@ export default function SolicitacoesPage({ onNavigate }: SolicitacoesPageProps) 
         }
     }
 
+    // State for printing
+    const [printingId, setPrintingId] = useState<string | null>(null)
+
+    // Handle Print Document - generates and opens PDF for printing
+    const handlePrintDocument = async (sol: SolicitacaoDocumento) => {
+        setPrintingId(sol.id)
+        try {
+            // Fetch complete employee data from database
+            const employeeData = await fetchEmployeeDataForDocument(
+                sol.solicitante_user_id,
+                sol.solicitante_tipo as 'PROFESSOR' | 'SECRETARIO' | 'ESCOLA',
+                sol.escola_id
+            )
+
+            if (!employeeData) {
+                alert('Não foi possível obter os dados do funcionário.')
+                return
+            }
+
+            // Build the complete document data object
+            const docData: DocumentData = {
+                funcionario: employeeData,
+                documento: {
+                    tipo: sol.tipo_documento?.nome || sol.assunto,
+                    assunto: sol.assunto,
+                    data_solicitacao: sol.created_at,
+                    numero_protocolo: sol.id.slice(0, 8).toUpperCase()
+                },
+                direcao: {
+                    municipio: municipio,
+                    provincia: direcaoMunicipalProfile?.provincia || '',
+                    director_nome: direcaoMunicipalProfile?.nome || "Director Municipal"
+                }
+            }
+
+            // Try to fetch custom template for this document type
+            let templateToUse = defaultTemplate
+            if (sol.tipo_documento_id) {
+                const { data: customTemplate } = await supabase
+                    .from('modelos_documento')
+                    .select('*')
+                    .eq('municipio', municipio)
+                    .eq('tipo_documento_id', sol.tipo_documento_id)
+                    .eq('ativo', true)
+                    .single()
+
+                if (customTemplate) {
+                    templateToUse = {
+                        conteudo_html: customTemplate.conteudo_html,
+                        cabecalho: customTemplate.cabecalho_config,
+                        rodape: customTemplate.rodape_config
+                    }
+                }
+            }
+
+            // Generate the PDF
+            const pdfBlob = await generatePDF(docData, templateToUse)
+
+            // Open PDF in a new window for printing
+            const pdfUrl = URL.createObjectURL(pdfBlob)
+            const printWindow = window.open(pdfUrl, '_blank')
+
+            if (printWindow) {
+                printWindow.onload = () => {
+                    printWindow.focus()
+                    // Small delay to ensure PDF is fully loaded
+                    setTimeout(() => {
+                        printWindow.print()
+                    }, 500)
+                }
+            } else {
+                // Fallback: download the PDF if popup is blocked
+                const a = document.createElement('a')
+                a.href = pdfUrl
+                a.download = `${sol.tipo_documento?.nome || 'Documento'}_${employeeData.nome}.pdf`
+                document.body.appendChild(a)
+                a.click()
+                document.body.removeChild(a)
+            }
+
+            // Clean up URL after a delay
+            setTimeout(() => URL.revokeObjectURL(pdfUrl), 10000)
+        } catch (error) {
+            console.error('Error printing document:', error)
+            alert('Erro ao gerar documento para impressão: ' + (error instanceof Error ? error.message : 'Erro desconhecido'))
+        } finally {
+            setPrintingId(null)
+        }
+    }
+
     // Filter solicitações
     const filteredSolicitacoes = solicitacoes.filter(sol => {
         if (filterEstado !== 'all' && sol.estado !== filterEstado) return false
@@ -397,12 +487,34 @@ export default function SolicitacoesPage({ onNavigate }: SolicitacoesPageProps) 
                                                 {formatDataSolicitacao(sol.created_at)}
                                             </td>
                                             <td className="px-4 py-4 text-right">
-                                                <button
-                                                    onClick={() => handleOpenDetail(sol)}
-                                                    className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
-                                                >
-                                                    Ver Detalhes
-                                                </button>
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {/* Print button - only for approved or concluded requests */}
+                                                    {(sol.estado === 'aprovado' || sol.estado === 'concluido') && (
+                                                        <button
+                                                            onClick={() => handlePrintDocument(sol)}
+                                                            disabled={printingId === sol.id}
+                                                            className="px-3 py-1.5 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors text-sm font-medium disabled:opacity-50 flex items-center gap-1.5"
+                                                            title="Imprimir Documento"
+                                                        >
+                                                            {printingId === sol.id ? (
+                                                                <>
+                                                                    <span className="animate-spin">⏳</span>
+                                                                    A gerar...
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    🖨️ Imprimir
+                                                                </>
+                                                            )}
+                                                        </button>
+                                                    )}
+                                                    <button
+                                                        onClick={() => handleOpenDetail(sol)}
+                                                        className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-sm font-medium"
+                                                    >
+                                                        Ver Detalhes
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     )
