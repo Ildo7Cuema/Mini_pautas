@@ -127,8 +127,11 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
             setSelectedEscola(null)
             setBlockReason('')
             await loadEscolas()
-        } catch (err) {
-            showAlert('Erro', 'Erro ao bloquear escola', 'error')
+            showAlert('Sucesso', 'Escola bloqueada com sucesso', 'success')
+        } catch (err: any) {
+            console.error('❌ Erro ao bloquear escola:', err)
+            const errorMessage = err?.message || err?.error?.message || 'Erro desconhecido ao bloquear escola'
+            showAlert('Erro ao Bloquear', errorMessage, 'error')
         } finally {
             setActionLoading(null)
         }
@@ -139,8 +142,11 @@ export const EscolaManagement: React.FC<EscolaManagementProps> = ({ initialFilte
         try {
             await unblockEscola(escolaId)
             await loadEscolas()
-        } catch (err) {
-            showAlert('Erro', 'Erro ao desbloquear escola', 'error')
+            showAlert('Sucesso', 'Escola desbloqueada com sucesso', 'success')
+        } catch (err: any) {
+            console.error('❌ Erro ao desbloquear escola:', err)
+            const errorMessage = err?.message || err?.error?.message || 'Erro desconhecido ao desbloquear escola'
+            showAlert('Erro ao Desbloquear', errorMessage, 'error')
         } finally {
             setActionLoading(null)
         }
