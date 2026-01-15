@@ -476,7 +476,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
             await supabase
                 .from('notificacoes')
                 .insert({
-                    user_id: professorUserId,
+                    destinatario_id: professorUserId,
                     tipo: 'nota_lancada_admin',
                     titulo: 'Notas lançadas pela direcção',
                     mensagem: `A direcção da escola lançou ${numNotas} nota(s) de ${disciplina.nome} para a turma ${turma.nome} (${trimestre}º Trimestre)`,
