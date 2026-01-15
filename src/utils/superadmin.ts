@@ -327,23 +327,27 @@ export async function deactivateEscola(escolaId: string): Promise<void> {
 }
 
 /**
- * Block a school with reason
+ * Block a school with reason (uses RPC to bypass RLS)
  */
 export async function blockEscola(escolaId: string, motivo: string): Promise<void> {
+    console.log('🚫 blockEscola called with ID:', escolaId)
+
     try {
-        const { data: { user } } = await supabase.auth.getUser()
+        const { data, error } = await supabase.rpc('superadmin_block_escola', {
+            p_escola_id: escolaId,
+            p_motivo: motivo
+        })
 
-        const { error } = await supabase
-            .from('escolas')
-            .update({
-                bloqueado: true,
-                bloqueado_motivo: motivo,
-                bloqueado_em: new Date().toISOString(),
-                bloqueado_por: user?.id
-            })
-            .eq('id', escolaId)
+        console.log('📝 Block result:', data, 'error:', error)
 
-        if (error) throw error
+        if (error) {
+            console.error('❌ Supabase RPC error:', error)
+            throw error
+        }
+
+        if (data && !data.success) {
+            throw new Error(data.error || 'Erro ao bloquear escola')
+        }
 
         // Log the action
         await logSuperAdminAction('BLOCK_ESCOLA', escolaId, {
@@ -351,39 +355,50 @@ export async function blockEscola(escolaId: string, motivo: string): Promise<voi
             escola_id: escolaId,
             motivo: motivo
         })
+
+        console.log('✅ Block operation completed')
     } catch (error) {
-        console.error('Error blocking escola:', error)
+        console.error('❌ Error blocking escola:', error)
         throw error
     }
 }
 
 /**
- * Unblock a school
+ * Unblock a school (uses RPC to bypass RLS)
  */
 export async function unblockEscola(escolaId: string): Promise<void> {
-    try {
-        const { error } = await supabase
-            .from('escolas')
-            .update({
-                bloqueado: false,
-                bloqueado_motivo: null,
-                bloqueado_em: null,
-                bloqueado_por: null
-            })
-            .eq('id', escolaId)
+    console.log('🔓 unblockEscola called with ID:', escolaId)
 
-        if (error) throw error
+    try {
+        const { data, error } = await supabase.rpc('superadmin_unblock_escola', {
+            p_escola_id: escolaId
+        })
+
+        console.log('📝 Unblock result:', data, 'error:', error)
+
+        if (error) {
+            console.error('❌ Supabase RPC error:', error)
+            throw error
+        }
+
+        if (data && !data.success) {
+            throw new Error(data.error || 'Erro ao desbloquear escola')
+        }
 
         // Log the action
         await logSuperAdminAction('UNBLOCK_ESCOLA', escolaId, {
             action: 'Escola unblocked',
             escola_id: escolaId
         })
+
+        console.log('✅ Unblock operation completed')
     } catch (error) {
-        console.error('Error unblocking escola:', error)
+        console.error('❌ Error unblocking escola:', error)
         throw error
     }
 }
+
+
 
 /**
  * Log SUPERADMIN action to audit table
