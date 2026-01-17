@@ -16,6 +16,7 @@ import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import type { DisciplinaTemplate, ComponenteTemplate } from '../types'
+import { ComponenteSelectorModal } from './ComponenteSelectorModal'
 
 // Available classes in the Angolan education system
 const CLASSES_PRIMARIO = ['1ª Classe', '2ª Classe', '3ª Classe', '4ª Classe', '5ª Classe', '6ª Classe']
@@ -595,8 +596,68 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
             if (profsError) throw profsError
             setProfessoresDisponiveis(profs || [])
 
+            if (profsError) throw profsError
+            setProfessoresDisponiveis(profs || [])
+
         } catch (err: any) {
             setError(translateError(err?.message || 'Erro ao carregar dados'))
+        }
+    }
+
+    const handleComponenteSelected = async (data: { componente: any, componente_catalogo_id: string }) => {
+        if (!selectedTemplate) {
+            console.error('Nenhum template selecionado')
+            return
+        }
+
+        try {
+            console.log('Componente selecionado do catálogo:', data)
+            console.log('Template destino:', selectedTemplate.id)
+            const trimestre = parseInt(componenteFormData.trimestre)
+            console.log('Trimestre alvo:', trimestre)
+
+            const payload = {
+                disciplina_template_id: selectedTemplate.id,
+                nome: data.componente.nome,
+                codigo_componente: data.componente.codigo_componente,
+                peso_percentual: data.componente.peso_padrao || 0,
+                trimestre: trimestre,
+                is_calculated: data.componente.is_calculated,
+                tipo_calculo: data.componente.tipo_calculo,
+                formula_expression: data.componente.formula_expression,
+                escala_minima: 0,
+                escala_maxima: 20,
+                obrigatorio: true,
+                ordem: 1,
+                descricao: data.componente.descricao
+            }
+            console.log('Payload para insert:', payload)
+
+            const { data: inserted, error } = await supabase
+                .from('componentes_template')
+                .insert(payload)
+                .select()
+
+            if (error) {
+                console.error('Erro Supabase Insert:', error)
+                throw error
+            }
+
+            console.log('Componente inserido com sucesso:', inserted)
+
+            const turmasCount = selectedTemplate.turmas_count || 0
+            setSuccess(`Componente adicionado! ${turmasCount > 0 ? `Sincronizado em ${turmasCount} turma(s).` : ''}`)
+            setShowAddComponenteModal(false)
+            resetComponenteForm()
+
+            console.log('Recarregando componentes...')
+            await loadComponentes(selectedTemplate.id)
+            loadTemplates()
+            setTimeout(() => setSuccess(null), 3000)
+        } catch (err: any) {
+            console.error('Erro ao adicionar componente do catálogo:', err)
+            setShowAddComponenteModal(false) // Close modal to ensure error is visible
+            setError(translateError(err?.message || 'Erro ao adicionar componente'))
         }
     }
 
@@ -1065,15 +1126,30 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
                 </div>
             )}
 
-            {/* Add/Edit Component Modal */}
-            {(showAddComponenteModal || showEditComponenteModal) && selectedTemplate && (
+            {/* Add Component Modal - Using Catalog */}
+            {showAddComponenteModal && selectedTemplate && (
+                <ComponenteSelectorModal
+                    escolaId={escolaProfile?.id || ''}
+                    trimestre={parseInt(componenteFormData.trimestre)}
+                    onTrimestreChange={(t) => setComponenteFormData({ ...componenteFormData, trimestre: t.toString() })}
+                    onSelect={handleComponenteSelected}
+                    onClose={closeModals}
+                    disableAssociation={true}
+                    existingCodes={componentes[selectedTemplate.id]
+                        ?.filter(c => c.trimestre === parseInt(componenteFormData.trimestre))
+                        .map(c => c.codigo_componente) || []}
+                />
+            )}
+
+            {/* Edit Component Modal - Only used for editing now */}
+            {showEditComponenteModal && selectedTemplate && (
                 <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
                     <Card className="w-full md:max-w-lg md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
                         <CardHeader>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h3 className="text-lg font-semibold text-slate-900">
-                                        {showAddComponenteModal ? 'Adicionar Componente' : 'Editar Componente'}
+                                        Editar Componente
                                     </h3>
                                     <p className="text-sm text-slate-600 mt-0.5">{selectedTemplate.nome}</p>
                                 </div>
@@ -1088,7 +1164,7 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
                             </div>
                         </CardHeader>
                         <CardBody>
-                            <form onSubmit={showAddComponenteModal ? handleAddComponente : handleEditComponente} className="space-y-4">
+                            <form onSubmit={handleEditComponente} className="space-y-4">
                                 <Input
                                     label="Nome do Componente"
                                     type="text"
@@ -1292,7 +1368,7 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
                                                 {showAddComponenteModal ? 'A adicionar...' : 'A guardar...'}
                                             </span>
                                         ) : (
-                                            showAddComponenteModal ? 'Adicionar Componente' : 'Guardar Alterações'
+                                            'Guardar Alterações'
                                         )}
                                     </Button>
                                 </div>

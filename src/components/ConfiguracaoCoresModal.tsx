@@ -79,6 +79,7 @@ export const ConfiguracaoCoresModal: React.FC<ConfiguracaoCoresModalProps> = ({
             threshold: 10,
             operador: '<',
             aplicar_cor: true,
+            modo_exibicao: 'texto',
             ordem: config.regras.length
         })
         setShowRuleForm(true)
@@ -439,6 +440,37 @@ export const ConfiguracaoCoresModal: React.FC<ConfiguracaoCoresModalProps> = ({
                                         placeholder="Ex: 10"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    Modo de Aplicação
+                                </label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="modo_exibicao"
+                                            checked={editingRule.modo_exibicao === 'texto' || !editingRule.modo_exibicao}
+                                            onChange={() => setEditingRule({ ...editingRule, modo_exibicao: 'texto' })}
+                                            className="text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-slate-700">Por Componente (Nota colorida)</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="radio"
+                                            name="modo_exibicao"
+                                            checked={editingRule.modo_exibicao === 'fundo'}
+                                            onChange={() => setEditingRule({ ...editingRule, modo_exibicao: 'fundo' })}
+                                            className="text-blue-600 focus:ring-blue-500"
+                                        />
+                                        <span className="text-sm text-slate-700">Por Coluna (Fundo colorido)</span>
+                                    </label>
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1">
+                                    Define se a cor será aplicada ao texto da nota ou ao fundo da célula.
+                                </p>
                             </div>
 
                             <div>

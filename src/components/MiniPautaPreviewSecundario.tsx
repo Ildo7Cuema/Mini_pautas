@@ -115,10 +115,21 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
         )
     }
 
-    // Helper function to get grade color
-    const getGradeColor = (nota: number, isCalculated: boolean = false): string => {
+    // Helper function to get grade style/color
+    const getGradeStyle = (nota: number, isCalculated: boolean = false): React.CSSProperties => {
         const result = getGradeColorFromConfig(nota, data.nivel_ensino, data.classe, isCalculated, colorConfig || null)
-        return result.color
+
+        if (result.modoExibicao === 'fundo') {
+            return {
+                backgroundColor: result.color,
+                color: '#ffffff',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                display: 'inline-block',
+                lineHeight: '1.2'
+            }
+        }
+        return { color: result.color }
     }
 
     // Check if this is all-trimester mode
@@ -132,14 +143,17 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
     // Calculate final grade for a student
     const getStudentFinalGrade = (aluno: any): number | null => {
         if (isAllTrimesters) {
-            // Average of trimester finals
-            const finals = [1, 2, 3].map(t => aluno.trimestres?.[t]?.nota_final).filter(Boolean) as number[]
+            // Average of trimester finals - include zeros, only exclude undefined/null
+            const finals = [1, 2, 3]
+                .map(t => aluno.trimestres?.[t]?.nota_final)
+                .filter((n): n is number => n !== undefined && n !== null)
             if (finals.length === 0) return null
             return finals.reduce((a, b) => a + b, 0) / finals.length
         } else {
             return aluno.nota_final ?? aluno.media_trimestral ?? null
         }
     }
+
 
     // Mobile Student Card Component
     const StudentCard = ({ aluno, index }: { aluno: any; index: number }) => {
@@ -180,7 +194,7 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                         {finalGrade !== null && (
                             <div
                                 className="text-lg font-bold"
-                                style={{ color: getGradeColor(finalGrade, true) }}
+                                style={getGradeStyle(finalGrade, true)}
                             >
                                 {finalGrade.toFixed(1)}
                             </div>
@@ -221,7 +235,7 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                                                 {trimestreData?.nota_final && (
                                                     <span
                                                         className="text-sm font-bold"
-                                                        style={{ color: getGradeColor(trimestreData.nota_final, true) }}
+                                                        style={getGradeStyle(trimestreData.nota_final, true)}
                                                     >
                                                         Média: {trimestreData.nota_final.toFixed(1)}
                                                     </span>
@@ -244,7 +258,7 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                                                             </span>
                                                             <span
                                                                 className="text-sm font-bold"
-                                                                style={{ color: hasNota ? getGradeColor(nota, isFinal || false) : '#94a3b8' }}
+                                                                style={hasNota ? getGradeStyle(nota, isFinal || false) : { color: '#94a3b8' }}
                                                             >
                                                                 {hasNota ? nota.toFixed(1) : '-'}
                                                             </span>
@@ -277,7 +291,7 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
                                                 </span>
                                                 <span
                                                     className="text-sm font-bold"
-                                                    style={{ color: hasNota ? getGradeColor(nota, isFinal || false) : '#94a3b8' }}
+                                                    style={hasNota ? getGradeStyle(nota, isFinal || false) : { color: '#94a3b8' }}
                                                 >
                                                     {hasNota ? nota.toFixed(1) : '-'}
                                                 </span>
@@ -298,8 +312,8 @@ export const MiniPautaPreviewSecundario: React.FC<MiniPautaPreviewSecundarioProp
         if (nota === undefined || nota === null) {
             return <span className="text-slate-400">-</span>
         }
-        const color = getGradeColor(nota, isCalculated)
-        return <span className="font-semibold" style={{ color }}>{nota.toFixed(1)}</span>
+        const style = getGradeStyle(nota, isCalculated)
+        return <span className="font-semibold" style={style}>{nota.toFixed(1)}</span>
     }
 
     return (

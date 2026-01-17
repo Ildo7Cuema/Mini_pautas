@@ -26,6 +26,7 @@ export interface NotaFinalCalculada {
 
 /**
  * Calculate final grade based on component grades and weights
+ * Missing grades are treated as zero and all component weights are used in the calculation
  */
 export function calculateNotaFinal(
     notas: Nota[],
@@ -38,23 +39,22 @@ export function calculateNotaFinal(
     let somaPesos = 0
 
     componentes.forEach(comp => {
-        const valor = notasMap.get(comp.id)
-        if (valor !== undefined) {
-            const peso = comp.peso_percentual / 100
-            const contribuicao = valor * peso
+        // Get the grade value, treating missing grades as zero
+        const valor = notasMap.get(comp.id) ?? 0
+        const peso = comp.peso_percentual / 100
+        const contribuicao = valor * peso
 
-            detalhes[comp.codigo_componente] = {
-                valor,
-                peso: comp.peso_percentual,
-                contribuicao
-            }
-
-            somaContribuicoes += contribuicao
-            somaPesos += comp.peso_percentual
+        detalhes[comp.codigo_componente] = {
+            valor,
+            peso: comp.peso_percentual,
+            contribuicao
         }
+
+        somaContribuicoes += contribuicao
+        somaPesos += comp.peso_percentual
     })
 
-    // Normalize if weights don't sum to 100%
+    // Calculate final grade using all component weights
     const nota_final = somaPesos > 0 ? (somaContribuicoes / somaPesos) * 100 : 0
 
     const classificacao = getClassificacao(nota_final)
@@ -67,6 +67,7 @@ export function calculateNotaFinal(
         detalhes
     }
 }
+
 
 /**
  * Get classification based on grade

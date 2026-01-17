@@ -48,9 +48,10 @@ interface Props {
     data: PautaGeralData
     selection: FieldSelection
     onChange: (selection: FieldSelection) => void
+    onReorder?: (newDisciplinas: DisciplinaComComponentes[]) => void
 }
 
-export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onChange }) => {
+export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onChange, onReorder }) => {
     const [expanded, setExpanded] = useState<Record<string, boolean>>({})
     const [showAdvanced, setShowAdvanced] = useState(false)
 
@@ -59,6 +60,28 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
             ...prev,
             [disciplinaId]: !prev[disciplinaId]
         }))
+    }
+
+    const handleMoveUp = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (index > 0 && onReorder) {
+            const newDisciplinas = [...data.disciplinas]
+            const temp = newDisciplinas[index]
+            newDisciplinas[index] = newDisciplinas[index - 1]
+            newDisciplinas[index - 1] = temp
+            onReorder(newDisciplinas)
+        }
+    }
+
+    const handleMoveDown = (index: number, e: React.MouseEvent) => {
+        e.stopPropagation()
+        if (index < data.disciplinas.length - 1 && onReorder) {
+            const newDisciplinas = [...data.disciplinas]
+            const temp = newDisciplinas[index]
+            newDisciplinas[index] = newDisciplinas[index + 1]
+            newDisciplinas[index + 1] = temp
+            onReorder(newDisciplinas)
+        }
     }
 
     const handleToggleAllDisciplinas = () => {
@@ -184,8 +207,8 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                     <button
                         onClick={handleToggleAllDisciplinas}
                         className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${selection.includeAllDisciplinas
-                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                             }`}
                     >
                         {selection.includeAllDisciplinas ? '✓ Todas Selecionadas' : 'Selecionar Todas'}
@@ -220,8 +243,8 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                                 <div
                                     key={disciplina.id}
                                     className={`rounded-xl border transition-all overflow-hidden ${isDisciplinaSelected(disciplina.id)
-                                            ? 'border-blue-200 bg-white shadow-sm'
-                                            : 'border-transparent bg-white/60 hover:bg-white hover:border-slate-200'
+                                        ? 'border-blue-200 bg-white shadow-sm'
+                                        : 'border-transparent bg-white/60 hover:bg-white hover:border-slate-200'
                                         }`}
                                     style={{ animationDelay: `${index * 30}ms` }}
                                 >
@@ -235,8 +258,8 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                                                 className="sr-only"
                                             />
                                             <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${isDisciplinaSelected(disciplina.id)
-                                                    ? 'bg-blue-600 border-blue-600'
-                                                    : 'border-slate-300 bg-white hover:border-blue-400'
+                                                ? 'bg-blue-600 border-blue-600'
+                                                : 'border-slate-300 bg-white hover:border-blue-400'
                                                 }`}>
                                                 {isDisciplinaSelected(disciplina.id) && (
                                                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -254,6 +277,30 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                                         <span className="text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                                             {disciplina.componentes.filter(c => c.is_calculated).length} comp.
                                         </span>
+
+                                        {/* Reorder Buttons */}
+                                        <div className="flex flex-col gap-0.5">
+                                            <button
+                                                onClick={(e) => handleMoveUp(index, e)}
+                                                disabled={index === 0}
+                                                className={`p-0.5 rounded hover:bg-slate-100 ${index === 0 ? 'text-slate-300' : 'text-slate-500 hover:text-slate-800'}`}
+                                                title="Mover para cima"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                                                </svg>
+                                            </button>
+                                            <button
+                                                onClick={(e) => handleMoveDown(index, e)}
+                                                disabled={index === data.disciplinas.length - 1}
+                                                className={`p-0.5 rounded hover:bg-slate-100 ${index === data.disciplinas.length - 1 ? 'text-slate-300' : 'text-slate-500 hover:text-slate-800'}`}
+                                                title="Mover para baixo"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                        </div>
 
                                         <button
                                             onClick={() => toggleDisciplina(disciplina.id)}
@@ -289,8 +336,8 @@ export const PautaGeralFieldSelector: React.FC<Props> = ({ data, selection, onCh
                                                                     className="sr-only"
                                                                 />
                                                                 <div className={`w-4 h-4 rounded border-2 flex items-center justify-center transition-all ${isComponenteSelected(componente.id)
-                                                                        ? 'bg-purple-600 border-purple-600'
-                                                                        : 'border-slate-300 bg-white group-hover:border-purple-400'
+                                                                    ? 'bg-purple-600 border-purple-600'
+                                                                    : 'border-slate-300 bg-white group-hover:border-purple-400'
                                                                     }`}>
                                                                     {isComponenteSelected(componente.id) && (
                                                                         <svg className="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

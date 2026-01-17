@@ -14,6 +14,7 @@ export interface GradeColorRule {
     threshold: number
     operador: '<=' | '<' | '>=' | '>'
     aplicar_cor: boolean
+    modo_exibicao?: 'texto' | 'fundo' // Nova propriedade
     ordem: number
 }
 
@@ -139,6 +140,7 @@ export async function saveGradeColorConfig(
                 threshold: rule.threshold,
                 operador: rule.operador,
                 aplicar_cor: rule.aplicar_cor,
+                modo_exibicao: rule.modo_exibicao || 'texto',
                 ordem: rule.ordem
             }))
 
@@ -168,10 +170,11 @@ export function getGradeColorFromConfig(
     classe: string | undefined,
     isCalculated: boolean,
     config: GradeColorConfig | null
-): { color: string; isNegative: boolean } {
+): { color: string; isNegative: boolean; modoExibicao?: 'texto' | 'fundo' } {
     // If no config, use default logic
     if (!config) {
-        return getDefaultGradeColor(nota, nivelEnsino, classe, isCalculated)
+        const result = getDefaultGradeColor(nota, nivelEnsino, classe, isCalculated)
+        return { ...result, modoExibicao: 'texto' }
     }
 
     // Extract class number
@@ -203,12 +206,12 @@ export function getGradeColorFromConfig(
 
     // If no rule matches, use positive color
     if (!matchingRule) {
-        return { color: config.cor_positiva, isNegative: false }
+        return { color: config.cor_positiva, isNegative: false, modoExibicao: 'texto' }
     }
 
     // If rule says don't apply color, always use positive
     if (!matchingRule.aplicar_cor) {
-        return { color: config.cor_positiva, isNegative: false }
+        return { color: config.cor_positiva, isNegative: false, modoExibicao: matchingRule.modo_exibicao || 'texto' }
     }
 
     // Apply threshold rule
@@ -230,7 +233,8 @@ export function getGradeColorFromConfig(
 
     return {
         color: isNegative ? config.cor_negativa : config.cor_positiva,
-        isNegative
+        isNegative,
+        modoExibicao: matchingRule.modo_exibicao || 'texto'
     }
 }
 
@@ -313,6 +317,7 @@ export function createDefaultConfig(
                     threshold: 4.44,
                     operador: '<=',
                     aplicar_cor: true,
+                    modo_exibicao: 'texto',
                     ordem: 1
                 },
                 {
@@ -323,6 +328,7 @@ export function createDefaultConfig(
                     threshold: 0,
                     operador: '>=',
                     aplicar_cor: false,
+                    modo_exibicao: 'texto',
                     ordem: 2
                 },
                 {
@@ -333,6 +339,7 @@ export function createDefaultConfig(
                     threshold: 4.44,
                     operador: '<=',
                     aplicar_cor: true,
+                    modo_exibicao: 'texto',
                     ordem: 3
                 }
             ]
@@ -353,6 +360,7 @@ export function createDefaultConfig(
                 threshold: 9.44,
                 operador: '<=',
                 aplicar_cor: true,
+                modo_exibicao: 'texto',
                 ordem: 1
             },
             {
@@ -361,6 +369,7 @@ export function createDefaultConfig(
                 threshold: 10,
                 operador: '<',
                 aplicar_cor: true,
+                modo_exibicao: 'texto',
                 ordem: 2
             }
         ]

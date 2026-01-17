@@ -18,7 +18,7 @@ import { TurmaStatistics } from './TurmaStatistics'
 import { generateMiniPautaPDF } from '../utils/pdfGenerator'
 import { generateMiniPautaExcel, generateCSV } from '../utils/excelGenerator'
 import { calculateNotaFinal, calculateStatistics } from '../utils/gradeCalculations'
-import { evaluateFormula } from '../utils/formulaUtils'
+import { evaluateFormula, parseFormula } from '../utils/formulaUtils'
 import { FormulaConfig, loadFormulaConfig } from '../utils/formulaConfigUtils'
 import { ConfiguracaoFormulasModal } from './ConfiguracaoFormulasModal'
 import { HeaderConfig, loadHeaderConfig } from '../utils/headerConfigUtils'
@@ -960,7 +960,8 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     .from('componentes_avaliacao')
                     .select(`
                         id, 
-                        codigo_componente, 
+                        codigo_componente,
+                        disciplina_id,
                         nome, 
                         peso_percentual, 
                         trimestre, 
@@ -1107,31 +1108,50 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
                     })
 
                     // Calculate values for calculated components
-                    componentesData.forEach(componente => {
-                        if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
+                    // Sort components: non-calculated first, then calculated (to ensure dependencies are available)
+                    const sortedComponentes = [...componentesData].sort((a, b) => {
+                        if (a.is_calculated && !b.is_calculated) return 1
+                        if (!a.is_calculated && b.is_calculated) return -1
+                        return 0
+                    })
+
+                    sortedComponentes.forEach(componente => {
+                        if (componente.is_calculated && componente.formula_expression) {
                             const dependencyValues: Record<string, number> = {}
 
-                            componente.depends_on_components.forEach((depId: string) => {
-                                const depComponent = componentesData.find(c => c.id === depId)
-                                if (depComponent) {
-                                    // Look up by ID
-                                    const value = notasMap[depComponent.id]
-                                    if (value !== undefined) {
-                                        dependencyValues[depComponent.codigo_componente] = value
-                                    } else {
-                                        dependencyValues[depComponent.codigo_componente] = 0
-                                    }
-                                }
-                            })
+                            try {
+                                // Extract variables from formula
+                                const variables = parseFormula(componente.formula_expression)
 
-                            if (Object.keys(dependencyValues).length > 0) {
-                                try {
+                                variables.forEach(variable => {
+                                    // Robust dependency resolution:
+                                    // Find component with the same Code within the same Discipline
+                                    // This is more reliable than depends_on_components IDs which might be inconsistent
+                                    const sourceComponent = componentesData.find(c =>
+                                        c.disciplina_id === componente.disciplina_id &&
+                                        c.codigo_componente?.trim().toUpperCase() === variable.trim().toUpperCase()
+                                    )
+
+                                    if (sourceComponent) {
+                                        const value = notasMap[sourceComponent.id]
+                                        dependencyValues[variable] = value !== undefined ? value : 0
+                                    } else {
+                                        // Variable needed but not found in the same discipline -> assume 0
+                                        dependencyValues[variable] = 0
+                                    }
+                                })
+
+                                // Calculate
+                                if (Object.keys(dependencyValues).length > 0) {
                                     const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
-                                    // Store by ID
                                     notasMap[componente.id] = Math.round(calculatedValue * 100) / 100
-                                } catch (error) {
-                                    console.error(`Error calculating component ${componente.codigo_componente}:`, error)
+
+                                    // Optional: Log for debugging if needed
+                                    // console.log(`[Calc] ${componente.codigo_componente}:`, dependencyValues, '=>', notasMap[componente.id])
                                 }
+                            } catch (error) {
+                                console.error(`Error calculating component ${componente.codigo_componente}:`, error)
+                                notasMap[componente.id] = 0
                             }
                         }
                     })
@@ -1480,38 +1500,78 @@ export const ReportsPage: React.FC<ReportsPageProps> = ({ searchQuery = '' }) =>
 
                     // STEP 1: Calculate TRIMESTRAL calculated components first
                     componentesData.forEach(componente => {
-                        if (componente.is_calculated && componente.formula_expression && componente.depends_on_components) {
+                        if (componente.is_calculated && componente.formula_expression) {
                             // Only process trimestral components (or components without tipo_calculo)
                             if (componente.tipo_calculo === 'trimestral' || !componente.tipo_calculo) {
                                 console.log(`[DEBUG] Processing TRIMESTRAL calculated component: ${componente.codigo_componente}`)
+                                console.log(`[DEBUG] Formula: ${componente.formula_expression}`)
+                                console.log(`[DEBUG] Dependencies IDs from DB: ${JSON.stringify(componente.depends_on_components)}`)
 
                                 // Build dependency values from current trimester
                                 const dependencyValues: Record<string, number> = {}
 
-                                componente.depends_on_components.forEach((depId: string) => {
-                                    const depComponent = componentesData.find(c => c.id === depId)
-                                    if (depComponent) {
-                                        const value = notasMap[depComponent.codigo_componente]
-                                        if (value !== undefined) {
-                                            dependencyValues[depComponent.codigo_componente] = value
-                                        } else {
-                                            dependencyValues[depComponent.codigo_componente] = 0
-                                        }
-                                    }
-                                })
+                                // If depends_on_components is empty or missing, extract codes from formula
+                                if (!componente.depends_on_components || componente.depends_on_components.length === 0) {
+                                    console.log(`[DEBUG] depends_on_components is empty, extracting from formula...`)
+                                    const formulaCodes = parseFormula(componente.formula_expression)
+                                    console.log(`[DEBUG] Extracted formula codes: ${JSON.stringify(formulaCodes)}`)
 
+                                    // Find components by their codes and build dependency values
+                                    formulaCodes.forEach(code => {
+                                        const depComponent = componentesData.find(c => c.codigo_componente === code)
+                                        if (depComponent) {
+                                            const value = notasMap[code]
+                                            dependencyValues[code] = value ?? 0
+                                            console.log(`[DEBUG] Found ${code} by formula parsing: value = ${value ?? 0}`)
+                                        } else {
+                                            // Use 0 for missing components
+                                            dependencyValues[code] = 0
+                                            console.log(`[DEBUG] Component ${code} not found, using 0`)
+                                        }
+                                    })
+                                } else {
+                                    // Use stored depends_on_components IDs
+                                    componente.depends_on_components.forEach((depId: string) => {
+                                        // First try to find by ID
+                                        let depComponent = componentesData.find(c => c.id === depId)
+
+                                        // If not found by ID, try to find by codigo_componente (fallback)
+                                        if (!depComponent) {
+                                            depComponent = componentesData.find(c => c.codigo_componente === depId)
+                                            if (depComponent) {
+                                                console.log(`[DEBUG] Found dependency by code fallback: ${depId}`)
+                                            }
+                                        }
+
+                                        if (depComponent) {
+                                            const value = notasMap[depComponent.codigo_componente]
+                                            dependencyValues[depComponent.codigo_componente] = value ?? 0
+                                            console.log(`[DEBUG] Dependency ${depComponent.codigo_componente}: value = ${value ?? 0}`)
+                                        } else {
+                                            console.warn(`[DEBUG] Dependency component not found - ID: ${depId}`)
+                                        }
+                                    })
+                                }
+
+                                console.log(`[DEBUG] Final dependencyValues: ${JSON.stringify(dependencyValues)}`)
+
+                                // Calculate if we have any dependencies
                                 if (Object.keys(dependencyValues).length > 0) {
                                     try {
                                         const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
                                         notasMap[componente.codigo_componente] = Math.round(calculatedValue * 100) / 100
-                                        console.log(`[DEBUG] Calculated ${componente.codigo_componente}:`, notasMap[componente.codigo_componente])
+                                        console.log(`[DEBUG] ✅ Calculated ${componente.codigo_componente}: ${notasMap[componente.codigo_componente]}`)
                                     } catch (error) {
                                         console.error(`Error calculating component ${componente.codigo_componente}:`, error)
                                     }
+                                } else {
+                                    console.warn(`[DEBUG] No dependencies found for ${componente.codigo_componente}, skipping calculation`)
                                 }
                             }
                         }
                     })
+
+
 
                     // STEP 2: Calculate ANNUAL calculated components (MFD, MF, etc.)
                     // These need dependencies from other trimesters

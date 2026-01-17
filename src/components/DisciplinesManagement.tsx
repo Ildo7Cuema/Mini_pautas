@@ -14,6 +14,7 @@ import { Card, CardBody, CardHeader } from './ui/Card'
 import { Button } from './ui/Button'
 import { Input } from './ui/Input'
 import { Icons } from './ui/Icons'
+import { ComponenteSelectorModal } from './ComponenteSelectorModal'
 import { translateError } from '../utils/translations'
 import { validateFormula, parseFormula, formatFormulaForDisplay } from '../utils/formulaUtils'
 
@@ -1399,284 +1400,28 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                 )
             }
 
-            {/* Add Component Modal */}
+
+
+            {/* Add Component Modal - Using Catalog */}
             {showAddComponenteModal && selectedDisciplina && (
-                <div className="fixed inset-0 bg-black/50 flex items-end md:items-center justify-center md:p-4 z-50 animate-fade-in">
-                    <Card className="w-full md:max-w-lg md:rounded-lg rounded-t-2xl rounded-b-none md:rounded-b-lg animate-slide-up max-h-[90vh] overflow-y-auto">
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-slate-900">Adicionar Componente</h3>
-                                    <p className="text-sm text-slate-600 mt-0.5">{selectedDisciplina.nome}</p>
-                                </div>
-                                <button
-                                    onClick={closeComponenteModals}
-                                    className="text-slate-400 hover:text-slate-600 min-h-touch min-w-touch flex items-center justify-center -mr-2"
-                                >
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                    </svg>
-                                </button>
-                            </div>
-                        </CardHeader>
-                        <CardBody>
-                            <form onSubmit={handleAddComponente} className="space-y-4">
-                                <Input
-                                    label="Nome do Componente"
-                                    type="text"
-                                    value={componenteFormData.nome}
-                                    onChange={(e) => setComponenteFormData({ ...componenteFormData, nome: e.target.value })}
-                                    placeholder="Ex: MAC - Média das Avaliações Contínuas"
-                                    required
-                                />
-
-                                <Input
-                                    label="Código do Componente"
-                                    type="text"
-                                    value={componenteFormData.codigo_componente}
-                                    onChange={(e) => setComponenteFormData({ ...componenteFormData, codigo_componente: e.target.value })}
-                                    placeholder="Ex: MAC"
-                                    required
-                                />
-
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                                        Trimestre <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={componenteFormData.trimestre}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, trimestre: e.target.value })}
-                                        className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                                        required
-                                    >
-                                        <option value="1">1º Trimestre</option>
-                                        <option value="2">2º Trimestre</option>
-                                        <option value="3">3º Trimestre</option>
-                                    </select>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Input
-                                        label="Peso Percentual (%)"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        max="100"
-                                        value={componenteFormData.peso_percentual}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, peso_percentual: e.target.value })}
-                                        placeholder="Ex: 30"
-                                        required
-                                    />
-
-                                    <Input
-                                        label="Ordem"
-                                        type="number"
-                                        min="1"
-                                        value={componenteFormData.ordem}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, ordem: e.target.value })}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Input
-                                        label="Escala Mínima"
-                                        type="number"
-                                        step="0.01"
-                                        value={componenteFormData.escala_minima}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, escala_minima: e.target.value })}
-                                        required
-                                    />
-
-                                    <Input
-                                        label="Escala Máxima"
-                                        type="number"
-                                        step="0.01"
-                                        value={componenteFormData.escala_maxima}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, escala_maxima: e.target.value })}
-                                        required
-                                    />
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="obrigatorio"
-                                        checked={componenteFormData.obrigatorio}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, obrigatorio: e.target.checked })}
-                                        className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
-                                    />
-                                    <label htmlFor="obrigatorio" className="text-sm text-slate-700">
-                                        Componente obrigatório
-                                    </label>
-                                </div>
-
-                                {/* Calculated Field Toggle */}
-                                <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                    <input
-                                        type="checkbox"
-                                        id="is_calculated"
-                                        checked={componenteFormData.is_calculated}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, is_calculated: e.target.checked, formula_expression: '', depends_on_components: [] })}
-                                        className="w-4 h-4 text-primary-600 border-slate-300 rounded focus:ring-primary-500"
-                                    />
-                                    <label htmlFor="is_calculated" className="text-sm text-slate-700 flex-1">
-                                        <strong>Campo Calculável</strong>
-                                        <span className="block text-xs text-slate-600 mt-0.5">
-                                            Este componente será calculado automaticamente usando uma fórmula
-                                        </span>
-                                    </label>
-                                </div>
-
-                                {/* Formula Builder - Only show when calculated is enabled */}
-                                {componenteFormData.is_calculated && (
-                                    <div className="space-y-3 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                                        {/* Calculation Type */}
-                                        <div className="space-y-2">
-                                            <label className="form-label text-sm">Tipo de Cálculo</label>
-                                            <div className="flex gap-4">
-                                                <label className="flex items-center gap-2">
-                                                    <input
-                                                        type="radio"
-                                                        value="trimestral"
-                                                        checked={componenteFormData.tipo_calculo === 'trimestral'}
-                                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, tipo_calculo: e.target.value as 'trimestral' | 'anual' })}
-                                                        className="w-4 h-4 text-primary-600"
-                                                    />
-                                                    <span className="text-sm text-slate-700">Trimestral (MT)</span>
-                                                </label>
-                                                <label className="flex items-center gap-2">
-                                                    <input
-                                                        type="radio"
-                                                        value="anual"
-                                                        checked={componenteFormData.tipo_calculo === 'anual'}
-                                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, tipo_calculo: e.target.value as 'trimestral' | 'anual' })}
-                                                        className="w-4 h-4 text-primary-600"
-                                                    />
-                                                    <span className="text-sm text-slate-700">Anual (MF)</span>
-                                                </label>
-                                            </div>
-                                            <p className="text-xs text-slate-600">
-                                                {componenteFormData.tipo_calculo === 'trimestral'
-                                                    ? 'Calcula usando componentes do mesmo trimestre (ex: MAC * 0.4 + EXAME * 0.6)'
-                                                    : 'Calcula usando médias dos 3 trimestres (ex: (T1 + T2 + T3) / 3)'}
-                                            </p>
-                                        </div>
-
-                                        {/* Available Components - Filter based on calculation type */}
-                                        <div>
-                                            <label className="form-label text-sm">
-                                                Componentes para usar na fórmula
-                                            </label>
-                                            {(() => {
-                                                // For trimestral: show only non-calculated components
-                                                // For anual: show calculated components (like MT) + manual components from 3rd trimester
-                                                const availableComponents = selectedDisciplina && componentes[selectedDisciplina.id]
-                                                    ? componentes[selectedDisciplina.id].filter(c =>
-                                                        componenteFormData.tipo_calculo === 'trimestral'
-                                                            ? !c.is_calculated  // Trimestral: only manual components
-                                                            : c.is_calculated || (!c.is_calculated && c.trimestre === 3)   // Anual: calculated components + 3rd trimester manual components
-                                                    )
-                                                    : [];
-
-                                                return availableComponents.length > 0 ? (
-                                                    <div className="grid grid-cols-2 gap-2">
-                                                        {availableComponents.map((comp) => (
-                                                            <label
-                                                                key={comp.id}
-                                                                className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${componenteFormData.depends_on_components.includes(comp.id)
-                                                                    ? 'border-primary-500 bg-primary-50'
-                                                                    : 'border-slate-200 bg-white hover:border-primary-300'
-                                                                    }`}
-                                                            >
-                                                                <input
-                                                                    type="checkbox"
-                                                                    checked={componenteFormData.depends_on_components.includes(comp.id)}
-                                                                    onChange={(e) => {
-                                                                        const newDeps = e.target.checked
-                                                                            ? [...componenteFormData.depends_on_components, comp.id]
-                                                                            : componenteFormData.depends_on_components.filter(id => id !== comp.id)
-                                                                        setComponenteFormData({ ...componenteFormData, depends_on_components: newDeps })
-                                                                    }}
-                                                                    className="w-3 h-3 text-primary-600 border-slate-300 rounded"
-                                                                />
-                                                                <div className="flex-1 flex items-center justify-between gap-1">
-                                                                    <span className="text-xs font-mono font-semibold text-primary-700">{comp.codigo_componente}</span>
-                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${comp.trimestre === 1 ? 'bg-blue-100 text-blue-700' :
-                                                                        comp.trimestre === 2 ? 'bg-green-100 text-green-700' :
-                                                                            'bg-orange-100 text-orange-700'
-                                                                        }`}>
-                                                                        T{comp.trimestre}
-                                                                    </span>
-                                                                </div>
-                                                            </label>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-xs text-slate-500 bg-white p-2 rounded border border-slate-200">
-                                                        {componenteFormData.tipo_calculo === 'trimestral'
-                                                            ? 'Nenhum componente manual disponível. Crie componentes manuais primeiro.'
-                                                            : 'Nenhum componente disponível. Crie componentes calculáveis (ex: MT) ou componentes do 3º trimestre.'}
-                                                    </div>
-                                                );
-                                            })()}
-                                        </div>
-
-                                        {/* Formula Input */}
-                                        <div>
-                                            <label className="form-label text-sm">Fórmula de Cálculo</label>
-                                            <input
-                                                type="text"
-                                                value={componenteFormData.formula_expression}
-                                                onChange={(e) => setComponenteFormData({ ...componenteFormData, formula_expression: e.target.value })}
-                                                placeholder="Ex: MAC * 0.4 + EXAME * 0.6"
-                                                className="form-input text-sm font-mono"
-                                                disabled={componenteFormData.depends_on_components.length === 0}
-                                            />
-                                            <p className="text-xs text-slate-500 mt-1">
-                                                Use os códigos dos componentes selecionados e operadores: + - * / ( )
-                                            </p>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div>
-                                    <label className="form-label">Descrição (opcional)</label>
-                                    <textarea
-                                        value={componenteFormData.descricao}
-                                        onChange={(e) => setComponenteFormData({ ...componenteFormData, descricao: e.target.value })}
-                                        placeholder="Breve descrição do componente..."
-                                        className="form-input min-h-[60px] resize-none"
-                                        rows={2}
-                                    />
-                                </div>
-
-                                <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-600">
-                                    <p><strong>Peso atual da disciplina:</strong> {calculateTotalWeight(selectedDisciplina.id)}%</p>
-                                    {componenteFormData.peso_percentual && (
-                                        <p className="mt-1">
-                                            <strong>Peso após adicionar:</strong> {calculateTotalWeight(selectedDisciplina.id) + parseFloat(componenteFormData.peso_percentual || '0')}%
-                                        </p>
-                                    )}
-                                </div>
-
-                                <div className="flex gap-3 pt-4">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        onClick={closeComponenteModals}
-                                        className="flex-1"
-                                    >
-                                        Cancelar
-                                    </Button>
-                                    <Button type="submit" variant="primary" className="flex-1">
-                                        Adicionar Componente
-                                    </Button>
-                                </div>
-                            </form>
-                        </CardBody>
-                    </Card>
-                </div>
+                <ComponenteSelectorModal
+                    escolaId={escolaProfile?.id || ''}
+                    disciplinaId={selectedDisciplina.id}
+                    turmaId={turmaId}
+                    trimestre={parseInt(componenteFormData.trimestre)}
+                    onTrimestreChange={(t) => setComponenteFormData({ ...componenteFormData, trimestre: t.toString() })}
+                    existingCodes={componentes[selectedDisciplina.id]
+                        ?.filter(c => c.trimestre === parseInt(componenteFormData.trimestre))
+                        .map(c => c.codigo_componente) || []}
+                    onSelect={(data) => {
+                        setSuccess('Componente adicionado com sucesso!')
+                        setShowAddComponenteModal(false)
+                        resetComponenteForm()
+                        loadComponentes(selectedDisciplina.id)
+                        setTimeout(() => setSuccess(null), 3000)
+                    }}
+                    onClose={closeComponenteModals}
+                />
             )}
 
             {/* Edit Component Modal */}
@@ -1951,7 +1696,12 @@ export const DisciplinesManagement: React.FC<DisciplinesManagementProps> = ({ tu
                                     >
                                         Cancelar
                                     </Button>
-                                    <Button type="submit" variant="primary" className="flex-1">
+                                    <Button
+                                        type="button"
+                                        variant="primary"
+                                        onClick={handleEditComponente}
+                                        className="flex-1"
+                                    >
                                         Salvar Alterações
                                     </Button>
                                 </div>

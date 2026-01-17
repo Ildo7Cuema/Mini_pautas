@@ -132,7 +132,7 @@ export const PautaGeralPage: React.FC = () => {
 
     useEffect(() => {
         if (selectedTurma) {
-            loadPautaGeralData()
+            loadPautaGeralData(true)
             loadDisciplinasObrigatorias()
         } else {
             setPautaGeralData(null)
@@ -270,7 +270,7 @@ export const PautaGeralPage: React.FC = () => {
         }
     }
 
-    const loadPautaGeralData = async () => {
+    const loadPautaGeralData = async (resetSelection = false) => {
         try {
             setLoadingData(true)
             setError(null)
@@ -324,12 +324,24 @@ export const PautaGeralPage: React.FC = () => {
             }))
 
             // Initialize field selection with all disciplines and components
-            if (fieldSelection.includeAllDisciplinas && fieldSelection.disciplinas.length === 0) {
-                setFieldSelection(prev => ({
+            // Update field selection (reset if requested, or ensure consistency if "include all" is active)
+            // This handles cases where data is reloaded (e.g. switching turmas) to properly update valid IDs
+            setFieldSelection(prev => {
+                const shouldIncludeAllDisciplinas = resetSelection || prev.includeAllDisciplinas
+                const shouldIncludeAllComponentes = resetSelection || prev.includeAllComponentes
+
+                return {
                     ...prev,
-                    disciplinas: disciplinasComComponentes.map(d => d.id)
-                }))
-            }
+                    includeAllDisciplinas: shouldIncludeAllDisciplinas,
+                    includeAllComponentes: shouldIncludeAllComponentes,
+                    disciplinas: shouldIncludeAllDisciplinas
+                        ? disciplinasComComponentes.map(d => d.id)
+                        : prev.disciplinas, // Keep existing selection if not "All"
+                    componentes: shouldIncludeAllComponentes
+                        ? disciplinasComComponentes.flatMap(d => d.componentes.map(c => c.id))
+                        : prev.componentes // Keep existing selection if not "All"
+                }
+            })
 
             // Load alunos
             const { data: alunosData, error: alunosError } = await supabase
@@ -383,15 +395,19 @@ export const PautaGeralPage: React.FC = () => {
                             if (componente.tipo_calculo === 'trimestral' || !componente.tipo_calculo) {
                                 const dependencyValues: Record<string, number> = {}
 
-                                componente.depends_on_components.forEach((depId: string) => {
-                                    // Find dependency from same discipline AND same trimester
-                                    const depComponent = disc.componentes.find(c => c.id === depId && c.trimestre === componente.trimestre)
-                                    if (depComponent) {
-                                        const value = notasMap[depComponent.id]
-                                        if (value !== undefined) {
-                                            dependencyValues[depComponent.codigo_componente] = value
-                                        } else {
-                                            dependencyValues[depComponent.codigo_componente] = 0
+                                // STRATEGY: Provide ALL components from the same trimester as context
+                                // This is more robust than relying solely on depends_on_components which might be incomplete
+                                disc.componentes.forEach(depComponent => {
+                                    // Only include components from the same current trimester context
+                                    if (depComponent.trimestre === componente.trimestre) {
+                                        const value = notasMap[depComponent.id] || 0
+
+                                        // Add standard code (e.g. MAC)
+                                        dependencyValues[depComponent.codigo_componente] = value
+
+                                        // Add suffixed code (e.g. MAC1)
+                                        if (depComponent.trimestre) {
+                                            dependencyValues[`${depComponent.codigo_componente}${depComponent.trimestre}`] = value
                                         }
                                     }
                                 })
@@ -401,7 +417,7 @@ export const PautaGeralPage: React.FC = () => {
                                         const calculatedValue = evaluateFormula(componente.formula_expression, dependencyValues)
                                         notasMap[componente.id] = Math.round(calculatedValue * 100) / 100
                                     } catch (error) {
-                                        console.error(`Error calculating trimestral component ${componente.codigo_componente}:`, error)
+                                        // Silent fail is okay here, logic might just be for another component set
                                     }
                                 }
                             }
@@ -423,8 +439,15 @@ export const PautaGeralPage: React.FC = () => {
                                         const value = notasMap[depComponent.id]
                                         if (value !== undefined) {
                                             dependencyValues[depComponent.codigo_componente] = value
+                                            // Also add version with trimester suffix (e.g. MT1, MT2) for annual formulas
+                                            if (depComponent.trimestre) {
+                                                dependencyValues[`${depComponent.codigo_componente}${depComponent.trimestre}`] = value
+                                            }
                                         } else {
                                             dependencyValues[depComponent.codigo_componente] = 0
+                                            if (depComponent.trimestre) {
+                                                dependencyValues[`${depComponent.codigo_componente}${depComponent.trimestre}`] = 0
+                                            }
                                         }
                                     }
                                 })
@@ -768,7 +791,7 @@ export const PautaGeralPage: React.FC = () => {
 
                         <div className="flex items-end">
                             <button
-                                onClick={loadPautaGeralData}
+                                onClick={() => loadPautaGeralData(false)}
                                 disabled={!selectedTurma || loadingData}
                                 className="w-full px-5 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-medium rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md hover:shadow-lg active:scale-[0.98] flex items-center justify-center gap-2"
                             >
@@ -811,6 +834,14 @@ export const PautaGeralPage: React.FC = () => {
                         data={pautaGeralData}
                         selection={fieldSelection}
                         onChange={setFieldSelection}
+                        onReorder={(newDisciplinas) => {
+                            if (pautaGeralData) {
+                                setPautaGeralData({
+                                    ...pautaGeralData,
+                                    disciplinas: newDisciplinas
+                                })
+                            }
+                        }}
                     />
                 </div>
             )}
@@ -969,7 +1000,7 @@ export const PautaGeralPage: React.FC = () => {
                         Clique no botão "Carregar Dados" acima para visualizar e exportar a pauta-geral desta turma.
                     </p>
                     <button
-                        onClick={loadPautaGeralData}
+                        onClick={() => loadPautaGeralData(false)}
                         disabled={loadingData}
                         className="inline-flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-all shadow-md hover:shadow-lg"
                     >
