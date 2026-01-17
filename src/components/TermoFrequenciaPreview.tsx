@@ -7,7 +7,7 @@ component-meta:
   tested-on: [360x800, 768x1024, 1440x900]
 */
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Card, CardHeader, CardBody } from './ui/Card'
 import { GradeColorConfig, getGradeColorFromConfig } from '../utils/gradeColorConfigUtils'
 
@@ -99,6 +99,7 @@ interface TermoFrequenciaPreviewProps {
 
 
 export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ data, colorConfig, componentAlignment = 'center', componentOrder }) => {
+    const [isStudentInfoExpanded, setIsStudentInfoExpanded] = useState(false)
     // Extract classe from turma name (e.g., "4ª Classe A" -> "4ª Classe")
     const extractClasse = (turmaName: string): string | undefined => {
         const match = turmaName.match(/(\d+[ªº]\s*Classe)/i)
@@ -132,159 +133,176 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
             {/* Student Information Card */}
             <Card>
                 <CardHeader>
-                    <h3 className="text-lg font-semibold text-slate-900">Informações do Aluno</h3>
-                </CardHeader>
-                <CardBody>
-                    {/* Dados Básicos */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                        <div>
-                            <p className="text-sm text-slate-500">Nome Completo</p>
-                            <p className="font-medium text-slate-900">{data.aluno.nome_completo}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-500">Número de Processo</p>
-                            <p className="font-medium text-slate-900">{data.aluno.numero_processo}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-500">Turma</p>
-                            <p className="font-medium text-slate-900">{data.turma.nome}</p>
-                        </div>
-                        <div>
-                            <p className="text-sm text-slate-500">Ano Lectivo</p>
-                            <p className="font-medium text-slate-900">{data.turma.ano_lectivo}</p>
-                        </div>
-                        {data.aluno.data_nascimento && (
-                            <div>
-                                <p className="text-sm text-slate-500">Data de Nascimento</p>
-                                <p className="font-medium text-slate-900">{data.aluno.data_nascimento}</p>
-                            </div>
-                        )}
-                        {data.aluno.genero && (
-                            <div>
-                                <p className="text-sm text-slate-500">Género</p>
-                                <p className="font-medium text-slate-900">{data.aluno.genero === 'M' ? 'Masculino' : 'Feminino'}</p>
-                            </div>
-                        )}
-                        {data.aluno.nacionalidade && (
-                            <div>
-                                <p className="text-sm text-slate-500">Nacionalidade</p>
-                                <p className="font-medium text-slate-900">{data.aluno.nacionalidade}</p>
-                            </div>
-                        )}
-                        {data.aluno.naturalidade && (
-                            <div>
-                                <p className="text-sm text-slate-500">Naturalidade</p>
-                                <p className="font-medium text-slate-900">{data.aluno.naturalidade}</p>
-                            </div>
-                        )}
-                        {data.aluno.tipo_documento && data.aluno.numero_documento && (
-                            <div>
-                                <p className="text-sm text-slate-500">{data.aluno.tipo_documento}</p>
-                                <p className="font-medium text-slate-900">{data.aluno.numero_documento}</p>
-                            </div>
-                        )}
-                        {data.aluno.frequencia_anual !== undefined && data.aluno.frequencia_anual !== null && (
-                            <div>
-                                <p className="text-sm text-slate-500">Frequência Anual</p>
-                                <p className={`font-bold text-lg ${data.aluno.frequencia_anual < 66.67 ? 'text-red-600' : 'text-green-600'
-                                    }`}>
-                                    {data.aluno.frequencia_anual.toFixed(1)}%
-                                </p>
-                            </div>
-                        )}
-                        {data.aluno.tipo_exame && (
-                            <div>
-                                <p className="text-sm text-slate-500">Tipo de Exame</p>
-                                <p className="font-medium text-orange-600">{data.aluno.tipo_exame}</p>
-                            </div>
-                        )}
+                    <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-slate-900">Informações do Aluno</h3>
+                        <button
+                            onClick={() => setIsStudentInfoExpanded(!isStudentInfoExpanded)}
+                            className="p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                        >
+                            <svg
+                                className={`w-5 h-5 text-slate-500 transition-transform duration-200 ${isStudentInfoExpanded ? 'rotate-180' : ''}`}
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                        </button>
                     </div>
-
-                    {/* Filiação */}
-                    {(data.aluno.nome_pai || data.aluno.nome_mae) && (
-                        <div className="border-t border-slate-200 pt-4 mb-4">
-                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Filiação</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {data.aluno.nome_pai && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Nome do Pai</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.nome_pai}</p>
-                                    </div>
-                                )}
-                                {data.aluno.nome_mae && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Nome da Mãe</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.nome_mae}</p>
-                                    </div>
-                                )}
+                </CardHeader>
+                {isStudentInfoExpanded && (
+                    <CardBody>
+                        {/* Dados Básicos */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                            <div>
+                                <p className="text-sm text-slate-500">Nome Completo</p>
+                                <p className="font-medium text-slate-900">{data.aluno.nome_completo}</p>
                             </div>
-                        </div>
-                    )}
-
-                    {/* Encarregado */}
-                    {data.aluno.nome_encarregado && (
-                        <div className="border-t border-slate-200 pt-4 mb-4">
-                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Encarregado de Educação</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <p className="text-sm text-slate-500">Número de Processo</p>
+                                <p className="font-medium text-slate-900">{data.aluno.numero_processo}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-slate-500">Turma</p>
+                                <p className="font-medium text-slate-900">{data.turma.nome}</p>
+                            </div>
+                            <div>
+                                <p className="text-sm text-slate-500">Ano Lectivo</p>
+                                <p className="font-medium text-slate-900">{data.turma.ano_lectivo}</p>
+                            </div>
+                            {data.aluno.data_nascimento && (
                                 <div>
-                                    <p className="text-sm text-slate-500">Nome</p>
-                                    <p className="font-medium text-slate-900">{data.aluno.nome_encarregado}</p>
+                                    <p className="text-sm text-slate-500">Data de Nascimento</p>
+                                    <p className="font-medium text-slate-900">{data.aluno.data_nascimento}</p>
                                 </div>
-                                {data.aluno.parentesco_encarregado && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Parentesco</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.parentesco_encarregado}</p>
-                                    </div>
-                                )}
-                                {data.aluno.telefone_encarregado && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Telefone</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.telefone_encarregado}</p>
-                                    </div>
-                                )}
-                                {data.aluno.profissao_encarregado && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Profissão</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.profissao_encarregado}</p>
-                                    </div>
-                                )}
-                            </div>
+                            )}
+                            {data.aluno.genero && (
+                                <div>
+                                    <p className="text-sm text-slate-500">Género</p>
+                                    <p className="font-medium text-slate-900">{data.aluno.genero === 'M' ? 'Masculino' : 'Feminino'}</p>
+                                </div>
+                            )}
+                            {data.aluno.nacionalidade && (
+                                <div>
+                                    <p className="text-sm text-slate-500">Nacionalidade</p>
+                                    <p className="font-medium text-slate-900">{data.aluno.nacionalidade}</p>
+                                </div>
+                            )}
+                            {data.aluno.naturalidade && (
+                                <div>
+                                    <p className="text-sm text-slate-500">Naturalidade</p>
+                                    <p className="font-medium text-slate-900">{data.aluno.naturalidade}</p>
+                                </div>
+                            )}
+                            {data.aluno.tipo_documento && data.aluno.numero_documento && (
+                                <div>
+                                    <p className="text-sm text-slate-500">{data.aluno.tipo_documento}</p>
+                                    <p className="font-medium text-slate-900">{data.aluno.numero_documento}</p>
+                                </div>
+                            )}
+                            {data.aluno.frequencia_anual !== undefined && data.aluno.frequencia_anual !== null && (
+                                <div>
+                                    <p className="text-sm text-slate-500">Frequência Anual</p>
+                                    <p className={`font-bold text-lg ${data.aluno.frequencia_anual < 66.67 ? 'text-red-600' : 'text-green-600'
+                                        }`}>
+                                        {data.aluno.frequencia_anual.toFixed(1)}%
+                                    </p>
+                                </div>
+                            )}
+                            {data.aluno.tipo_exame && (
+                                <div>
+                                    <p className="text-sm text-slate-500">Tipo de Exame</p>
+                                    <p className="font-medium text-orange-600">{data.aluno.tipo_exame}</p>
+                                </div>
+                            )}
                         </div>
-                    )}
 
-                    {/* Endereço */}
-                    {(data.aluno.provincia || data.aluno.municipio || data.aluno.bairro) && (
-                        <div className="border-t border-slate-200 pt-4">
-                            <h4 className="text-sm font-semibold text-slate-700 mb-3">Endereço</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                {data.aluno.provincia && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Província</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.provincia}</p>
-                                    </div>
-                                )}
-                                {data.aluno.municipio && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Município</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.municipio}</p>
-                                    </div>
-                                )}
-                                {data.aluno.bairro && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Bairro</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.bairro}</p>
-                                    </div>
-                                )}
-                                {data.aluno.rua && (
-                                    <div>
-                                        <p className="text-sm text-slate-500">Rua</p>
-                                        <p className="font-medium text-slate-900">{data.aluno.rua}</p>
-                                    </div>
-                                )}
+                        {/* Filiação */}
+                        {(data.aluno.nome_pai || data.aluno.nome_mae) && (
+                            <div className="border-t border-slate-200 pt-4 mb-4">
+                                <h4 className="text-sm font-semibold text-slate-700 mb-3">Filiação</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {data.aluno.nome_pai && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Nome do Pai</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.nome_pai}</p>
+                                        </div>
+                                    )}
+                                    {data.aluno.nome_mae && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Nome da Mãe</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.nome_mae}</p>
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
-                    )}
-                </CardBody>
+                        )}
+
+                        {/* Encarregado */}
+                        {data.aluno.nome_encarregado && (
+                            <div className="border-t border-slate-200 pt-4 mb-4">
+                                <h4 className="text-sm font-semibold text-slate-700 mb-3">Encarregado de Educação</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    <div>
+                                        <p className="text-sm text-slate-500">Nome</p>
+                                        <p className="font-medium text-slate-900">{data.aluno.nome_encarregado}</p>
+                                    </div>
+                                    {data.aluno.parentesco_encarregado && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Parentesco</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.parentesco_encarregado}</p>
+                                        </div>
+                                    )}
+                                    {data.aluno.telefone_encarregado && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Telefone</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.telefone_encarregado}</p>
+                                        </div>
+                                    )}
+                                    {data.aluno.profissao_encarregado && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Profissão</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.profissao_encarregado}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Endereço */}
+                        {(data.aluno.provincia || data.aluno.municipio || data.aluno.bairro) && (
+                            <div className="border-t border-slate-200 pt-4">
+                                <h4 className="text-sm font-semibold text-slate-700 mb-3">Endereço</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {data.aluno.provincia && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Província</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.provincia}</p>
+                                        </div>
+                                    )}
+                                    {data.aluno.municipio && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Município</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.municipio}</p>
+                                        </div>
+                                    )}
+                                    {data.aluno.bairro && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Bairro</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.bairro}</p>
+                                        </div>
+                                    )}
+                                    {data.aluno.rua && (
+                                        <div>
+                                            <p className="text-sm text-slate-500">Rua</p>
+                                            <p className="font-medium text-slate-900">{data.aluno.rua}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </CardBody>
+                )}
             </Card>
 
             {/* Academic Performance Card */}
@@ -376,12 +394,14 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                             {comp.codigo}
                                                         </th>
                                                     ))}
+
                                                     {/* Components for 2nd trimester */}
                                                     {maxComponentsPerTrimester[2].map((comp: ComponenteNota, idx: number) => (
                                                         <th key={`t2-${idx}`} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
                                                             {comp.codigo}
                                                         </th>
                                                     ))}
+
                                                     {/* Components for 3rd trimester */}
                                                     {maxComponentsPerTrimester[3].map((comp: ComponenteNota, idx: number) => (
                                                         <th key={`t3-${idx}`} className="border border-slate-300 px-2 py-0.5 text-center text-xs font-semibold">
@@ -425,8 +445,12 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                         <>
                                                             {/* 1st Trimester components - match header structure */}
                                                             {maxComponentsPerTrimester[1].map((headerComp: ComponenteNota, idx: number) => {
-                                                                const nota = getNotaForComponent(1, headerComp.codigo)
                                                                 const isCalculated = headerComp.is_calculated || false
+                                                                // If calculated (e.g. MT1), use the trimester average, otherwise lookup component grade
+                                                                const nota = isCalculated
+                                                                    ? disciplina.notas_trimestrais[1]
+                                                                    : getNotaForComponent(1, headerComp.codigo)
+
                                                                 const color = nota !== null ? getGradeColor(nota, isCalculated) : '#000000'
                                                                 return (
                                                                     <td key={`${disciplina.id}-t1-${idx}`} className={`border border-slate-300 px-2 py-0.5 ${getAlignmentClass()} text-sm`} style={{ color }}>
@@ -434,20 +458,28 @@ export const TermoFrequenciaPreview: React.FC<TermoFrequenciaPreviewProps> = ({ 
                                                                     </td>
                                                                 )
                                                             })}
+
                                                             {/* 2nd Trimestre components - match header structure */}
                                                             {maxComponentsPerTrimester[2].map((headerComp: ComponenteNota, idx: number) => {
-                                                                const nota = getNotaForComponent(2, headerComp.codigo)
                                                                 const isCalculated = headerComp.is_calculated || false
+                                                                const nota = isCalculated
+                                                                    ? disciplina.notas_trimestrais[2]
+                                                                    : getNotaForComponent(2, headerComp.codigo)
+
                                                                 return (
                                                                     <td key={`${disciplina.id}-t2-${idx}`} className={`border border-slate-300 px-2 py-0.5 ${getAlignmentClass()} text-sm`} style={{ color: nota !== null ? getGradeColor(nota, isCalculated) : '#000000' }}>
                                                                         {nota !== null ? nota.toFixed(1) : '-'}
                                                                     </td>
                                                                 )
                                                             })}
+
                                                             {/* 3rd Trimestre components - match header structure */}
                                                             {maxComponentsPerTrimester[3].map((headerComp: ComponenteNota, idx: number) => {
-                                                                const nota = getNotaForComponent(3, headerComp.codigo)
                                                                 const isCalculated = headerComp.is_calculated || false
+                                                                const nota = isCalculated
+                                                                    ? disciplina.notas_trimestrais[3]
+                                                                    : getNotaForComponent(3, headerComp.codigo)
+
                                                                 return (
                                                                     <td key={`${disciplina.id}-t3-${idx}`} className={`border border-slate-300 px-2 py-0.5 ${getAlignmentClass()} text-sm`} style={{ color: nota !== null ? getGradeColor(nota, isCalculated) : '#000000' }}>
                                                                         {nota !== null ? nota.toFixed(1) : '-'}
