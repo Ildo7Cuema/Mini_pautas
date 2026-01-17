@@ -61,6 +61,7 @@ const CircularesProvinciaisPage = lazy(() => import('./modules/provincial_educat
 const RelatoriosProvinciaisPage = lazy(() => import('./modules/provincial_education/components/RelatoriosProvinciaisPage').then(m => ({ default: m.RelatoriosProvinciaisPage })))
 const DirecaoProvincialRegistration = lazy(() => import('./components/DirecaoProvincialRegistration').then(m => ({ default: m.DirecaoProvincialRegistration })))
 const ConfiguracaoDocumentos = lazy(() => import('./components/ConfiguracaoDocumentos').then(m => ({ default: m.ConfiguracaoDocumentos })))
+const TemplatesManagement = lazy(() => import('./components/TemplatesManagement').then(m => ({ default: m.TemplatesManagement })))
 
 function App() {
     const { user, loading, isProfessor, isAluno, isEncarregado, isSecretario, isEscola, isDirecaoMunicipal, isDirecaoProvincial, escolaProfile, profile } = useAuth()
@@ -328,6 +329,8 @@ function App() {
                 return <SecretariesPage searchQuery={searchQuery} />
             case 'matriculas':
                 return <MatriculasPage />
+            case 'templates':
+                return <TemplatesManagement onClose={() => handleNavigate('settings')} />
             default:
                 return <Dashboard onNavigate={handleNavigate} searchQuery={searchQuery} />
         }

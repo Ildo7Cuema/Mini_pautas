@@ -16,6 +16,7 @@ import { Icons } from './ui/Icons'
 import { translateError } from '../utils/translations'
 import { ConfirmModal } from './ui/ConfirmModal'
 import { useAuth } from '../contexts/AuthContext'
+import type { DisciplinaTemplate } from '../types'
 
 interface Turma {
     id: string
@@ -44,15 +45,61 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
         ano_lectivo: String(new Date().getFullYear()),
         trimestre: 1,
         nivel_ensino: 'Ensino Secundário',
+        classe: '', // New field for class selection
     })
     const [error, setError] = useState<string | null>(null)
     const [success, setSuccess] = useState<string | null>(null)
     const [submitting, setSubmitting] = useState(false)
+    const [availableTemplates, setAvailableTemplates] = useState<DisciplinaTemplate[]>([])
+    const [loadingTemplates, setLoadingTemplates] = useState(false)
+    const [applyTemplates, setApplyTemplates] = useState(true) // Default to apply templates
 
+    // Classes list based on nivel_ensino
+    const getClassesForNivel = (nivel: string): string[] => {
+        switch (nivel) {
+            case 'Ensino Primário':
+                return ['1ª Classe', '2ª Classe', '3ª Classe', '4ª Classe', '5ª Classe', '6ª Classe']
+            case 'Ensino Secundário':
+                return ['7ª Classe', '8ª Classe', '9ª Classe', '10ª Classe', '11ª Classe', '12ª Classe', '13ª Classe']
+            default:
+                return []
+        }
+    }
 
     useEffect(() => {
         loadTurmas()
     }, [])
+
+    // Load templates when class is selected
+    useEffect(() => {
+        if (formData.classe && showModal && !editMode) {
+            loadTemplatesForClass(formData.classe)
+        } else {
+            setAvailableTemplates([])
+        }
+    }, [formData.classe, showModal, editMode])
+
+    const loadTemplatesForClass = async (classe: string) => {
+        if (!escolaProfile?.id) return
+
+        try {
+            setLoadingTemplates(true)
+            const { data, error } = await supabase
+                .from('disciplinas_template')
+                .select('*')
+                .eq('escola_id', escolaProfile.id)
+                .eq('classe', classe)
+                .order('ordem', { ascending: true })
+
+            if (error) throw error
+            setAvailableTemplates(data || [])
+        } catch (err) {
+            console.error('Erro ao carregar templates:', err)
+            setAvailableTemplates([])
+        } finally {
+            setLoadingTemplates(false)
+        }
+    }
 
     const loadTurmas = async () => {
         try {
@@ -168,13 +215,14 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                     escolaId = professor.escola_id
                 }
 
+
                 // Auto-generate codigo_turma (e.g., "10A-2025-T1")
                 const nomeSimplificado = formData.nome.replace(/[^a-zA-Z0-9]/g, '').substring(0, 10)
                 const anoSimplificado = formData.ano_lectivo.replace('/', '-')
                 const codigo_turma = `${nomeSimplificado}-${anoSimplificado}-T${formData.trimestre}`
 
-                // Create turma
-                const { error: insertError } = await supabase
+                // Create turma and get the ID back
+                const { data: newTurma, error: insertError } = await supabase
                     .from('turmas')
                     .insert({
                         nome: formData.nome,
@@ -186,10 +234,31 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                         escola_id: escolaId,
                         capacidade_maxima: 40,
                     })
+                    .select('id')
+                    .single()
 
                 if (insertError) throw insertError
 
-                setSuccess('Turma criada com sucesso!')
+                // Apply templates if enabled and class is selected
+                if (applyTemplates && formData.classe && availableTemplates.length > 0 && newTurma?.id) {
+                    console.log('📚 Aplicando templates para classe:', formData.classe)
+
+                    // Apply all templates for this class
+                    const { error: templateError } = await supabase.rpc('apply_all_class_templates_to_turma', {
+                        p_turma_id: newTurma.id,
+                        p_classe: formData.classe,
+                        p_professor_id: professorId
+                    })
+
+                    if (templateError) {
+                        console.error('⚠️ Erro ao aplicar templates (turma criada sem templates):', templateError)
+                        setSuccess(`Turma criada com sucesso! Aviso: Não foi possível aplicar templates automáticamente. (${templateError.message})`)
+                    } else {
+                        setSuccess(`Turma criada com sucesso! ${availableTemplates.length} disciplina(s) adicionada(s) automaticamente.`)
+                    }
+                } else {
+                    setSuccess('Turma criada com sucesso!')
+                }
             }
 
             setShowModal(false)
@@ -200,7 +269,10 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                 ano_lectivo: String(new Date().getFullYear()),
                 trimestre: 1,
                 nivel_ensino: 'Ensino Secundário',
+                classe: '',
             })
+            setApplyTemplates(true)
+            setAvailableTemplates([])
             loadTurmas()
         } catch (err) {
             console.error('❌ Erro ao criar/atualizar turma:', err)
@@ -221,7 +293,9 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
             ano_lectivo: turma.ano_lectivo,
             trimestre: turma.trimestre,
             nivel_ensino: 'Ensino Secundário', // Default since we don't store this in the Turma interface
+            classe: '', // Not editable on edit
         })
+        setApplyTemplates(false) // Don't apply templates on edit
         setShowModal(true)
     }
 
@@ -267,7 +341,10 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
             ano_lectivo: String(new Date().getFullYear()),
             trimestre: 1,
             nivel_ensino: 'Ensino Secundário',
+            classe: '',
         })
+        setApplyTemplates(true)
+        setAvailableTemplates([])
         setShowModal(true)
     }
 
@@ -567,7 +644,7 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                         <div className="relative">
                                             <select
                                                 value={formData.nivel_ensino}
-                                                onChange={(e) => setFormData({ ...formData, nivel_ensino: e.target.value })}
+                                                onChange={(e) => setFormData({ ...formData, nivel_ensino: e.target.value, classe: '' })}
                                                 className="w-full appearance-none bg-white border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 block p-3 pr-10 shadow-sm transition-all hover:border-slate-400"
                                                 required
                                             >
@@ -581,6 +658,108 @@ export const ClassesPage: React.FC<ClassesPageProps> = ({ onNavigate, searchQuer
                                             </div>
                                         </div>
                                     </div>
+
+                                    {/* Class Selection - Only show when creating new turma */}
+                                    {!editMode && isEscola && (
+                                        <div>
+                                            <label className="form-label block text-sm font-medium text-slate-700 mb-1.5">
+                                                Classe
+                                                <span className="text-slate-400 font-normal ml-1">(opcional)</span>
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    value={formData.classe}
+                                                    onChange={(e) => setFormData({ ...formData, classe: e.target.value })}
+                                                    className="w-full appearance-none bg-white border border-slate-300 text-slate-900 text-sm rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 block p-3 pr-10 shadow-sm transition-all hover:border-slate-400"
+                                                >
+                                                    <option value="">Seleccionar classe...</option>
+                                                    {getClassesForNivel(formData.nivel_ensino).map(classe => (
+                                                        <option key={classe} value={classe}>{classe}</option>
+                                                    ))}
+                                                </select>
+                                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-500">
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                                    </svg>
+                                                </div>
+                                            </div>
+                                            <p className="text-xs text-slate-500 mt-1.5">
+                                                Seleccione a classe para aplicar disciplinas automaticamente
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Templates Preview - Show when class is selected */}
+                                    {!editMode && isEscola && formData.classe && (
+                                        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <svg className="w-5 h-5 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
+                                                    </svg>
+                                                    <span className="text-sm font-semibold text-slate-700">Templates de Disciplinas</span>
+                                                </div>
+                                                <label className="flex items-center gap-2 cursor-pointer">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={applyTemplates}
+                                                        onChange={(e) => setApplyTemplates(e.target.checked)}
+                                                        className="w-4 h-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                                                    />
+                                                    <span className="text-xs font-medium text-slate-600">Aplicar</span>
+                                                </label>
+                                            </div>
+
+                                            {loadingTemplates ? (
+                                                <div className="flex items-center justify-center py-4">
+                                                    <svg className="animate-spin h-5 w-5 text-primary-500" fill="none" viewBox="0 0 24 24">
+                                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                                    </svg>
+                                                    <span className="ml-2 text-sm text-slate-500">Carregando templates...</span>
+                                                </div>
+                                            ) : availableTemplates.length > 0 ? (
+                                                <div className="space-y-2">
+                                                    <p className="text-xs text-slate-500 mb-2">
+                                                        {availableTemplates.length} disciplina(s) serão adicionadas automaticamente:
+                                                    </p>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {availableTemplates.slice(0, 8).map(t => (
+                                                            <span
+                                                                key={t.id}
+                                                                className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-white border border-slate-200 text-slate-600"
+                                                            >
+                                                                {t.nome}
+                                                            </span>
+                                                        ))}
+                                                        {availableTemplates.length > 8 && (
+                                                            <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-slate-100 text-slate-500">
+                                                                +{availableTemplates.length - 8} mais
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-center py-3">
+                                                    <p className="text-sm text-slate-500">
+                                                        Nenhum template configurado para {formData.classe}
+                                                    </p>
+                                                    {onNavigate && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setShowModal(false)
+                                                                onNavigate('templates')
+                                                            }}
+                                                            className="text-xs text-primary-600 hover:text-primary-700 font-medium mt-1 hover:underline"
+                                                        >
+                                                            Configurar templates agora →
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="flex gap-3 pt-2">

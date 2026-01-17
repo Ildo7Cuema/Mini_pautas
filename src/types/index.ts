@@ -195,6 +195,60 @@ export interface Formula {
     updated_at: string;
 }
 
+// ============================================
+// TEMPLATE TYPES
+// ============================================
+
+export interface DisciplinaTemplate {
+    id: string;
+    escola_id: string;
+    classe: string;
+    nome: string;
+    codigo_disciplina: string;
+    carga_horaria?: number;
+    descricao?: string;
+    ordem: number;
+    is_obrigatoria: boolean;
+    created_at: string;
+    updated_at: string;
+    // Computed fields from joins
+    componentes?: ComponenteTemplate[];
+    componentes_count?: number;
+    turmas_count?: number;
+}
+
+export interface ComponenteTemplate {
+    id: string;
+    disciplina_template_id: string;
+    nome: string;
+    codigo_componente: string;
+    peso_percentual: number;
+    escala_minima: number;
+    escala_maxima: number;
+    obrigatorio: boolean;
+    ordem: number;
+    descricao?: string;
+    trimestre: 1 | 2 | 3;
+    is_calculated: boolean;
+    formula_expression?: string;
+    depends_on_components?: string[];
+    tipo_calculo: 'trimestral' | 'anual';
+    created_at: string;
+    updated_at: string;
+}
+
+export interface TurmaTemplateLink {
+    id: string;
+    turma_id: string;
+    disciplina_template_id: string;
+    disciplina_id: string;
+    sincronizado_em: string;
+    created_at: string;
+    // Joined fields
+    disciplina_template?: DisciplinaTemplate;
+    disciplina?: Disciplina;
+}
+
 export interface Nota {
     id: string;
     aluno_id: string;

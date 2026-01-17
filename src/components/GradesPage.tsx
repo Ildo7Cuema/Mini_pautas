@@ -351,19 +351,51 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                 return
             }
 
-            const { data, error } = await supabase
+            console.log('📊 Carregando componentes:', {
+                disciplina_id: selectedDisciplina,
+                trimestre: trimestre
+            })
+
+            // First try with trimestre filter
+            let { data, error } = await supabase
                 .from('componentes_avaliacao')
                 .select('*')
                 .eq('disciplina_id', selectedDisciplina)
-                .eq('trimestre', trimestre) // Filter by selected trimestre
-                .eq('is_calculated', false) // Only load non-calculated components for manual entry
+                .eq('trimestre', trimestre)
                 .order('ordem')
 
+            // If no components found with trimestre filter, try without (for legacy data)
+            if (!error && (!data || data.length === 0)) {
+                console.log('📊 Nenhum componente com trimestre, tentando buscar todos...')
+                const result = await supabase
+                    .from('componentes_avaliacao')
+                    .select('*')
+                    .eq('disciplina_id', selectedDisciplina)
+                    .order('ordem')
+
+                data = result.data
+                error = result.error
+            }
+
+            console.log('📊 Resultado componentes:', {
+                count: data?.length || 0,
+                data: data,
+                error: error
+            })
+
             if (error) throw error
-            setComponentes(data || [])
+
+            // Filter out calculated components client-side for robustness
+            const nonCalculatedComponents = (data || []).filter(
+                (c: any) => c.is_calculated !== true
+            )
+
+            console.log('📊 Componentes não-calculados:', nonCalculatedComponents.length)
+            setComponentes(nonCalculatedComponents)
             setSelectedComponente('')
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Erro ao carregar componentes'
+            console.error('❌ Erro ao carregar componentes:', err)
             setError(translateError(errorMessage))
         }
     }
