@@ -216,6 +216,50 @@ export async function registarPagamento(
         // Get current user
         const { data: { user } } = await supabase.auth.getUser()
 
+        // VALIDATION: Check for overpayment or duplicate payment
+        // 1. Get Monthly Fee
+        const { data: config } = await supabase
+            .from('propinas_config')
+            .select('valor_mensalidade')
+            .eq('escola_id', request.escola_id)
+            .eq('ano_lectivo', request.ano_referencia)
+            .eq('ativo', true)
+            .single()
+
+        const valorMensal = config?.valor_mensalidade || 0
+
+        // 2. Get existing payments total
+        const { data: existingPayments } = await supabase
+            .from('pagamentos_propinas')
+            .select('valor')
+            .eq('aluno_id', request.aluno_id)
+            .eq('mes_referencia', request.mes_referencia)
+            .eq('ano_referencia', request.ano_referencia)
+            .eq('estado', 'valido')
+
+        const totalPago = (existingPayments || []).reduce((sum, p) => sum + p.valor, 0)
+
+        // 3. Check Condition
+        if (totalPago >= valorMensal && valorMensal > 0) {
+            throw new Error(`A mensalidade de ${getNomeMes(request.mes_referencia)} já se encontra totalmente liquidada.`)
+        }
+
+        if (totalPago + request.valor > valorMensal && valorMensal > 0) {
+            const restante = valorMensal - totalPago
+            throw new Error(`O valor excede o montante em dívida. Valor restante: ${formatarValor(restante)}`)
+        }
+
+        // Generate AGT Hash (Simplified for demo/mvp)
+        // Format: Date + Recibo + Valor
+        const dataPagamento = new Date().toISOString()
+        const hashInput = `${dataPagamento}${numero_recibo}${request.valor.toFixed(2)}`
+
+        // Simulating a hash - in production usage use crypto.subtle.digest('SHA-1', ...)
+        // For now we do a simple string manipulation for display
+        const simpleHash = btoa(hashInput).replace(/[^a-zA-Z0-9]/g, '').substring(0, 100)
+        const hash = `AGT:${simpleHash}`.padEnd(60, 'X')
+        const hash_control = simpleHash.substring(0, 4).toUpperCase()
+
         const { data, error } = await supabase
             .from('pagamentos_propinas')
             .insert({
@@ -228,7 +272,14 @@ export async function registarPagamento(
                 observacao: request.observacao,
                 numero_recibo,
                 registado_por: user?.id,
-                data_pagamento: new Date().toISOString()
+                data_pagamento: dataPagamento,
+
+                // New Fields
+                estado: 'valido',
+                hash,
+                hash_control,
+                sistema_certificado: 'Processado por programa válido n31.1/AGT20',
+                tipo_documento: 'RG'
             })
             .select(`
                 *,
@@ -237,10 +288,6 @@ export async function registarPagamento(
             .single()
 
         if (error) {
-            // Check for duplicate payment
-            if (error.code === '23505') {
-                throw new Error('Já existe um pagamento registado para este aluno neste mês')
-            }
             throw error
         }
 
@@ -255,29 +302,48 @@ export async function registarPagamento(
 }
 
 /**
- * Delete a payment (only if recently created, within 24 hours)
+ * Anular um pagamento (Compliance AGT: Não apagar, apenas marcar como anulado)
+ * Segundo o Decreto Presidencial n.º 292/18 (RJFDE), os documentos não devem ser apagados.
  */
-export async function anularPagamento(pagamentoId: string): Promise<void> {
+export async function anularPagamento(pagamentoId: string, motivo: string): Promise<void> {
     try {
-        // First check if payment is recent (within 24 hours)
+        if (!motivo || motivo.trim().length < 5) {
+            throw new Error('É obrigatório indicar um motivo válido para a anulação.')
+        }
+
+        // Get current user for audit
+        const { data: { user } } = await supabase.auth.getUser()
+
+        // First check if payment is recent (within 24 hours) - Regra de Negócio comum
         const { data: pagamento, error: fetchError } = await supabase
             .from('pagamentos_propinas')
-            .select('created_at')
+            .select('created_at, estado')
             .eq('id', pagamentoId)
             .single()
 
         if (fetchError) throw fetchError
 
+        if (pagamento.estado === 'anulado') {
+            throw new Error('Este pagamento já se encontra anulado.')
+        }
+
         const createdAt = new Date(pagamento.created_at)
         const hoursSinceCreation = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60)
 
+        // Regra de Negócio: Só permitir anulação nas primeiras 24 horas
+        // Após isso, deve ser tratado contabilísticamente (Nota de Crédito, etc)
         if (hoursSinceCreation > 24) {
-            throw new Error('Só é possível anular pagamentos registados há menos de 24 horas')
+            throw new Error('Só é possível anular recibos emitidos há menos de 24 horas. Para documentos mais antigos, contacte a administração.')
         }
 
         const { error } = await supabase
             .from('pagamentos_propinas')
-            .delete()
+            .update({
+                estado: 'anulado',
+                motivo_anulacao: motivo,
+                data_anulacao: new Date().toISOString(),
+                anulado_por: user?.id
+            })
             .eq('id', pagamentoId)
 
         if (error) throw error
@@ -349,7 +415,7 @@ export async function fetchAlunosComStatusPagamento(
                 turmas!inner(id, nome, codigo_turma, escola_id, ano_lectivo)
             `)
             .eq('turmas.escola_id', escolaId)
-            .ilike('turmas.ano_lectivo', `${currentYear}%`)
+            .ilike('turmas.ano_lectivo', `%${currentYear}%`)
             .eq('ativo', true)
             .order('nome_completo')
 

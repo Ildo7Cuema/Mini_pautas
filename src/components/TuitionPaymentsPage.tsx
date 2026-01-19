@@ -21,11 +21,13 @@ import {
     fetchEstatisticasPropinas,
     fetchAlunosComStatusPagamento,
     registarPagamento,
+    anularPagamento,
     getNomeMes,
     getNomeMesCurto,
     formatarValor,
     getMetodoPagamentoLabel
 } from '../utils/tuitionPayments'
+import { generateReceiptPDF } from '../utils/receiptGenerator'
 import type {
     PropinasConfig,
     PagamentoPropina,
@@ -51,10 +53,17 @@ interface TurmaBasic {
 export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ searchQuery = '' }) => {
     const { escolaProfile, secretarioProfile } = useAuth()
     const escolaId = escolaProfile?.id || secretarioProfile?.escola_id || ''
-    const currentYear = new Date().getFullYear()
-    const currentMonth = new Date().getMonth() + 1
+
+    // Determine default academic year
+    // If current month is before August (0-6), it's likely the second semester of the previous year's start
+    // E.g., Jan 2026 is part of 2025/2026 academic year, so we default to 2025
+    const today = new Date()
+    const defaultYear = today.getMonth() < 7 ? today.getFullYear() - 1 : today.getFullYear()
 
     // State
+    const [currentYear, setCurrentYear] = useState(defaultYear)
+    const currentMonth = today.getMonth() + 1
+
     const [loading, setLoading] = useState(true)
     const [loadingStudents, setLoadingStudents] = useState(false)
     const [activeTab, setActiveTab] = useState<'overview' | 'students' | 'payments' | 'config'>('overview')
@@ -87,6 +96,18 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
     const [exportMes, setExportMes] = useState<number>(currentMonth - 1 > 0 ? currentMonth - 1 : 12)
     const [exportTurma, setExportTurma] = useState<string>('')
 
+    // Annulment Modal State
+    const [showAnnulModal, setShowAnnulModal] = useState(false)
+    const [paymentToAnnul, setPaymentToAnnul] = useState<PagamentoPropina | null>(null)
+    const [annulReason, setAnnulReason] = useState('')
+    const [confirmationCheck, setConfirmationCheck] = useState(false)
+    const [toast, setToast] = useState<{ show: boolean; message: string; type: 'success' | 'error' }>({ show: false, message: '', type: 'success' })
+
+    const showNotification = (message: string, type: 'success' | 'error' = 'success') => {
+        setToast({ show: true, message, type })
+        setTimeout(() => setToast(prev => ({ ...prev, show: false })), 3000)
+    }
+
     // Form state
     const [paymentForm, setPaymentForm] = useState({
         valor: 0,
@@ -106,14 +127,14 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
         if (escolaId) {
             loadData()
         }
-    }, [escolaId])
+    }, [escolaId, currentYear])
 
     // Reload students when turma filter changes (including empty = all turmas)
     useEffect(() => {
         if (escolaId) {
             loadStudents()
         }
-    }, [selectedTurma])
+    }, [selectedTurma, currentYear])
 
     // Load header configuration for PDF export
     useEffect(() => {
@@ -399,18 +420,30 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
     const loadData = async () => {
         setLoading(true)
         try {
+            console.log('Loading Data for Year:', currentYear)
+
             // Load turmas
-            const { data: turmasData } = await supabase
+            console.log('Fetching turmas...')
+            const { data: turmasData, error: turmasError } = await supabase
                 .from('turmas')
                 .select('id, nome, codigo_turma, ano_lectivo')
                 .eq('escola_id', escolaId)
-                .ilike('ano_lectivo', `${currentYear}%`)
+                .ilike('ano_lectivo', `%${currentYear}%`)
                 .order('nome')
+
+            if (turmasError) {
+                console.error('Error fetching turmas:', turmasError)
+                throw turmasError
+            }
+            console.log('Turmas fetched:', turmasData?.length)
 
             setTurmas(turmasData || [])
 
             // Load config
+            console.log('Fetching config...')
             const configs = await fetchPropinasConfig(escolaId, currentYear)
+            console.log('Config fetched:', configs.length)
+
             if (configs.length > 0) {
                 setConfig(configs[0])
                 setConfigForm({
@@ -421,17 +454,23 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
             }
 
             // Load statistics
+            console.log('Fetching stats...')
             const statsData = await fetchEstatisticasPropinas(escolaId, currentYear)
+            console.log('Stats fetched')
             setStats(statsData)
 
             // Load recent payments
+            console.log('Fetching payments...')
             const pagamentosData = await fetchPagamentosPropinas(escolaId, {
                 anoReferencia: currentYear
             })
+            console.log('Payments fetched:', pagamentosData.length)
             setPagamentos(pagamentosData.slice(0, 20))
 
             // Load students
+            console.log('Fetching students...')
             const alunosData = await fetchAlunosComStatusPagamento(escolaId, undefined, currentYear)
+            console.log('Students fetched:', alunosData.length)
             setAlunos(alunosData)
 
         } catch (err) {
@@ -537,8 +576,101 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
         setShowReceiptModal(true)
     }
 
-    const handlePrintReceipt = () => {
-        window.print()
+    const handlePrintReceipt = async () => {
+        if (selectedPagamento) {
+            await generateReceiptPDF(selectedPagamento, headerConfig, escolaProfile || undefined)
+        }
+    }
+
+    const handleAnularPagamento = (pagamento: PagamentoPropina) => {
+        setPaymentToAnnul(pagamento)
+        setAnnulReason('')
+        setConfirmationCheck(false)
+        setShowAnnulModal(true)
+    }
+
+    const confirmAnnulment = async () => {
+        if (!paymentToAnnul) return
+
+        if (!annulReason || annulReason.trim().length < 5) {
+            showNotification('A anulação não foi processada porque o motivo é inválido ou muito curto.', 'error')
+            return
+        }
+
+        // Checkbox validation
+        if (!confirmationCheck) {
+            showNotification('Por favor, confirme que entende que a ação é irreversível.', 'error')
+            return
+        }
+
+        try {
+            await anularPagamento(paymentToAnnul.id, annulReason)
+            showNotification('Recibo anulado com sucesso.', 'success')
+            setShowAnnulModal(false)
+            setPaymentToAnnul(null)
+            loadData() // Reload to update UI
+        } catch (err: any) {
+            console.error('Error canceling payment:', err)
+            showNotification(`Erro ao anular: ${err.message}`, 'error')
+        }
+    }
+
+    const handleExportSaft = async () => {
+        setExportLoading(true)
+        try {
+            // Using invoke to get the XML text
+            const { data, error } = await supabase.functions.invoke(`export-saft`, {
+                method: 'GET',
+                // For invoke with GET, query params must be in the function logic handling or passed in body if POST.
+                // But simplified invoke helper often POSTs.
+                // Let's assume we pass params via body for robustness with invoke() default behavior if simpler, 
+                // BUT my function expects GET. I'll rely on the manual fetch fallback I designed in the thought process?
+                // No, I'll use a direct fetch with auth token to be 100% sure of file download behavior.
+            })
+
+            // Manual Fetch Implementation to ensure blob download works perfect with Auth
+            const session = await supabase.auth.getSession()
+            const token = session.data.session?.access_token
+
+            // Construct URL - usually dynamic but for this env we guess or get from supabase client options
+            // supabase.supabaseUrl is protected? 
+            // We can assume standard project url structure or just try invoke which returns JSON/Text.
+
+            // Let's go with the initial logic: invoke getting text.
+            // If invoke fails with GET params, use Body and switch function to POST? 
+            // My function handles GET.
+
+            // Correct approach with supabase-js v2 invoke:
+            // supabase.functions.invoke('export-saft', { headers: {}, body: {}, method: 'GET' }) -> does it append params? No.
+            // We must append to function name.
+
+            const invokeUrl = `export-saft?month=${exportMes}&year=${currentYear}&escola_id=${escolaId || ''}`
+            const response = await supabase.functions.invoke(invokeUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/xml' },
+                responseType: 'text'
+            })
+
+            if (response.error) throw response.error
+
+            const blob = new Blob([response.data], { type: 'application/xml' })
+            const url = window.URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `SAFT_AO_${exportMes}_${currentYear}.xml`
+            document.body.appendChild(a)
+            a.click()
+            window.URL.revokeObjectURL(url)
+            document.body.removeChild(a)
+
+            showNotification('SAF-T (AO) exportado com sucesso.', 'success')
+            setShowExportModal(false)
+        } catch (err: any) {
+            console.error('Error exporting SAF-T:', err)
+            showNotification(`Erro ao exportar SAF-T: ${err.message}`, 'error')
+        } finally {
+            setExportLoading(false)
+        }
     }
 
     // Filter alunos by search
@@ -564,7 +696,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                 {/* Stats Skeleton */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
                     {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="bg-white rounded-xl p-4 border border-slate-200/60">
+                        <div key={`stat-skel-${i}`} className="bg-white rounded-xl p-4 border border-slate-200/60">
                             <div className="skeleton w-10 h-10 rounded-xl mb-2"></div>
                             <div className="skeleton h-7 w-20 mb-1 rounded"></div>
                             <div className="skeleton h-4 w-16 rounded"></div>
@@ -581,7 +713,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                     <div className="skeleton h-10 w-64 mb-5 rounded-xl"></div>
                     <div className="space-y-3">
                         {[1, 2, 3, 4, 5].map((i) => (
-                            <div key={i} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
+                            <div key={`row-skel-${i}`} className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl">
                                 <div className="skeleton w-10 h-10 rounded-xl"></div>
                                 <div className="flex-1">
                                     <div className="skeleton h-4 w-40 mb-2 rounded"></div>
@@ -589,7 +721,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                 </div>
                                 <div className="flex gap-2">
                                     {[1, 2, 3, 4, 5, 6].map((j) => (
-                                        <div key={j} className="skeleton w-8 h-8 rounded-lg"></div>
+                                        <div key={`cell-skel-${j}`} className="skeleton w-8 h-8 rounded-lg"></div>
                                     ))}
                                 </div>
                             </div>
@@ -606,7 +738,22 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-900">Gestão de Propinas</h1>
-                    <p className="text-slate-500 mt-1">Controlo de pagamentos de mensalidades - {currentYear}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-slate-500">Controlo de pagamentos - Ano Lectivo:</p>
+                        <select
+                            value={currentYear}
+                            onChange={(e) => {
+                                setCurrentYear(Number(e.target.value))
+                                // Trigger data reload is handled by useEffect on escolaId/currentYear dependencies
+                                // But we verify dependency array below
+                            }}
+                            className="bg-slate-100 border-none rounded-lg text-slate-700 font-bold py-0.5 px-2 text-sm focus:ring-2 focus:ring-primary-500 cursor-pointer"
+                        >
+                            <option value={today.getFullYear() - 1}>{today.getFullYear() - 1}</option>
+                            <option value={today.getFullYear()}>{today.getFullYear()}</option>
+                            <option value={today.getFullYear() + 1}>{today.getFullYear() + 1}</option>
+                        </select>
+                    </div>
                 </div>
                 <div className="flex gap-3">
                     <button
@@ -814,7 +961,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                             {/* Mobile: Card View */}
                             <div className="md:hidden space-y-3">
                                 {filteredAlunos.slice(0, 10).map(aluno => {
-                                    const pendentes = aluno.pagamentos.filter(p => !p.pago && p.mes <= currentMonth).length
+                                    const pendentes = aluno.pagamentos.filter(p => p.status !== 'pago' && p.mes <= currentMonth).length
 
                                     return (
                                         <div key={aluno.id} className="tuition-student-card">
@@ -836,10 +983,10 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                             <div className="grid grid-cols-6 gap-1.5">
                                                 {aluno.pagamentos.map(pag => (
                                                     <button
-                                                        key={pag.mes}
-                                                        onClick={() => !pag.pago && pag.mes <= currentMonth && handleOpenPaymentModal(aluno, pag.mes)}
-                                                        disabled={pag.pago || pag.mes > currentMonth}
-                                                        className={`month-pill ${pag.pago ? 'month-pill-paid' : pag.mes <= currentMonth ? 'month-pill-pending' : 'month-pill-future'}`}
+                                                        key={`mob-pill-${aluno.id}-${pag.mes}`}
+                                                        onClick={() => pag.status !== 'pago' && pag.mes <= currentMonth && handleOpenPaymentModal(aluno, pag.mes)}
+                                                        disabled={pag.status === 'pago' || pag.mes > currentMonth}
+                                                        className={`month-pill ${pag.status === 'pago' ? 'month-pill-paid' : pag.status === 'parcial' ? 'bg-amber-100 text-amber-700 border-amber-200' : pag.mes <= currentMonth ? 'month-pill-pending' : 'month-pill-future'}`}
                                                     >
                                                         {getNomeMesCurto(pag.mes).substring(0, 3)}
                                                     </button>
@@ -865,7 +1012,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                         <tr>
                                             <th className="text-left px-4 py-3 min-w-[180px]">Aluno</th>
                                             {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(mes => (
-                                                <th key={mes} className="text-center px-2 py-3 w-12">
+                                                <th key={`header-mes-${mes}`} className="text-center px-2 py-3 w-12">
                                                     {getNomeMesCurto(mes)}
                                                 </th>
                                             ))}
@@ -886,10 +1033,12 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                                     </div>
                                                 </td>
                                                 {aluno.pagamentos.map(pag => (
-                                                    <td key={pag.mes} className="text-center px-2 py-3">
-                                                        {pag.pago ? (
+                                                    <td key={`cell-${aluno.id}-${pag.mes}`} className="text-center px-2 py-3">
+                                                        {pag.status === 'pago' ? (
                                                             <button
                                                                 onClick={() => {
+                                                                    // Find the last payment for this month to view receipt
+                                                                    // Ideally logic should handle multiple receipts, but for now show latest
                                                                     const pagamento = pagamentos.find(
                                                                         p => p.aluno_id === aluno.id && p.mes_referencia === pag.mes
                                                                     )
@@ -905,12 +1054,16 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                                         ) : pag.mes <= currentMonth ? (
                                                             <button
                                                                 onClick={() => handleOpenPaymentModal(aluno, pag.mes)}
-                                                                className="w-8 h-8 bg-amber-100 text-amber-600 rounded-lg flex items-center justify-center mx-auto hover:bg-amber-200 hover:shadow-sm transition-all"
-                                                                title="Pendente - Registar pagamento"
+                                                                className={`w-8 h-8 rounded-lg flex items-center justify-center mx-auto hover:shadow-sm transition-all ${pag.status === 'parcial' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'bg-amber-50 text-amber-600 border border-amber-200 hover:bg-amber-100'}`}
+                                                                title={pag.status === 'parcial' ? "Parcial - Completar pagamento" : "Pendente - Registar pagamento"}
                                                             >
-                                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                                                                </svg>
+                                                                {pag.status === 'parcial' ? (
+                                                                    <span className="text-xs font-bold">%</span>
+                                                                ) : (
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                                                                    </svg>
+                                                                )}
                                                             </button>
                                                         ) : (
                                                             <div className="w-8 h-8 bg-slate-100 text-slate-400 rounded-lg flex items-center justify-center mx-auto" title="Futuro">
@@ -938,7 +1091,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                     {activeTab === 'students' && (
                         <div className="space-y-3 stagger-children">
                             {filteredAlunos.map(aluno => {
-                                const totalPendente = aluno.pagamentos.filter(p => !p.pago && p.mes <= currentMonth).length
+                                const totalPendente = aluno.pagamentos.filter(p => p.status !== 'pago' && p.mes <= currentMonth).length
 
                                 return (
                                     <div key={aluno.id} className="tuition-student-card">
@@ -972,14 +1125,16 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                         <div className="grid grid-cols-6 md:grid-cols-12 gap-1.5">
                                             {aluno.pagamentos.map(pag => (
                                                 <button
-                                                    key={pag.mes}
-                                                    onClick={() => !pag.pago && pag.mes <= currentMonth && handleOpenPaymentModal(aluno, pag.mes)}
-                                                    disabled={pag.pago || pag.mes > currentMonth}
-                                                    className={`month-pill ${pag.pago
+                                                    key={`stud-pill-${aluno.id}-${pag.mes}`}
+                                                    onClick={() => pag.status !== 'pago' && pag.mes <= currentMonth && handleOpenPaymentModal(aluno, pag.mes)}
+                                                    disabled={pag.status === 'pago' || pag.mes > currentMonth}
+                                                    className={`month-pill ${pag.status === 'pago'
                                                         ? 'month-pill-paid'
-                                                        : pag.mes <= currentMonth
-                                                            ? 'month-pill-pending'
-                                                            : 'month-pill-future'
+                                                        : pag.status === 'parcial'
+                                                            ? 'bg-amber-100 text-amber-700 border-amber-200'
+                                                            : pag.mes <= currentMonth
+                                                                ? 'month-pill-pending'
+                                                                : 'month-pill-future'
                                                         }`}
                                                 >
                                                     {getNomeMesCurto(pag.mes)}
@@ -1096,19 +1251,34 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                                     {new Date(pag.data_pagamento).toLocaleDateString('pt-AO')}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-mono">
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${pag.estado === 'anulado' ? 'bg-red-100 text-red-700 decoration-red-700 line-through' : 'bg-slate-100 text-slate-700'} rounded-lg text-xs font-mono`}>
                                                         {pag.numero_recibo}
                                                     </span>
+                                                    {pag.estado === 'anulado' && (
+                                                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-red-100 text-red-800">
+                                                            ANULADO
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-4 py-3 text-center">
                                                     <button
                                                         onClick={() => handleViewReceipt(pag)}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-medium hover:bg-primary-100 hover:shadow-sm transition-all"
+                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-primary-50 text-primary-600 rounded-lg text-xs font-medium hover:bg-primary-100 hover:shadow-sm transition-all mr-2"
                                                     >
                                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                                                         </svg>
                                                         Recibo
+                                                    </button>
+                                                    {/* Só permitir anular se criado há menos de 24h e por este user (opcional) */}
+                                                    <button
+                                                        onClick={() => handleAnularPagamento(pag)}
+                                                        className="p-1 text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                                                        title="Anular Recibo"
+                                                    >
+                                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                                        </svg>
                                                     </button>
                                                 </td>
                                             </tr>
@@ -1397,6 +1567,92 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                 </div>
             )}
 
+            {/* Annulment Modal */}
+            {showAnnulModal && paymentToAnnul && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+                        <div className="p-6 border-b border-gray-100 bg-red-50/50">
+                            <h3 className="text-lg font-semibold text-red-900 flex items-center gap-2">
+                                <svg className="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Anular Recibo #{paymentToAnnul.numero_recibo}
+                            </h3>
+                            <p className="text-sm text-red-700 mt-1">
+                                Esta acção é irreversível e ficará registada para efeitos fiscais.
+                            </p>
+                        </div>
+
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    Motivo da Anulação <span className="text-red-500">*</span>
+                                </label>
+                                <textarea
+                                    value={annulReason}
+                                    onChange={(e) => setAnnulReason(e.target.value)}
+                                    placeholder="Descreva o motivo (ex: erro no lançamento, cheque devolvido)..."
+                                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500/20 focus:border-red-500 min-h-[100px] text-sm"
+                                    autoFocus
+                                />
+                                <p className="text-xs text-gray-500 mt-1">
+                                    Mínimo de 5 caracteres.
+                                </p>
+                            </div>
+
+                            <div className="bg-gray-50 p-3 rounded-lg border border-gray-100 text-xs text-gray-600">
+                                <div className="flex justify-between mb-1">
+                                    <span>Aluno:</span>
+                                    <span className="font-medium">{paymentToAnnul.aluno?.nome_completo || 'N/A'}</span>
+                                </div>
+                                <div className="flex justify-between mb-1">
+                                    <span>Valor:</span>
+                                    <span className="font-medium">{formatarValor(paymentToAnnul.valor)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                    <span>Data:</span>
+                                    <span className="font-medium">{new Date(paymentToAnnul.data_pagamento).toLocaleDateString()}</span>
+                                </div>
+                            </div>
+
+                            <div className="flex items-start gap-3 p-3 bg-red-50 rounded-lg border border-red-100">
+                                <div className="flex h-5 items-center">
+                                    <input
+                                        id="confirm-annul"
+                                        type="checkbox"
+                                        checked={confirmationCheck}
+                                        onChange={(e) => setConfirmationCheck(e.target.checked)}
+                                        className="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                                    />
+                                </div>
+                                <label htmlFor="confirm-annul" className="text-sm text-red-800 font-medium select-none cursor-pointer">
+                                    Confirmo que pretendo anular este recibo e compreendo que esta acção é irreversível e será auditada.
+                                </label>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <button
+                                onClick={() => {
+                                    setShowAnnulModal(false)
+                                    setPaymentToAnnul(null)
+                                }}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={confirmAnnulment}
+                                disabled={!annulReason || annulReason.trim().length < 5 || !confirmationCheck}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2 shadow-sm"
+                            >
+                                Confirmar Anulação
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Config Modal */}
             {showConfigModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1456,8 +1712,8 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setShowExportModal(false)} />
                     <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 animate-slide-up">
-                        <h3 className="text-lg font-bold text-slate-900 mb-1">Imprimir Lista de Propinas Pagas</h3>
-                        <p className="text-sm text-slate-500 mb-5">Exporte uma lista de alunos que pagaram propinas em PDF</p>
+                        <h3 className="text-lg font-bold text-slate-900 mb-1">Imprimir Lista / Exportar</h3>
+                        <p className="text-sm text-slate-500 mb-5">Exporte lista de pagamentos ou ficheiro SAF-T (AGT)</p>
 
                         <div className="space-y-4">
                             <div>
@@ -1468,7 +1724,7 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                     className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500"
                                 >
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(mes => (
-                                        <option key={mes} value={mes}>{getNomeMes(mes)} {mes > currentMonth ? currentYear - 1 : currentYear}</option>
+                                        <option key={`opt-mes-${mes}`} value={mes}>{getNomeMes(mes)} {mes > currentMonth ? currentYear - 1 : currentYear}</option>
                                     ))}
                                 </select>
                             </div>
@@ -1487,7 +1743,36 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                                 </select>
                             </div>
 
-                            {/* Header config button */}
+                            <div className="pt-3 border-t border-slate-100 flex flex-col gap-2">
+                                <button
+                                    onClick={handlePrintExport}
+                                    disabled={exportLoading}
+                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-colors font-medium shadow-lg shadow-primary-600/20 disabled:opacity-50"
+                                >
+                                    {exportLoading ? (
+                                        <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    ) : (
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                        </svg>
+                                    )}
+                                    Imprimir Lista (PDF)
+                                </button>
+
+                                <button
+                                    onClick={handleExportSaft}
+                                    disabled={exportLoading}
+                                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-colors font-medium shadow-lg shadow-slate-800/20 disabled:opacity-50"
+                                >
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                                    </svg>
+                                    Exportar SAF-T (AO) XML
+                                </button>
+                            </div>
                             <div className="pt-2 border-t border-slate-100">
                                 <button
                                     onClick={() => setShowHeaderConfigModal(true)}
@@ -1552,6 +1837,24 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
                 }}
                 escolaId={escolaId}
             />
+            {/* Toast Notification */}
+            {toast.show && (
+                <div className={`fixed bottom-4 right-4 z-[60] px-6 py-4 rounded-xl shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-300 ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+                    {toast.type === 'success' ? (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                    ) : (
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    )}
+                    <div>
+                        <p className="font-semibold text-sm">{toast.type === 'success' ? 'Sucesso' : 'Erro'}</p>
+                        <p className="text-sm opacity-90">{toast.message}</p>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

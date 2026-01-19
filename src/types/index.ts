@@ -1001,14 +1001,31 @@ export interface PagamentoPropina {
     created_at: string;
     updated_at: string;
     aluno?: Aluno;
+
+    // AGT / Compliance Fields
+    estado: 'valido' | 'anulado';
+    motivo_anulacao?: string;
+    data_anulacao?: string;
+    anulado_por?: string;
+    hash: string;
+    hash_control: string;
+    sistema_certificado: string;
+    tipo_documento: string;
 }
 
 export interface PagamentoMesStatus {
     mes: number;
-    pago: boolean;
-    valor: number;
-    data_pagamento?: string;
-    numero_recibo?: string;
+    status: 'pago' | 'parcial' | 'pendente';
+    valor_pago: number;
+    valor_total: number;
+    detalhes_pagamentos: Array<{
+        id: string;
+        data: string;
+        valor: number;
+        recibo: string;
+        estado: string;
+        hash_control: string;
+    }>;
 }
 
 export interface EstatisticasPropinas {

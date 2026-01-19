@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AuditFile xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="urn:OECD:StandardAuditFile-Tax:AO_1.01_01" xsi:schemaLocation="urn:OECD:StandardAuditFile-Tax:AO_1.01_01 SAF-T_AO_1.01_01.xsd">
+  <Header>
+    <AuditFileVersion>1.01_01</AuditFileVersion>
+    <CompanyID>5417082695</CompanyID>
+    <TaxRegistrationNumber>5417082695</TaxRegistrationNumber>
+    <TaxAccountingBasis>F</TaxAccountingBasis>
+    <CompanyName>Minha Empresa Demo</CompanyName>
+    <BusinessName>Minha Empresa Demo</BusinessName>
+    <CompanyAddress>
+      <AddressDetail>Luanda, Angola</AddressDetail>
+      <City>Luanda</City>
+      <Country>AO</Country>
+    </CompanyAddress>
+    <FiscalYear>2026</FiscalYear>
+    <StartDate>2026-01-01</StartDate>
+    <EndDate>2026-01-19</EndDate>
+    <CurrencyCode>AOA</CurrencyCode>
+    <DateCreated>2026-01-19</DateCreated>
+    <TaxEntity>Global</TaxEntity>
+    <ProductCompanyTaxID>5417082695</ProductCompanyTaxID>
+    <SoftwareValidationNumber>31.1/AGT20</SoftwareValidationNumber>
+    <ProductID>POS Angola</ProductID>
+    <ProductVersion>1.0.0</ProductVersion>
+  </Header>
+  <MasterFiles>
+    <Customer>
+      <CustomerID>2c6d4bfc-aa30-416d-9693-72cfee163316</CustomerID>
+      <AccountID>Unknown</AccountID>
+      <CustomerTaxID>5000000</CustomerTaxID>
+      <CompanyName>Direção Municipal da Educação</CompanyName>
+      <BillingAddress>
+        <AddressDetail>Chipindo, Huíla</AddressDetail>
+        <City>Luanda</City>
+        <Country>AO</Country>
+      </BillingAddress>
+      <SelfBillingIndicator>0</SelfBillingIndicator>
+    </Customer>
+    <Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-D21M</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>Camisa-Plov</Description>
+      <ProductNumberCode>P-260119-D21M</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-WHW5</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>Casaco-Frio</Description>
+      <ProductNumberCode>P-260119-WHW5</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-U8FD</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>Casaco-Simples</Description>
+      <ProductNumberCode>P-260119-U8FD</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-0Y72</ProductCode>
+      <ProductGroup>aa98d57c-97fa-4f87-9a78-92544d759ed5</ProductGroup>
+      <Description>Cerveja Sem Fermento</Description>
+      <ProductNumberCode>P-260119-0Y72</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-BO32</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>Fato-2 Tempo</Description>
+      <ProductNumberCode>P-260119-BO32</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-77GW</ProductCode>
+      <ProductGroup>aa98d57c-97fa-4f87-9a78-92544d759ed5</ProductGroup>
+      <Description>Sumo Fresco</Description>
+      <ProductNumberCode>P-260119-77GW</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-4OML</ProductCode>
+      <ProductGroup>aa98d57c-97fa-4f87-9a78-92544d759ed5</ProductGroup>
+      <Description>Sumo Refregerante</Description>
+      <ProductNumberCode>P-260119-4OML</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-VOB5</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>T-Chert Azul</Description>
+      <ProductNumberCode>P-260119-VOB5</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-BVXT</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>T-Chert PRO</Description>
+      <ProductNumberCode>P-260119-BVXT</ProductNumberCode>
+    </Product>
+      <ProductType>P</ProductType>
+      <ProductCode>P-260119-0BK6</ProductCode>
+      <ProductGroup>afc69137-88f6-4051-911b-5b967af69014</ProductGroup>
+      <Description>Tênis</Description>
+      <ProductNumberCode>P-260119-0BK6</ProductNumberCode>
+    </Product>
+  </MasterFiles>
+  <SourceDocuments>
+    <SalesInvoices>
+      <NumberOfEntries>0</NumberOfEntries>
+      <TotalDebit>0.00</TotalDebit>
+      <TotalCredit>0.00</TotalCredit>
+    </SalesInvoices>
+  </SourceDocuments>
+</AuditFile>
