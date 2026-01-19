@@ -618,42 +618,154 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
     const handleExportSaft = async () => {
         setExportLoading(true)
         try {
-            // Using invoke to get the XML text
-            const { data, error } = await supabase.functions.invoke(`export-saft`, {
-                method: 'GET',
-                // For invoke with GET, query params must be in the function logic handling or passed in body if POST.
-                // But simplified invoke helper often POSTs.
-                // Let's assume we pass params via body for robustness with invoke() default behavior if simpler, 
-                // BUT my function expects GET. I'll rely on the manual fetch fallback I designed in the thought process?
-                // No, I'll use a direct fetch with auth token to be 100% sure of file download behavior.
-            })
+            // 1. Fetch Data Client-Side (Fallback since Edge Function deployment is blocked)
 
-            // Manual Fetch Implementation to ensure blob download works perfect with Auth
-            const session = await supabase.auth.getSession()
-            const token = session.data.session?.access_token
+            // A. Fetch School Profile
+            let escola = { nome: 'Escola Exemplo', nif: '999999999', cidade: 'Luanda' }
+            if (escolaId) {
+                const { data: esc } = await supabase.from('escolas_profile').select('*').eq('id', escolaId).single()
+                if (esc) escola = { nome: esc.nome, nif: esc.nif || '999999999', cidade: esc.municipio || 'Luanda' }
+            }
 
-            // Construct URL - usually dynamic but for this env we guess or get from supabase client options
-            // supabase.supabaseUrl is protected? 
-            // We can assume standard project url structure or just try invoke which returns JSON/Text.
+            // B. Fetch Payments
+            const { data: payments, error } = await supabase
+                .from('pagamentos_propinas')
+                .select(`*, aluno:alunos(id, nome_completo, numero_processo)`)
+                .eq('mes_referencia', exportMes)
+                .eq('ano_referencia', currentYear)
+                .order('created_at', { ascending: true })
 
-            // Let's go with the initial logic: invoke getting text.
-            // If invoke fails with GET params, use Body and switch function to POST? 
-            // My function handles GET.
+            if (error) throw error
+            if (!payments || payments.length === 0) throw new Error('Não existem pagamentos para exportar neste período.')
 
-            // Correct approach with supabase-js v2 invoke:
-            // supabase.functions.invoke('export-saft', { headers: {}, body: {}, method: 'GET' }) -> does it append params? No.
-            // We must append to function name.
+            // 2. Build XML (SAF-T AO Structure) - Ported from Edge Function
+            const uniqueCustomers = Array.from(new Set(payments.map((p: any) => JSON.stringify(p.aluno))))
 
-            const invokeUrl = `export-saft?month=${exportMes}&year=${currentYear}&escola_id=${escolaId || ''}`
-            const response = await supabase.functions.invoke(invokeUrl, {
-                method: 'GET',
-                headers: { 'Accept': 'application/xml' },
-                responseType: 'text'
-            })
+            const auditFile = [
+                `<?xml version="1.0" encoding="UTF-8"?>`,
+                `<AuditFile xmlns="urn:OECD:StandardAuditFile-Tax:AO_1.01_01" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="urn:OECD:StandardAuditFile-Tax:AO_1.01_01 SAF-T_AO.xsd">`,
+                `  <Header>`,
+                `    <AuditFileVersion>1.01_01</AuditFileVersion>`,
+                `    <CompanyID>${escola.nif}</CompanyID>`,
+                `    <TaxRegistrationNumber>${escola.nif}</TaxRegistrationNumber>`,
+                `    <TaxAccountingBasis>F</TaxAccountingBasis>`,
+                `    <CompanyName>${escola.nome}</CompanyName>`,
+                `    <BusinessName>${escola.nome}</BusinessName>`,
+                `    <CompanyAddress>`,
+                `      <AddressDetail>${escola.cidade}</AddressDetail>`,
+                `      <City>${escola.cidade}</City>`,
+                `      <Country>AO</Country>`,
+                `    </CompanyAddress>`,
+                `    <FiscalYear>${currentYear}</FiscalYear>`,
+                `    <StartDate>${currentYear}-01-01</StartDate>`,
+                `    <EndDate>${currentYear}-12-31</EndDate>`,
+                `    <CurrencyCode>AOA</CurrencyCode>`,
+                `    <DateCreated>${new Date().toISOString().split('T')[0]}</DateCreated>`,
+                `    <TaxEntity>Global</TaxEntity>`,
+                `    <ProductCompanyTaxID>${escola.nif}</ProductCompanyTaxID>`,
+                `    <SoftwareValidationNumber>000/AGT/2024</SoftwareValidationNumber>`,
+                `    <ProductID>EduGest/AO</ProductID>`,
+                `    <ProductVersion>1.0.0</ProductVersion>`,
+                `  </Header>`,
+                `  <MasterFiles>`,
+                `    <Customer>`,
+                ...uniqueCustomers.map((aStr: string) => {
+                    const a = JSON.parse(aStr);
+                    return [
+                        `      <CustomerID>${a.id}</CustomerID>`,
+                        `      <AccountID>Desconhecido</AccountID>`,
+                        `      <CustomerTaxID>999999999</CustomerTaxID>`,
+                        `      <CompanyName>${a.nome_completo}</CompanyName>`,
+                        `      <BillingAddress>`,
+                        `        <AddressDetail>Luanda</AddressDetail>`,
+                        `        <City>Luanda</City>`,
+                        `        <Country>AO</Country>`,
+                        `      </BillingAddress>`,
+                        `      <SelfBillingIndicator>0</SelfBillingIndicator>`,
+                    ].join('\n    ')
+                }),
+                `    </Customer>`,
+                `    <Product>`,
+                `      <ProductType>S</ProductType>`,
+                `      <ProductCode>PROP</ProductCode>`,
+                `      <ProductGroup>Servicos</ProductGroup>`,
+                `      <Description>Propina Mensal</Description>`,
+                `      <ProductNumberCode>PROP</ProductNumberCode>`,
+                `    </Product>`,
+                `    <TaxTable>`,
+                `      <TaxTableEntry>`,
+                `        <TaxType>IVA</TaxType>`,
+                `        <TaxCountryRegion>AO</TaxCountryRegion>`,
+                `        <TaxCode>ISE</TaxCode>`,
+                `        <Description>Isento</Description>`,
+                `        <TaxPercentage>0.00</TaxPercentage>`,
+                `      </TaxTableEntry>`,
+                `    </TaxTable>`,
+                `  </MasterFiles>`,
+                `  <SourceDocuments>`,
+                `    <SalesInvoices>`,
+                `      <NumberOfEntries>${payments.length}</NumberOfEntries>`,
+                `      <TotalDebit>0.00</TotalDebit>`,
+                `      <TotalCredit>${payments.reduce((acc: number, p: any) => acc + (p.estado === 'valido' ? p.valor : 0), 0).toFixed(2)}</TotalCredit>`,
+                ...payments.map((p: any) => {
+                    const status = p.estado === 'anulado' ? 'A' : 'N';
+                    const hash = p.hash || '0';
+                    const hashControl = p.hash_control || '0';
+                    return [
+                        `      <Invoice>`,
+                        `        <InvoiceNo>${p.numero_recibo}</InvoiceNo>`,
+                        `        <DocumentStatus>`,
+                        `          <InvoiceStatus>${status}</InvoiceStatus>`,
+                        `          <InvoiceStatusDate>${new Date(p.created_at).toISOString()}</InvoiceStatusDate>`,
+                        `          <SourceID>Admin</SourceID>`,
+                        `          <SourceBilling>P</SourceBilling>`,
+                        `        </DocumentStatus>`,
+                        `        <Hash>${hash}</Hash>`,
+                        `        <HashControl>${hashControl}</HashControl>`,
+                        `        <Period>${exportMes}</Period>`,
+                        `        <InvoiceDate>${new Date(p.data_pagamento).toISOString().split('T')[0]}</InvoiceDate>`,
+                        `        <InvoiceType>FT</InvoiceType>`,
+                        `        <SpecialRegimes>`,
+                        `          <SelfBillingIndicator>0</SelfBillingIndicator>`,
+                        `          <CashVATSchemeIndicator>0</CashVATSchemeIndicator>`,
+                        `          <ThirdPartiesBillingIndicator>0</ThirdPartiesBillingIndicator>`,
+                        `        </SpecialRegimes>`,
+                        `        <SourceID>Admin</SourceID>`,
+                        `        <SystemEntryDate>${new Date(p.created_at).toISOString()}</SystemEntryDate>`,
+                        `        <CustomerID>${p.aluno.id}</CustomerID>`,
+                        `        <Line>`,
+                        `          <LineNumber>1</LineNumber>`,
+                        `          <ProductCode>PROP</ProductCode>`,
+                        `          <ProductDescription>Propina ${p.mes_referencia}/${p.ano_referencia}</ProductDescription>`,
+                        `          <Quantity>1</Quantity>`,
+                        `          <UnitOfMeasure>Unid</UnitOfMeasure>`,
+                        `          <UnitPrice>${p.valor.toFixed(2)}</UnitPrice>`,
+                        `          <TaxPointDate>${new Date(p.data_pagamento).toISOString().split('T')[0]}</TaxPointDate>`,
+                        `          <Description>Propina</Description>`,
+                        `          <CreditAmount>${p.valor.toFixed(2)}</CreditAmount>`,
+                        `          <Tax>`,
+                        `            <TaxType>IVA</TaxType>`,
+                        `            <TaxCountryRegion>AO</TaxCountryRegion>`,
+                        `            <TaxCode>ISE</TaxCode>`,
+                        `            <TaxPercentage>0.00</TaxPercentage>`,
+                        `          </Tax>`,
+                        `          <SettlementAmount>0.00</SettlementAmount>`,
+                        `        </Line>`,
+                        `        <DocumentTotals>`,
+                        `          <TaxPayable>0.00</TaxPayable>`,
+                        `          <NetTotal>${p.valor.toFixed(2)}</NetTotal>`,
+                        `          <GrossTotal>${p.valor.toFixed(2)}</GrossTotal>`,
+                        `        </DocumentTotals>`,
+                        `      </Invoice>`
+                    ].join('\n')
+                }),
+                `    </SalesInvoices>`,
+                `  </SourceDocuments>`,
+                `</AuditFile>`
+            ].join('\n');
 
-            if (response.error) throw response.error
-
-            const blob = new Blob([response.data], { type: 'application/xml' })
+            // 3. Download
+            const blob = new Blob([auditFile], { type: 'application/xml' })
             const url = window.URL.createObjectURL(blob)
             const a = document.createElement('a')
             a.href = url
@@ -668,6 +780,67 @@ export const TuitionPaymentsPage: React.FC<TuitionPaymentsPageProps> = ({ search
         } catch (err: any) {
             console.error('Error exporting SAF-T:', err)
             showNotification(`Erro ao exportar SAF-T: ${err.message}`, 'error')
+        } finally {
+            setExportLoading(false)
+        }
+    }
+
+    const handlePrintExport = async () => {
+        setExportLoading(true)
+        try {
+            const doc = new jsPDF()
+
+            // Header
+            doc.setFontSize(18)
+            doc.text('Relatório de Pagamento de Propinas', 14, 20)
+
+            doc.setFontSize(12)
+            doc.text(`Mês Referência: ${getNomeMes(exportMes)}`, 14, 30)
+            doc.text(`Ano: ${currentYear}`, 14, 36)
+
+            if (escolaProfile) {
+                doc.setFontSize(10)
+                doc.text(escolaProfile.nome, 200, 20, { align: 'right' })
+            }
+
+            // Prepare Table Data
+            let exportAlunos = alunos
+            if (exportTurma) {
+                exportAlunos = alunos.filter(a => a.turma_id === exportTurma)
+            }
+
+            const tableData = exportAlunos.map(student => {
+                const paymentsForMonth = pagamentos.filter(p =>
+                    p.aluno_id === student.id &&
+                    p.mes_referencia === exportMes &&
+                    p.ano_referencia === currentYear &&
+                    p.estado === 'valido'
+                )
+
+                const totalPaid = paymentsForMonth.reduce((sum, p) => sum + p.valor, 0)
+
+                return [
+                    student.numero_processo,
+                    student.nome_completo,
+                    paymentsForMonth.length > 0 ? `${formatarValor(totalPaid)}` : '0,00 Kz',
+                    paymentsForMonth.length > 0 ? (totalPaid >= (paymentForm.valor_mensalidade || 0) ? 'Pago' : 'Parcial') : 'Pendente'
+                ]
+            })
+
+            autoTable(doc, {
+                startY: 45,
+                head: [['Nº Proc', 'Nome Completo', 'Valor Pago', 'Estado']],
+                body: tableData,
+                styles: { fontSize: 9 },
+                headStyles: { fillColor: [41, 128, 185] }
+            })
+
+            doc.save(`Relatorio_Propinas_${getNomeMes(exportMes)}_${currentYear}.pdf`)
+            showNotification('Lista exportada com sucesso.', 'success')
+            setShowExportModal(false)
+        } catch (error: any) {
+            console.error('Error printing export:', error)
+            showNotification('Erro ao exportar lista PDF.', 'error')
         } finally {
             setExportLoading(false)
         }
