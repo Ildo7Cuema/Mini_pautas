@@ -43,6 +43,8 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
     const [showEditModal, setShowEditModal] = useState(false)
     const [showDeleteModal, setShowDeleteModal] = useState(false)
     const [selectedTemplate, setSelectedTemplate] = useState<DisciplinaTemplate | null>(null)
+    const [applyError, setApplyError] = useState<string | null>(null)
+    const [applySuccess, setApplySuccess] = useState<string | null>(null)
 
     // Expanded template for viewing/editing components
     const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
@@ -562,6 +564,8 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
         setSelectedTemplate(template)
         setSelectedTurmaId('')
         setSelectedProfessorId('')
+        setApplyError(null)
+        setApplySuccess(null)
         setShowApplyModal(true)
 
         // Load turmas and professors
@@ -592,9 +596,6 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
                 .select('id, nome_completo')
                 .eq('escola_id', escolaProfile?.id)
                 .order('nome_completo')
-
-            if (profsError) throw profsError
-            setProfessoresDisponiveis(profs || [])
 
             if (profsError) throw profsError
             setProfessoresDisponiveis(profs || [])
@@ -663,12 +664,12 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
 
     const handleApplyToTurma = async () => {
         if (!selectedTemplate || !selectedTurmaId || !selectedProfessorId) {
-            setError('Seleccione uma turma e um professor')
+            setApplyError('Seleccione uma turma e um professor.')
             return
         }
 
-        setError(null)
-        setSuccess(null)
+        setApplyError(null)
+        setApplySuccess(null)
         setApplyingTemplate(true)
 
         try {
@@ -688,13 +689,20 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
 
             if (error) throw error
 
-            setSuccess(`Template "${selectedTemplate.nome}" aplicado com sucesso! Disciplina e componentes criados.`)
-            setShowApplyModal(false)
+            setApplySuccess(`Template "${selectedTemplate.nome}" aplicado com sucesso! Disciplina e componentes criados.`)
             loadTemplates() // Refresh to update turmas_count
-            setTimeout(() => setSuccess(null), 5000)
+
+            setTimeout(() => {
+                setShowApplyModal(false)
+                setApplySuccess(null)
+            }, 2000)
         } catch (err: any) {
             console.error('❌ Erro ao aplicar template:', err)
-            setError(translateError(err?.message || 'Erro ao aplicar template'))
+            let errorMsg = err?.message || 'Erro ao aplicar template'
+            if (errorMsg.includes('Template already applied')) {
+                errorMsg = 'Este template já foi aplicado a esta turma.'
+            }
+            setApplyError(translateError(errorMsg))
         } finally {
             setApplyingTemplate(false)
         }
@@ -1426,6 +1434,22 @@ export const TemplatesManagement: React.FC<TemplatesManagementProps> = ({ onClos
                             </div>
                         </div>
                         <div className="p-6 space-y-4">
+                            {applyError && (
+                                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl flex items-center shadow-sm animate-slide-down">
+                                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <span className="flex-1 font-medium">{applyError}</span>
+                                </div>
+                            )}
+                            {applySuccess && (
+                                <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl flex items-center shadow-sm animate-slide-down">
+                                    <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                    <span className="flex-1 font-medium">{applySuccess}</span>
+                                </div>
+                            )}
                             <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                                 <div className="flex gap-2">
                                     <svg className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

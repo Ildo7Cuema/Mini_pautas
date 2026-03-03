@@ -253,7 +253,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                             descricao,
                             created_at,
                             updated_at,
-                            professores!inner (
+                            professores (
                                 nome_completo
                             )
                         )
@@ -288,7 +288,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                             descricao,
                             created_at,
                             updated_at,
-                            professores!inner (
+                            professores (
                                 nome_completo
                             )
                         `)
@@ -320,7 +320,7 @@ export const GradesPage: React.FC<GradesPageProps> = ({ searchQuery: topbarSearc
                         descricao,
                         created_at,
                         updated_at,
-                        professores!inner (
+                        professores (
                             nome_completo
                         )
                     `)
